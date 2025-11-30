@@ -10,11 +10,11 @@ RoughSwift allows us to easily make shapes in hand drawn, sketchy, comic style i
 
 - [x] Support iOS, tvOS
 - [x] Support all shapes: line, rectangle, circle, ellipse, linear path, arc, curve, polygon, svg path
-- [x] Generate `UIBezierPath` for `CAShapeLayer`
-- [x] Easy cusomizations with Options
+- [x] Native SwiftUI rendering via `Canvas`, backed by `rough.js` in JavaScriptCore
+- [x] Easy customizations with Options
 - [x] Easy composable APIs
 - [x] Convenient draw functions
-- [x] Platform independant APIs which can easily support new platforms
+- [x] Platform independent APIs which can easily support new platforms
 - [x] Test coverage
 - [x] Immutable and type safe data structure
 - [ ] SVG elliptical arc
@@ -23,9 +23,10 @@ There are [Example](https://github.com/onmyway133/RoughSwift/tree/master/Example
 
 ## Basic
 
-Use `generator` in `draw` function to specify which shape to render. The returned `CALayer` contains the rendered result in correct `size` and is updated everytime `generator` is instructed.
+The easiest way to use RoughSwift is via `RoughView`, a SwiftUI `View` that renders
+hand‑drawn primitives using SwiftUI `Canvas` under the hood.
 
-Here's how to draw a green rectangle
+Here's how to draw a green rectangle:
 
 ![](Screenshots/green_rectangle.png)
 
@@ -45,7 +46,9 @@ RoughView()
     .zigzagOffset(-9)
 ```
 
-The beauty of `CALayer` is that we can further animate, transform (translate, scale, rotate) and compose them into more powerful shapes.
+Because `RoughView` is a normal SwiftUI view, you can compose it with other SwiftUI
+views, apply transforms (scale, rotate, offset), and animate it using standard
+SwiftUI modifiers.
 
 ## Options
 
@@ -213,28 +216,40 @@ struct Chartview: View {
 ```
 
 
-## Advance with Drawable, Generator and Renderer
+## Advance with Drawable, Generator and SwiftUIRenderer
 
-Behind the screen, we composes `Generator` and `Renderer`. 
+Behind the scenes, RoughSwift composes a `Generator` (powered by `rough.js`) and a
+SwiftUI renderer.
 
-We can instantiate `Engine` or use a shared `Engine` for memory efficiency, to make `Generator`. Every time we instruct `Generator` to draw a shape, the engine works hard to figure out information about the sketchy shape in `Drawable`.
+We can instantiate `Engine` or use a shared `Engine` for memory efficiency to make
+`Generator`. Every time we instruct `Generator` to draw a shape, the engine works
+to figure out information about the sketchy shape in `Drawable`.
 
 The name of these concepts follow `rough.js` for better code reasoning.
 
-For iOS, there is a `Renderer` that can handle `Drawable` and transform it into `UIBezierPath` and `CALayer`. There will be more `Renderer` that can render into graphics context, image and for other platforms like macOS and watchOS.
-
+For SwiftUI, there is a `SwiftUIRenderer` that can handle `Drawable` data and
+transform it into SwiftUI `Path`/`Canvas` drawing commands.
 
 ```swift
-let layer = CALayer()
-let size = CGSize(width: 200, heigh: 200)
+struct CustomCanvasView: View {
+    var body: some View {
+        Canvas { context, size in
+            let engine = Engine.shared
+            let generator = engine.generator(size: size)
 
-let renderer = Renderer(layer: layer)
-let generator = Engine.shared.generator(size: bounds.size)
+            var options = Options()
+            options.fill = .yellow
+            options.stroke = .systemTeal
 
-let drawable: Drawable = Rectangle(x: 10, y: 10, width: 100, height: 50)
-let drawing = generate.generate(drawable: drawable)
+            let drawable: Drawable = Rectangle(x: 10, y: 10, width: 100, height: 50)
 
-renderer.render(drawing: drawing)
+            if let drawing = generator.generate(drawable: drawable, options: options) {
+                let renderer = SwiftUIRenderer()
+                renderer.render(drawing: drawing, in: &context, size: size)
+            }
+        }
+    }
+}
 ```
 
 ## Installation
@@ -243,6 +258,24 @@ Add the following line to the dependencies in your `Package.swift` file
 
 ```swift
 .package(url: "https://github.com/onmyway133/RoughSwift"),
+```
+
+Then add `RoughSwift` as a dependency of your app target. On iOS/tvOS, you can
+import the package and use `RoughView` directly inside SwiftUI:
+
+```swift
+import SwiftUI
+import RoughSwift
+
+struct ContentView: View {
+    var body: some View {
+        RoughView()
+            .rectangle()
+            .fill(.yellow)
+            .stroke(.systemTeal)
+            .frame(width: 200, height: 200)
+    }
+}
 ```
 
 ## Author
