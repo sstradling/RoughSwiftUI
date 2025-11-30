@@ -1,3 +1,5 @@
+## Based entirely on https://github.com/onmyway133/RoughSwift, modified via Cursor
+
 ![](Screenshots/s.png)
 
 Checkout https://indiegoodies.com/
