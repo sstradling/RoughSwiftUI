@@ -6,7 +6,7 @@
 //
 
 import SwiftUI
-import RoughSwift
+import RoughSwiftUI
 
 struct PlayView: View {
     var heights: [CGFloat] {
