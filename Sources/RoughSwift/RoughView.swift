@@ -4,26 +4,44 @@
 //
 //  Created by khoa on 26/03/2022.
 //
-
-import UIKit
 import SwiftUI
+import UIKit
 
-public struct RoughView: UIViewRepresentable {
+/// A SwiftUI view that renders hand‑drawn Rough.js primitives using `Canvas`.
+///
+/// Configure it using the builder‑style modifiers (e.g. `.roughness`, `.stroke`)
+/// and one or more drawables via `.draw(Rectangle(...))`, `.rectangle()`, etc.
+public struct RoughView: View {
+    /// Rendering options forwarded to the Rough.js engine.
     var options = Options()
+
+    /// The list of shapes to render.
     var drawables: [Drawable] = []
 
     public init() {}
 
-    public func makeUIView(context: Context) -> UIView {
-        let view = RoughUIView()
-        return view
-    }
+    public var body: some View {
+        GeometryReader { proxy in
+            let size = proxy.size
 
-    public func updateUIView(_ uiView: UIView, context: Context) {
-        guard let view = uiView as? RoughUIView else { return }
-        view.drawbles = drawables
-        view.options = options
-        view.setNeedsLayout()
+            Canvas { context, canvasSize in
+                let renderSize = canvasSize == .zero ? size : canvasSize
+                guard renderSize.width > 0, renderSize.height > 0 else { return }
+
+                let generator = Engine.shared.generator(size: renderSize)
+                let renderer = SwiftUIRenderer()
+
+                for drawable in drawables {
+                    if let drawing = generator.generate(drawable: drawable, options: options) {
+                        renderer.render(
+                            drawing: drawing,
+                            in: &context,
+                            size: renderSize
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 

@@ -1,4 +1,5 @@
 import XCTest
+import SwiftUI
 @testable import RoughSwift
 
 final class RoughSwiftTests: XCTestCase {
@@ -41,7 +42,7 @@ final class RoughSwiftTests: XCTestCase {
         XCTAssertEqual(drawing.options.hachureGap, 8)
     }
 
-    func testRenderer() throws {
+    func testSwiftUIRendererProducesCommands() throws {
         let size = CGSize(width: 300, height: 300)
         let engine = Engine()
         let generator = engine.generator(size: size)
@@ -55,11 +56,10 @@ final class RoughSwiftTests: XCTestCase {
             options: options
         ))
 
-        let view = UIView(frame: CGRect(origin: .zero, size: size))
-        let renderer = Renderer(layer: view.layer)
-        renderer.render(drawing: drawing)
+        let renderer = SwiftUIRenderer()
+        let commands = renderer.commands(for: drawing, in: size)
 
-        XCTAssertEqual(view.layer.frame.size, size)
+        XCTAssertFalse(commands.isEmpty)
     }
 
     func testRectangle() {
