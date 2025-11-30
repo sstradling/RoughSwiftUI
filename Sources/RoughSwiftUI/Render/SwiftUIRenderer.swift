@@ -10,10 +10,13 @@
 import SwiftUI
 import UIKit
 
+/// Internal alias to disambiguate SwiftUI's `Path` from the engine's `Path` drawable.
+private typealias SwiftPath = SwiftUI.Path
+
 /// High‑level description of how a path should be drawn in SwiftUI.
 public struct RoughRenderCommand {
     /// The path to render.
-    public let path: Path
+    public let path: SwiftUI.Path
 
     /// The style used when rendering the path.
     public let style: Style
@@ -84,7 +87,7 @@ private extension SwiftUIRenderer {
     ) -> [RoughRenderCommand] {
         switch set.type {
         case .path:
-            let path = Path.from(operationSet: set)
+            let path = SwiftPath.from(operationSet: set)
             let strokeColor = Color(options.stroke)
             return [
                 RoughRenderCommand(
@@ -94,7 +97,7 @@ private extension SwiftUIRenderer {
             ]
 
         case .fillSketch:
-            let path = Path.from(operationSet: set)
+            let path = SwiftPath.from(operationSet: set)
             var fillWeight = options.fillWeight
             if fillWeight < 0 {
                 fillWeight = options.strokeWidth / 2
@@ -108,7 +111,7 @@ private extension SwiftUIRenderer {
             ]
 
         case .fillPath:
-            let path = Path.from(operationSet: set)
+            let path = SwiftPath.from(operationSet: set)
             let color = Color(options.fill)
             return [
                 RoughRenderCommand(
@@ -147,7 +150,7 @@ private extension SwiftUIRenderer {
     }
 
     /// Build a SwiftUI `Path` from an SVG path string, scaled into the canvas.
-    func scaledSVGPath(_ svg: String, in size: CGSize) -> Path {
+    func scaledSVGPath(_ svg: String, in size: CGSize) -> SwiftPath {
         let bezier = UIBezierPath(svgPath: svg)
 
         let frame = CGRect(
@@ -159,7 +162,7 @@ private extension SwiftUIRenderer {
         )
 
         _ = bezier.fit(into: frame).moveCenter(to: frame.center)
-        return Path(bezier.cgPath)
+        return SwiftPath(bezier.cgPath)
     }
 }
 

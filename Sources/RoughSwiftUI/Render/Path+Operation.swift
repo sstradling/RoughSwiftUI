@@ -17,24 +17,24 @@ extension Point {
     }
 }
 
-extension Path {
+extension SwiftUI.Path {
     /// Append a single drawing `Operation` to this SwiftUI `Path`.
     ///
     /// - Parameter operation: The engine operation to map into path commands.
     mutating func add(operation: Operation) {
         switch operation {
-        case let move as Move:
-            move(to: move.point.cgPoint)
+        case let moveOp as Move:
+            self.move(to: moveOp.point.cgPoint)
         case let line as LineTo:
-            addLine(to: line.point.cgPoint)
+            self.addLine(to: line.point.cgPoint)
         case let curve as BezierCurveTo:
-            addCurve(
+            self.addCurve(
                 to: curve.point.cgPoint,
                 control1: curve.controlPoint1.cgPoint,
                 control2: curve.controlPoint2.cgPoint
             )
         case let quad as QuadraticCurveTo:
-            addQuadCurve(
+            self.addQuadCurve(
                 to: quad.point.cgPoint,
                 control: quad.controlPoint.cgPoint
             )
@@ -48,8 +48,8 @@ extension Path {
     ///
     /// - Parameter operationSet: Collection of low‑level operations to replay.
     /// - Returns: A SwiftUI `Path` representing the same geometry.
-    static func from(operationSet: OperationSet) -> Path {
-        var path = Path()
+    static func from(operationSet: OperationSet) -> SwiftUI.Path {
+        var path = SwiftUI.Path()
         operationSet.operations.forEach { op in
             path.add(operation: op)
         }

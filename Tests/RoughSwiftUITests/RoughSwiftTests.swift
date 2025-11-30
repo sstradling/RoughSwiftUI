@@ -1,6 +1,6 @@
 import XCTest
 import SwiftUI
-@testable import RoughSwift
+@testable import RoughSwiftUI
 
 final class RoughSwiftTests: XCTestCase {
     func testDrawing() throws {

@@ -6,7 +6,7 @@
 //
 
 import SwiftUI
-import RoughSwift
+import RoughSwiftUI
 
 struct ContentView: View {
     @State private var flag = false
