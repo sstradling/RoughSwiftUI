@@ -124,9 +124,25 @@ public extension RoughView {
         return v
     }
 
+    /// Set the stroke color using a SwiftUI `Color`.
+    /// Internally this is bridged to the engine via `UIColor`/`RoughColor`.
+    func stroke(_ value: Color) -> Self {
+        var v = self
+        v.options.stroke = UIColor(value)
+        return v
+    }
+
     func fill(_ value: UIColor) -> Self {
         var v = self
         v.options.fill = value
+        return v
+    }
+
+    /// Set the fill color using a SwiftUI `Color`.
+    /// Internally this is bridged to the engine via `UIColor`/`RoughColor`.
+    func fill(_ value: Color) -> Self {
+        var v = self
+        v.options.fill = UIColor(value)
         return v
     }
 

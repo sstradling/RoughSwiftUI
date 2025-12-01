@@ -21,8 +21,13 @@ public struct Line: Drawable {
         ]
     }
 
-    let from: Point
-    let to: Point
+    public let from: Point
+    public let to: Point
+
+    public init(from: Point, to: Point) {
+        self.from = from
+        self.to = to
+    }
 }
 
 public struct Rectangle: Drawable {
@@ -120,7 +125,7 @@ public struct LinearPath: Drawable {
 }
 
 public struct Arc: Drawable {
-    public var method: String { "v" }
+    public var method: String { "arc" }
     
     public var arguments: [Any] {
         [

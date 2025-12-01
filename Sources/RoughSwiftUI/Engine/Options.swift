@@ -12,8 +12,13 @@ public struct Options {
     public var maxRandomnessOffset: Float = 2
     public var roughness: Float = 1
     public var bowing: Float = 1
-    public var fill: UIColor = .clear
-    public var stroke: UIColor = .black
+
+    // Internal color storage goes through `RoughColor` so we can
+    // easily bridge to hex / SwiftUI while keeping the public API
+    // in terms of `UIColor` for now.
+    private var strokeColor: RoughColor = RoughColor(uiColor: .black)
+    private var fillColor: RoughColor = RoughColor(uiColor: .clear)
+
     public var strokeWidth: Float = 1
     public var curveTightness: Float = 0
     public var curveStepCount: Float = 9
@@ -25,6 +30,18 @@ public struct Options {
     public var dashGap: Float = -1
     public var zigzagOffset: Float = -1
 
+    /// Public-facing stroke color as `UIColor` for backward compatibility.
+    public var stroke: UIColor {
+        get { strokeColor.asUIColor }
+        set { strokeColor = RoughColor(uiColor: newValue) }
+    }
+
+    /// Public-facing fill color as `UIColor` for backward compatibility.
+    public var fill: UIColor {
+        get { fillColor.asUIColor }
+        set { fillColor = RoughColor(uiColor: newValue) }
+    }
+
     public init() {}
 
     func toRoughDictionary() -> JSONDictionary {
@@ -32,8 +49,8 @@ public struct Options {
             "maxRandomnessOffset": maxRandomnessOffset,
             "roughness": roughness,
             "bowing": bowing,
-            "stroke": stroke.toHex(),
-            "fill": fill.toHex(),
+            "stroke": strokeColor.toHex(),
+            "fill": fillColor.toHex(),
             "strokeWidth": strokeWidth,
             "curveTightness": curveTightness,
             "curveStepCount": curveStepCount,

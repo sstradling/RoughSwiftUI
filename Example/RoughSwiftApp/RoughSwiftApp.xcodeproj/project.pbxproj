@@ -3,15 +3,16 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 55;
+	objectVersion = 60;
 	objects = {
 
 /* Begin PBXBuildFile section */
+		BAEF0FA72EDE5CD800C46DE6 /* RoughSwiftUI in Frameworks */ = {isa = PBXBuildFile; productRef = BAEF0FA62EDE5CD800C46DE6 /* RoughSwiftUI */; };
+		BAEF0FA92EDE5CF200C46DE6 /* RoughSwiftUI in Frameworks */ = {isa = PBXBuildFile; productRef = BAEF0FA82EDE5CF200C46DE6 /* RoughSwiftUI */; };
 		D2C5CBF127EF63D200BBE97D /* RoughSwiftAppApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2C5CBF027EF63D200BBE97D /* RoughSwiftAppApp.swift */; };
 		D2C5CBF327EF63D300BBE97D /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2C5CBF227EF63D200BBE97D /* ContentView.swift */; };
 		D2C5CBF527EF63D500BBE97D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D2C5CBF427EF63D500BBE97D /* Assets.xcassets */; };
 		D2C5CBF827EF63D500BBE97D /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D2C5CBF727EF63D500BBE97D /* Preview Assets.xcassets */; };
-		D2C5CC0227EFABEB00BBE97D /* RoughSwift in Frameworks */ = {isa = PBXBuildFile; productRef = D2C5CC0127EFABEB00BBE97D /* RoughSwift */; };
 		D2C5CC0527EFCDA100BBE97D /* PlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2C5CC0427EFCDA100BBE97D /* PlayView.swift */; };
 /* End PBXBuildFile section */
 
@@ -21,7 +22,6 @@
 		D2C5CBF227EF63D200BBE97D /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		D2C5CBF427EF63D500BBE97D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		D2C5CBF727EF63D500BBE97D /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
-		D2C5CBFF27EF63E900BBE97D /* RoughSwift */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = RoughSwift; path = ../..; sourceTree = "<group>"; };
 		D2C5CC0427EFCDA100BBE97D /* PlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -30,7 +30,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				D2C5CC0227EFABEB00BBE97D /* RoughSwift in Frameworks */,
+				BAEF0FA92EDE5CF200C46DE6 /* RoughSwiftUI in Frameworks */,
+				BAEF0FA72EDE5CD800C46DE6 /* RoughSwiftUI in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -78,7 +79,6 @@
 		D2C5CBFE27EF63E900BBE97D /* Packages */ = {
 			isa = PBXGroup;
 			children = (
-				D2C5CBFF27EF63E900BBE97D /* RoughSwift */,
 			);
 			name = Packages;
 			sourceTree = "<group>";
@@ -107,7 +107,8 @@
 			);
 			name = RoughSwiftApp;
 			packageProductDependencies = (
-				D2C5CC0127EFABEB00BBE97D /* RoughSwift */,
+				BAEF0FA62EDE5CD800C46DE6 /* RoughSwiftUI */,
+				BAEF0FA82EDE5CF200C46DE6 /* RoughSwiftUI */,
 			);
 			productName = RoughSwiftApp;
 			productReference = D2C5CBED27EF63D200BBE97D /* RoughSwiftApp.app */;
@@ -137,6 +138,9 @@
 				Base,
 			);
 			mainGroup = D2C5CBE427EF63D200BBE97D;
+			packageReferences = (
+				BAEF0FA52EDE5CD800C46DE6 /* XCLocalSwiftPackageReference "../../../RoughSwiftUI" */,
+			);
 			productRefGroup = D2C5CBEE27EF63D200BBE97D /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -222,7 +226,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.4;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -276,7 +280,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.4;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = iphoneos;
@@ -302,7 +306,7 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -332,7 +336,7 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -369,10 +373,21 @@
 		};
 /* End XCConfigurationList section */
 
+/* Begin XCLocalSwiftPackageReference section */
+		BAEF0FA52EDE5CD800C46DE6 /* XCLocalSwiftPackageReference "../../../RoughSwiftUI" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../../../RoughSwiftUI;
+		};
+/* End XCLocalSwiftPackageReference section */
+
 /* Begin XCSwiftPackageProductDependency section */
-		D2C5CC0127EFABEB00BBE97D /* RoughSwift */ = {
+		BAEF0FA62EDE5CD800C46DE6 /* RoughSwiftUI */ = {
 			isa = XCSwiftPackageProductDependency;
-			productName = RoughSwift;
+			productName = RoughSwiftUI;
+		};
+		BAEF0FA82EDE5CF200C46DE6 /* RoughSwiftUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = RoughSwiftUI;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
