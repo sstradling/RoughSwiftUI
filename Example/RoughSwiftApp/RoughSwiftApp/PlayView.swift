@@ -18,7 +18,7 @@ struct PlayView: View {
                 VStack {
                     Spacer()
                     RoughView()
-                        .fill(.orange)
+                        .fill(Color.orange)
                         .rectangle()
                         .frame(height: heights[index])
                 }

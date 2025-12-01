@@ -44,7 +44,7 @@ struct CustomizeView: View {
             }) {
                 Text("Click")
             }
-
+            
             RoughView()
                 .fill(flag ? UIColor.green : UIColor.yellow)
                 .fillStyle(flag ? .hachure : .dots)
@@ -63,8 +63,8 @@ struct SVGView: View {
     var body: some View {
         VStack {
             RoughView()
-                .stroke(.systemTeal)
-                .fill(.red)
+                .stroke(Color(.systemTeal))
+                .fill(Color.red)
                 .draw(Path(d: apple))
                 .frame(width: 300, height: 300)
         }
@@ -75,49 +75,49 @@ struct StylesView: View {
     var body: some View {
         LazyVGrid(columns: [.init(), .init(), .init()], spacing: 12) {
             RoughView()
-                .fill(.red)
+                .fill(Color.red)
                 .fillStyle(.crossHatch)
                 .circle()
                 .frame(width: 100, height: 100)
 
             RoughView()
-                .fill(.green)
+                .fill(Color.green)
                 .fillStyle(.dashed)
                 .circle()
                 .frame(width: 100, height: 100)
 
             RoughView()
-                .fill(.purple)
+                .fill(Color.purple)
                 .fillStyle(.dots)
                 .circle()
                 .frame(width: 100, height: 100)
 
             RoughView()
-                .fill(.cyan)
+                .fill(Color.cyan)
                 .fillStyle(.hachure)
                 .circle()
                 .frame(width: 100, height: 100)
 
             RoughView()
-                .fill(.orange)
+                .fill(Color.orange)
                 .fillStyle(.solid)
                 .circle()
                 .frame(width: 100, height: 100)
 
             RoughView()
-                .fill(.gray)
+                .fill(Color.gray)
                 .fillStyle(.starBurst)
                 .circle()
                 .frame(width: 100, height: 100)
 
             RoughView()
-                .fill(.yellow)
+                .fill(Color.yellow)
                 .fillStyle(.zigzag)
                 .circle()
                 .frame(width: 100, height: 100)
 
             RoughView()
-                .fill(.systemTeal)
+                .fill(Color(.systemTeal))
                 .fillStyle(.zigzagLine)
                 .circle()
                 .frame(width: 100, height: 100)
@@ -136,7 +136,7 @@ struct Chartview: View {
                 VStack {
                     Spacer()
                     RoughView()
-                        .fill(.yellow)
+                        .fill(Color.yellow)
                         .rectangle()
                         .frame(height: heights[index])
                 }

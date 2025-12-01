@@ -8,7 +8,11 @@
 
 import JavaScriptCore
 
-public class Generator {
+/// Wrapper around a `rough.js` generator bound to a specific canvas size.
+///
+/// Constrained to the main actor to match `Engine` and SwiftUI's rendering model.
+@MainActor
+public final class Generator {
     private let size: CGSize
     private let jsValue: JSValue
 
