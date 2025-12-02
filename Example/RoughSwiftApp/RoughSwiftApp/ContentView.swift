@@ -81,6 +81,8 @@ struct SVGView: View {
 }
 
 struct StylesView: View {
+    @State private var isYellowAnimating = false
+    
     var body: some View {
         LazyVGrid(columns: [.init(), .init(), .init()], spacing: 12) {
             RoughView()
@@ -119,11 +121,26 @@ struct StylesView: View {
                 .circle()
                 .frame(width: 100, height: 100)
 
-            RoughView()
-                .fill(Color.yellow)
-                .fillStyle(.zigzag)
-                .circle()
-                .frame(width: 100, height: 100)
+            // Yellow circle - tap to toggle animation
+            Group {
+                if isYellowAnimating {
+                    RoughView()
+                        .fill(Color.yellow)
+                        .fillStyle(.zigzag)
+                        .circle()
+                        .animated(steps: 8, speed: .fast, variance: .medium)
+                        .frame(width: 100, height: 100)
+                } else {
+                    RoughView()
+                        .fill(Color.yellow)
+                        .fillStyle(.zigzag)
+                        .circle()
+                        .frame(width: 100, height: 100)
+                }
+            }
+            .onTapGesture {
+                isYellowAnimating.toggle()
+            }
 
             RoughView()
                 .fill(Color(.systemTeal))
