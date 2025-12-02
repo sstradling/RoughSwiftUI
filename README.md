@@ -19,6 +19,8 @@ RoughSwift allows us to easily make shapes in hand drawn, sketchy, comic style i
 - [x] Platform independent APIs which can easily support new platforms
 - [x] Test coverage
 - [x] Immutable and type safe data structure
+- [x] SVG path scaling and alignment
+- [x] Animated strokes and fills with configurable variations
 - [ ] SVG elliptical arc
 
 There are [Example](https://github.com/onmyway133/RoughSwift/tree/master/Example) project where you can explore further.
@@ -66,11 +68,20 @@ SwiftUI modifiers.
 - curveStepCount
 - fillStyle
 - fillWeight
-- hachureAngle
-- hachureGap
+- fillAngle
+- fillSpacing
+- fillSpacingPattern
 - dashOffset
 - dashGap
 - zigzagOffset
+
+### SVG-Specific Options
+
+For SVG paths, additional options are available to fine-tune rendering:
+
+- `svgStrokeWidth` - Override stroke width specifically for SVG paths
+- `svgFillWeight` - Override fill weight specifically for SVG paths
+- `svgFillStrokeAlignment` - Control how fill strokes align to the path
 
 ## Shapes
 
@@ -100,6 +111,76 @@ Available fill styles
 - starBurst
 - zigzag
 - zigzagLine
+
+### Fill Angle
+
+Use `fillAngle` to rotate the direction of fill lines (0-360 degrees):
+
+```swift
+RoughView()
+    .fill(.blue)
+    .fillStyle(.hachure)
+    .fillAngle(0)    // Horizontal lines
+    .circle()
+
+RoughView()
+    .fill(.green)
+    .fillStyle(.hachure)
+    .fillAngle(45)   // Diagonal lines (default)
+    .circle()
+
+RoughView()
+    .fill(.red)
+    .fillStyle(.hachure)
+    .fillAngle(90)   // Vertical lines
+    .circle()
+```
+
+### Fill Spacing
+
+Use `fillSpacing` to control the gap between fill lines as a factor of the fill line weight (0.5x to 100x):
+
+```swift
+RoughView()
+    .fill(.blue)
+    .fillStyle(.hachure)
+    .fillSpacing(1)   // Dense fill (1x line weight)
+    .circle()
+
+RoughView()
+    .fill(.green)
+    .fillStyle(.hachure)
+    .fillSpacing(4)   // Normal fill (4x, default)
+    .circle()
+
+RoughView()
+    .fill(.red)
+    .fillStyle(.hachure)
+    .fillSpacing(10)  // Sparse fill (10x line weight)
+    .circle()
+```
+
+### Fill Spacing Pattern (Gradients)
+
+Use `fillSpacingPattern` to create gradient-like effects with varying line density:
+
+```swift
+// Fibonacci-style gradient - lines get progressively sparser
+RoughView()
+    .fill(.purple)
+    .fillStyle(.hachure)
+    .fillSpacing(2)
+    .fillSpacingPattern([1, 1, 2, 3, 5, 8, 13])
+    .circle()
+
+// Dense-to-sparse-to-dense pattern
+RoughView()
+    .fill(.orange)
+    .fillStyle(.hachure)
+    .fillSpacing(1)
+    .fillSpacingPattern([1, 2, 4, 8, 4, 2, 1])
+    .rectangle()
+```
 
 Here's how to draw circles in different fill styles. The default fill style is hachure
 
@@ -165,7 +246,9 @@ struct StylesView: View {
 
 ![](Screenshots/svg.png)
 
-SVG shape can be bigger or smaller than the specifed layer size, so RoughSwift scales them to your requested `size`. This way we can compose and transform the SVG shape.
+SVG shapes are automatically scaled to fit within the specified frame while maintaining aspect ratio. The stroke and fill are aligned using a single transform calculated from the original SVG bounds, ensuring perfect alignment.
+
+### Basic SVG Usage
 
 ```swift
 struct SVGView: View {
@@ -183,6 +266,154 @@ struct SVGView: View {
         }
     }
 }
+```
+
+### SVG-Specific Customization
+
+For finer control over SVG rendering, use the SVG-specific modifiers:
+
+```swift
+RoughView()
+    .stroke(Color(.systemTeal))
+    .fill(Color.red)
+    .svgStrokeWidth(3)              // Thicker outline for SVG
+    .svgFillWeight(1.5)             // Custom fill pattern line weight
+    .svgFillStrokeAlignment(.inside) // Fill strokes on inside edge
+    .draw(Path(d: apple))
+    .frame(width: 300, height: 300)
+```
+
+### SVG Fill Stroke Alignment
+
+The `svgFillStrokeAlignment` modifier controls how fill pattern strokes are positioned relative to the SVG path:
+
+| Alignment | Description |
+|-----------|-------------|
+| `.center` | Stroke is centered on the path (default) |
+| `.inside` | Stroke is applied to the inner edge of the path |
+| `.outside` | Stroke is applied to the outer edge of the path |
+
+```swift
+// Fill strokes centered on path (default)
+RoughView()
+    .fill(.red)
+    .svgFillStrokeAlignment(.center)
+    .draw(Path(d: svgPath))
+
+// Fill strokes on inside edge only
+RoughView()
+    .fill(.red)
+    .svgFillStrokeAlignment(.inside)
+    .draw(Path(d: svgPath))
+
+// Fill strokes on outside edge only
+RoughView()
+    .fill(.red)
+    .svgFillStrokeAlignment(.outside)
+    .draw(Path(d: svgPath))
+```
+
+## Animation
+
+RoughSwift supports animated strokes and fills that introduce subtle variations on a loop, creating a "breathing" or "sketchy" animation effect that brings your hand-drawn graphics to life.
+
+### Basic Animation
+
+Use the `.animated()` modifier to add animation to any `RoughView`:
+
+```swift
+RoughView()
+    .fill(.red)
+    .fillStyle(.hachure)
+    .circle()
+    .animated()
+    .frame(width: 100, height: 100)
+```
+
+### Animation Parameters
+
+The animation can be customized with three parameters:
+
+| Parameter | Options | Description |
+|-----------|---------|-------------|
+| `steps` | 2+ (default: 4) | Number of variation steps before looping back to initial state |
+| `speed` | `.slow`, `.medium`, `.fast` | Transition speed: 600ms, 300ms, or 100ms between steps |
+| `variance` | `.low`, `.medium`, `.high` | Amount of variation: 1%, 5%, or 10% |
+
+```swift
+// Custom animation settings
+RoughView()
+    .fill(.green)
+    .fillStyle(.crossHatch)
+    .circle()
+    .animated(steps: 6, speed: .slow, variance: .high)
+    .frame(width: 100, height: 100)
+```
+
+### Using AnimationConfig
+
+For reusable animation settings, use `AnimationConfig`:
+
+```swift
+let config = AnimationConfig(
+    steps: 8,
+    speed: .medium,
+    variance: .medium
+)
+
+RoughView()
+    .fill(.blue)
+    .fillStyle(.dots)
+    .rectangle()
+    .animated(config: config)
+    .frame(width: 100, height: 100)
+```
+
+### AnimatedRoughView
+
+You can also use `AnimatedRoughView` directly:
+
+```swift
+AnimatedRoughView(steps: 4, speed: .medium, variance: .low) {
+    RoughView()
+        .fill(.purple)
+        .fillStyle(.zigzag)
+        .circle()
+}
+.frame(width: 100, height: 100)
+```
+
+### Animation Speed Reference
+
+| Speed | Duration |
+|-------|----------|
+| `.slow` | 600ms between steps |
+| `.medium` | 300ms between steps |
+| `.fast` | 100ms between steps |
+
+### Animation Variance Reference
+
+| Variance | Amount |
+|----------|--------|
+| `.veryLow` | 0.5% variation |
+| `.low` | 1% variation |
+| `.medium` | 5% variation |
+| `.high` | 10% variation |
+
+### Animated SVG Paths
+
+Animation works with SVG paths too. **Important:** The `.animated()` modifier must be called **after** all RoughView configuration including `.draw()`:
+
+```swift
+RoughView()
+    .stroke(Color(.systemTeal))
+    .fill(Color.red)
+    .svgStrokeWidth(1)
+    .svgFillWeight(10)
+    .svgFillStrokeAlignment(.outside)
+    .draw(Path(d: svgPathString))  // Configure RoughView first
+    .animated(steps: 10, speed: .medium, variance: .veryLow)  // Then animate
+    .frame(width: 300, height: 300)
 ```
 
 ## Creative shapes
@@ -247,7 +478,7 @@ struct CustomCanvasView: View {
 
             if let drawing = generator.generate(drawable: drawable, options: options) {
                 let renderer = SwiftUIRenderer()
-                renderer.render(drawing: drawing, in: &context, size: size)
+                renderer.render(drawing: drawing, options: options, in: &context, size: size)
             }
         }
     }

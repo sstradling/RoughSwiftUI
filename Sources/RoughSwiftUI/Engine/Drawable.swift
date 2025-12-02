@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import UIKit
 
 public protocol Drawable {
     var method: String { get }
@@ -211,6 +212,52 @@ public struct Path: Drawable {
     }
 }
 
+/// A text string rendered as a rough path.
+///
+/// This drawable converts text into SVG path data using CoreText glyph extraction,
+/// then renders it through the rough.js engine for hand-drawn styling.
+public struct Text: Drawable {
+    public var method: String { "path" }
+    
+    public var arguments: [Any] {
+        [svgPath]
+    }
+    
+    let svgPath: String
+    
+    /// Create a rough text drawable from a plain string and font.
+    ///
+    /// - Parameters:
+    ///   - string: The text to render.
+    ///   - font: The font to use for glyph extraction.
+    public init(_ string: String, font: UIFont) {
+        let cgPath = TextPathConverter.path(from: string, font: font)
+        // Flip Y axis since CoreText uses bottom-up coordinates
+        self.svgPath = cgPath.toSVGPathStringFlippingY()
+    }
+    
+    /// Create a rough text drawable from an `NSAttributedString`.
+    ///
+    /// The attributed string can contain multiple fonts, sizes, and other text attributes.
+    /// All styling will be preserved in the glyph extraction.
+    ///
+    /// - Parameter attributedString: The attributed string to render.
+    public init(attributedString: NSAttributedString) {
+        let cgPath = TextPathConverter.path(from: attributedString)
+        // Flip Y axis since CoreText uses bottom-up coordinates
+        self.svgPath = cgPath.toSVGPathStringFlippingY()
+    }
+    
+    /// Create a rough text drawable from an SVG path string directly.
+    ///
+    /// This is useful if you've already converted text to SVG elsewhere.
+    ///
+    /// - Parameter svgPath: The SVG path string (d attribute format).
+    public init(svgPath: String) {
+        self.svgPath = svgPath
+    }
+}
+
 protocol Fulfillable {
     func arguments(size: Size) -> [Any]
 }
@@ -219,8 +266,13 @@ struct FullRectangle: Drawable, Fulfillable {
     var method: String { "rectangle"}
     var arguments: [Any] { [] }
     func arguments(size: Size) -> [Any] {
-        [
-            0, 0, size.width, size.height
+        // Inset slightly so the rough strokes (randomness + stroke width)
+        // don't get clipped by the canvas edges.
+        let inset: Float = 4
+        let w = max(0, size.width - inset * 2)
+        let h = max(0, size.height - inset * 2)
+        return [
+            inset, inset, w, h
         ]
     }
 }
@@ -230,8 +282,12 @@ struct FullCircle: Drawable, Fulfillable {
     var arguments: [Any] { [] }
 
     func arguments(size: Size) -> [Any] {
-        [
-            size.width / 2, size.height / 2, min(size.width, size.height)
+        // Inset slightly so the rough strokes (randomness + stroke width)
+        // don't get clipped by the canvas edges.
+        let inset: Float = 4
+        let diameter = max(0, min(size.width, size.height) - inset * 2)
+        return [
+            size.width / 2, size.height / 2, diameter
         ]
     }
 }

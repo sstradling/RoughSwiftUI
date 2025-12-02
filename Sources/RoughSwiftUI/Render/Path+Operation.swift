@@ -2,7 +2,8 @@
 //  Path+Operation.swift
 //  RoughSwift
 //
-//  Created by Cursor on 30/11/2025.
+//  Created by Seth Stradling on 30/11/2025.
+//  Copyright ©️2025 Seth Stradling. All Rights Reserved.
 //
 //  Helpers for converting RoughSwift operations into SwiftUI paths.
 //
