@@ -19,6 +19,7 @@ RoughSwift allows us to easily make shapes in hand drawn, sketchy, comic style i
 - [x] Platform independent APIs which can easily support new platforms
 - [x] Test coverage
 - [x] Immutable and type safe data structure
+- [x] SVG path scaling and alignment
 - [ ] SVG elliptical arc
 
 There are [Example](https://github.com/onmyway133/RoughSwift/tree/master/Example) project where you can explore further.
@@ -71,6 +72,14 @@ SwiftUI modifiers.
 - dashOffset
 - dashGap
 - zigzagOffset
+
+### SVG-Specific Options
+
+For SVG paths, additional options are available to fine-tune rendering:
+
+- `svgStrokeWidth` - Override stroke width specifically for SVG paths
+- `svgFillWeight` - Override fill weight specifically for SVG paths
+- `svgFillStrokeAlignment` - Control how fill strokes align to the path
 
 ## Shapes
 
@@ -165,7 +174,9 @@ struct StylesView: View {
 
 ![](Screenshots/svg.png)
 
-SVG shape can be bigger or smaller than the specifed layer size, so RoughSwift scales them to your requested `size`. This way we can compose and transform the SVG shape.
+SVG shapes are automatically scaled to fit within the specified frame while maintaining aspect ratio. The stroke and fill are aligned using a single transform calculated from the original SVG bounds, ensuring perfect alignment.
+
+### Basic SVG Usage
 
 ```swift
 struct SVGView: View {
@@ -183,6 +194,51 @@ struct SVGView: View {
         }
     }
 }
+```
+
+### SVG-Specific Customization
+
+For finer control over SVG rendering, use the SVG-specific modifiers:
+
+```swift
+RoughView()
+    .stroke(Color(.systemTeal))
+    .fill(Color.red)
+    .svgStrokeWidth(3)              // Thicker outline for SVG
+    .svgFillWeight(1.5)             // Custom fill pattern line weight
+    .svgFillStrokeAlignment(.inside) // Fill strokes on inside edge
+    .draw(Path(d: apple))
+    .frame(width: 300, height: 300)
+```
+
+### SVG Fill Stroke Alignment
+
+The `svgFillStrokeAlignment` modifier controls how fill pattern strokes are positioned relative to the SVG path:
+
+| Alignment | Description |
+|-----------|-------------|
+| `.center` | Stroke is centered on the path (default) |
+| `.inside` | Stroke is applied to the inner edge of the path |
+| `.outside` | Stroke is applied to the outer edge of the path |
+
+```swift
+// Fill strokes centered on path (default)
+RoughView()
+    .fill(.red)
+    .svgFillStrokeAlignment(.center)
+    .draw(Path(d: svgPath))
+
+// Fill strokes on inside edge only
+RoughView()
+    .fill(.red)
+    .svgFillStrokeAlignment(.inside)
+    .draw(Path(d: svgPath))
+
+// Fill strokes on outside edge only
+RoughView()
+    .fill(.red)
+    .svgFillStrokeAlignment(.outside)
+    .draw(Path(d: svgPath))
 ```
 
 ## Creative shapes
@@ -247,7 +303,7 @@ struct CustomCanvasView: View {
 
             if let drawing = generator.generate(drawable: drawable, options: options) {
                 let renderer = SwiftUIRenderer()
-                renderer.render(drawing: drawing, in: &context, size: size)
+                renderer.render(drawing: drawing, options: options, in: &context, size: size)
             }
         }
     }
