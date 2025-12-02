@@ -219,8 +219,13 @@ struct FullRectangle: Drawable, Fulfillable {
     var method: String { "rectangle"}
     var arguments: [Any] { [] }
     func arguments(size: Size) -> [Any] {
-        [
-            0, 0, size.width, size.height
+        // Inset slightly so the rough strokes (randomness + stroke width)
+        // don't get clipped by the canvas edges.
+        let inset: Float = 4
+        let w = max(0, size.width - inset * 2)
+        let h = max(0, size.height - inset * 2)
+        return [
+            inset, inset, w, h
         ]
     }
 }
@@ -230,8 +235,12 @@ struct FullCircle: Drawable, Fulfillable {
     var arguments: [Any] { [] }
 
     func arguments(size: Size) -> [Any] {
-        [
-            size.width / 2, size.height / 2, min(size.width, size.height)
+        // Inset slightly so the rough strokes (randomness + stroke width)
+        // don't get clipped by the canvas edges.
+        let inset: Float = 4
+        let diameter = max(0, min(size.width, size.height) - inset * 2)
+        return [
+            size.width / 2, size.height / 2, diameter
         ]
     }
 }

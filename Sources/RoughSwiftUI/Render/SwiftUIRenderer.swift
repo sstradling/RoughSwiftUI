@@ -40,25 +40,10 @@ public struct SwiftUIRenderer {
     /// - Parameters:
     ///   - drawing: The engine `Drawing` to render.
     ///   - size: The available canvas size.
-    /// - Parameters:
-    ///   - drawing: The engine `Drawing` to render.
-    ///   - size: The available canvas size.
-    ///   - constrainToBounds: When `true`, all generated paths are inset/
-    ///     scaled slightly so that sketchy strokes are less likely to be
-    ///     clipped by the canvas edges.
     /// - Returns: A collection of `RoughRenderCommand` describing how to render the drawing.
-    public func commands(
-        for drawing: Drawing,
-        in size: CGSize,
-        constrainToBounds: Bool = false
-    ) -> [RoughRenderCommand] {
+    public func commands(for drawing: Drawing, in size: CGSize) -> [RoughRenderCommand] {
         drawing.sets.flatMap { set in
-            commands(
-                for: set,
-                options: drawing.options,
-                in: size,
-                constrainToBounds: constrainToBounds
-            )
+            commands(for: set, options: drawing.options, in: size)
         }
     }
 
@@ -68,20 +53,12 @@ public struct SwiftUIRenderer {
     ///   - drawing: The engine `Drawing` to render.
     ///   - context: The SwiftUI graphics context to draw into.
     ///   - size: The available canvas size.
-    ///   - constrainToBounds: When `true`, all generated paths are inset/
-    ///     scaled slightly so that sketchy strokes are less likely to be
-    ///     clipped by the canvas edges.
     public func render(
         drawing: Drawing,
         in context: inout GraphicsContext,
-        size: CGSize,
-        constrainToBounds: Bool = false
+        size: CGSize
     ) {
-        let commands = commands(
-            for: drawing,
-            in: size,
-            constrainToBounds: constrainToBounds
-        )
+        let commands = commands(for: drawing, in: size)
         for command in commands {
             switch command.style {
             case let .stroke(color, lineWidth):
@@ -106,17 +83,11 @@ private extension SwiftUIRenderer {
     func commands(
         for set: OperationSet,
         options: Options,
-        in size: CGSize,
-        constrainToBounds: Bool
+        in size: CGSize
     ) -> [RoughRenderCommand] {
-        let margin: CGFloat = constrainToBounds ? 4.0 : 0.0
-
         switch set.type {
         case .path:
-            var path = SwiftPath.from(operationSet: set)
-            if margin > 0 {
-                path = inset(path, in: size, by: margin)
-            }
+            let path = SwiftPath.from(operationSet: set)
             let strokeColor = Color(options.stroke)
             return [
                 RoughRenderCommand(
@@ -126,10 +97,7 @@ private extension SwiftUIRenderer {
             ]
 
         case .fillSketch:
-            var path = SwiftPath.from(operationSet: set)
-            if margin > 0 {
-                path = inset(path, in: size, by: margin)
-            }
+            let path = SwiftPath.from(operationSet: set)
             var fillWeight = options.fillWeight
             if fillWeight < 0 {
                 fillWeight = options.strokeWidth / 2
@@ -143,10 +111,7 @@ private extension SwiftUIRenderer {
             ]
 
         case .fillPath:
-            var path = SwiftPath.from(operationSet: set)
-            if margin > 0 {
-                path = inset(path, in: size, by: margin)
-            }
+            let path = SwiftPath.from(operationSet: set)
             let color = Color(options.fill)
             return [
                 RoughRenderCommand(
@@ -157,10 +122,7 @@ private extension SwiftUIRenderer {
 
         case .path2DFill:
             guard let svgPath = set.path else { return [] }
-            var path = scaledSVGPath(svgPath, in: size)
-            if margin > 0 {
-                path = inset(path, in: size, by: margin)
-            }
+            let path = scaledSVGPath(svgPath, in: size)
             let color = Color(options.fill)
             return [
                 RoughRenderCommand(
@@ -172,10 +134,7 @@ private extension SwiftUIRenderer {
         case .path2DPattern:
             // Approximate the pattern fill by stroking the SVG path with fill color.
             guard let svgPath = set.path else { return [] }
-            var path = scaledSVGPath(svgPath, in: size)
-            if margin > 0 {
-                path = inset(path, in: size, by: margin)
-            }
+            let path = scaledSVGPath(svgPath, in: size)
             var fillWeight = options.fillWeight
             if fillWeight < 0 {
                 fillWeight = options.strokeWidth / 2
@@ -204,31 +163,6 @@ private extension SwiftUIRenderer {
 
         _ = bezier.fit(into: frame).moveCenter(to: frame.center)
         return SwiftPath(bezier.cgPath)
-    }
-
-    /// Inset and scale a path so that it stays within the canvas bounds with
-    /// a given margin on all sides.
-    func inset(_ path: SwiftPath, in size: CGSize, by margin: CGFloat) -> SwiftPath {
-        guard margin > 0 else { return path }
-
-        let rect = CGRect(origin: .zero, size: size)
-        guard rect.width > 0, rect.height > 0 else { return path }
-
-        let availableWidth = max(rect.width - 2 * margin, 1)
-        let availableHeight = max(rect.height - 2 * margin, 1)
-
-        let scaleX = availableWidth / rect.width
-        let scaleY = availableHeight / rect.height
-        let factor = min(scaleX, scaleY)
-
-        let center = CGPoint(x: rect.midX, y: rect.midY)
-        var transform = CGAffineTransform.identity
-        transform = transform
-            .translatedBy(x: -center.x, y: -center.y)
-            .scaledBy(x: factor, y: factor)
-            .translatedBy(x: center.x, y: center.y)
-
-        return path.applying(transform)
     }
 }
 

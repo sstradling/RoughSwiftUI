@@ -18,10 +18,6 @@ public struct RoughView: View {
     /// The list of shapes to render.
     var drawables: [Drawable] = []
 
-    /// When `true`, final SwiftUI paths are inset slightly so sketchy strokes
-    /// are less likely to be clipped by the view bounds.
-    var constrainToBounds: Bool = false
-
     public init() {}
 
     public var body: some View {
@@ -40,8 +36,7 @@ public struct RoughView: View {
                         renderer.render(
                             drawing: drawing,
                             in: &context,
-                            size: renderSize,
-                            constrainToBounds: constrainToBounds
+                            size: renderSize
                         )
                     }
                 }
@@ -154,17 +149,6 @@ public extension RoughView {
     func fillStyle(_ value: FillStyle) -> Self {
         var v = self
         v.options.fillStyle = value
-        return v
-    }
-
-    /// Inset and scale shapes so that the sketchy strokes are less likely to
-    /// be clipped by the view's bounds.
-    ///
-    /// - Parameter value: Pass `true` to enable bounds-constrained rendering.
-    ///   Defaults to `true` when the modifier is used without arguments.
-    func constrainToBounds(_ value: Bool = true) -> Self {
-        var v = self
-        v.constrainToBounds = value
         return v
     }
 
