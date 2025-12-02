@@ -526,4 +526,4 @@ We would love you to contribute to **RoughSwift**, check the [CONTRIBUTING](http
 
 ## License
 
-**RoughSwift** is available under the MIT license. See the [LICENSE](https://github.com/onmyway133/RoughSwift/blob/master/LICENSE.md) file for more info.
+**RoughSwiftUI** is available under the MIT license. See the [LICENSE](LICENSE) file for more info.
