@@ -66,7 +66,7 @@ struct SVGView: View {
                 .stroke(Color(.systemTeal))
                 .fill(Color.red)
                 .svgStrokeWidth(1)      // Thicker outline for SVG
-                .svgFillWeight(2) 
+                .svgFillWeight(10)
                 .draw(Path(d: apple))
                 .frame(width: 300, height: 300)
         }

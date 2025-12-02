@@ -33,8 +33,10 @@ public struct RoughView: View {
 
                 for drawable in drawables {
                     if let drawing = generator.generate(drawable: drawable, options: options) {
+                        // Pass original options to preserve SVG-specific settings
                         renderer.render(
                             drawing: drawing,
+                            options: options,
                             in: &context,
                             size: renderSize
                         )

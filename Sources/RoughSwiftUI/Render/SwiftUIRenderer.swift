@@ -39,9 +39,10 @@ public struct SwiftUIRenderer {
     ///
     /// - Parameters:
     ///   - drawing: The engine `Drawing` to render.
+    ///   - options: The original options (preserves SVG-specific settings that may not be in drawing.options).
     ///   - size: The available canvas size.
     /// - Returns: A collection of `RoughRenderCommand` describing how to render the drawing.
-    public func commands(for drawing: Drawing, in size: CGSize) -> [RoughRenderCommand] {
+    public func commands(for drawing: Drawing, options: Options, in size: CGSize) -> [RoughRenderCommand] {
         // SVG paths need scaling to fit the canvas since they have their own coordinate system
         let isSVGPath = drawing.shape == "path"
         
@@ -57,7 +58,7 @@ public struct SwiftUIRenderer {
         }
         
         return drawing.sets.flatMap { set in
-            commands(for: set, options: drawing.options, in: size, svgTransform: svgTransform, isSVGPath: isSVGPath)
+            commands(for: set, options: options, in: size, svgTransform: svgTransform, isSVGPath: isSVGPath)
         }
     }
 
@@ -65,14 +66,16 @@ public struct SwiftUIRenderer {
     ///
     /// - Parameters:
     ///   - drawing: The engine `Drawing` to render.
+    ///   - options: The original options (preserves SVG-specific settings).
     ///   - context: The SwiftUI graphics context to draw into.
     ///   - size: The available canvas size.
     public func render(
         drawing: Drawing,
+        options: Options,
         in context: inout GraphicsContext,
         size: CGSize
     ) {
-        let commands = commands(for: drawing, in: size)
+        let commands = commands(for: drawing, options: options, in: size)
         for command in commands {
             switch command.style {
             case let .stroke(color, lineWidth):
