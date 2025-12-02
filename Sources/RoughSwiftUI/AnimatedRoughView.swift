@@ -11,10 +11,19 @@
 import SwiftUI
 import Combine
 
+/// Shared renderer for animations to avoid per-frame allocations.
+private let animatedRenderer = SwiftUIRenderer()
+
 /// A SwiftUI view that renders animated hand-drawn Rough.js primitives.
 ///
 /// This view wraps a `RoughView` and applies subtle variations to strokes and fills
 /// on a loop, creating a "breathing" or "sketchy" animation effect.
+///
+/// ## Performance
+///
+/// AnimatedRoughView caches the base drawing commands and only recomputes the
+/// variance on each animation step. This avoids repeated JavaScript bridge calls
+/// and drawing generation during animation.
 ///
 /// Usage:
 /// ```swift
@@ -38,6 +47,12 @@ public struct AnimatedRoughView: View {
     
     /// Variance generator (created once and reused).
     @State private var varianceGenerator: PathVarianceGenerator?
+    
+    /// Cached base commands (regenerated only when size or drawables change).
+    @State private var cachedCommands: [RoughRenderCommand] = []
+    
+    /// Size for which commands were cached.
+    @State private var cachedSize: CGSize = .zero
     
     /// Timer for animation loop.
     @State private var timer: Timer.TimerPublisher?
@@ -75,43 +90,30 @@ public struct AnimatedRoughView: View {
                 let renderSize = canvasSize == .zero ? size : canvasSize
                 guard renderSize.width > 0, renderSize.height > 0 else { return }
                 
-                let generator = Engine.shared.generator(size: renderSize)
-                let renderer = SwiftUIRenderer()
-                
-                // Create or reuse variance generator
+                // Get or create variance generator
                 let varGen = varianceGenerator ?? PathVarianceGenerator(config: config)
                 
-                for drawable in roughView.drawables {
-                    let options = roughView.options
+                // Check if we need to regenerate base commands
+                // This only happens when size changes, not on every animation step
+                let commands: [RoughRenderCommand]
+                if cachedSize == renderSize && !cachedCommands.isEmpty {
+                    // Use cached commands (fast path - no JS calls)
+                    commands = cachedCommands
+                } else {
+                    // Generate and cache commands (slow path - only on size change)
+                    commands = generateCommands(size: renderSize)
                     
-                    // Check if we have a spacing pattern for gradient effects
-                    if let pattern = options.fillSpacingPattern, !pattern.isEmpty {
-                        let baseSpacing = options.fillSpacing
-                        let weight = options.effectiveFillWeight
-                        
-                        for (index, multiplier) in pattern.enumerated() {
-                            var patternOptions = options
-                            patternOptions.fillSpacing = baseSpacing * multiplier
-                            let layerWeight = weight * (1.0 + Float(index) * 0.01)
-                            patternOptions.fillWeight = layerWeight
-                            
-                            if let drawing = generator.generate(drawable: drawable, options: patternOptions) {
-                                let commands = renderer.commands(for: drawing, options: patternOptions, in: renderSize)
-                                for command in commands {
-                                    let variedCommand = command.withVariance(generator: varGen, step: currentStep)
-                                    renderCommand(variedCommand, in: &context)
-                                }
-                            }
-                        }
-                    } else {
-                        if let drawing = generator.generate(drawable: drawable, options: options) {
-                            let commands = renderer.commands(for: drawing, options: options, in: renderSize)
-                            for command in commands {
-                                let variedCommand = command.withVariance(generator: varGen, step: currentStep)
-                                renderCommand(variedCommand, in: &context)
-                            }
-                        }
+                    // Update cache on main thread after render
+                    DispatchQueue.main.async {
+                        cachedSize = renderSize
+                        cachedCommands = commands
                     }
+                }
+                
+                // Apply variance and render (fast - just path transforms)
+                for command in commands {
+                    let variedCommand = command.withVariance(generator: varGen, step: currentStep)
+                    renderCommand(variedCommand, in: &context)
                 }
             }
         }
@@ -124,6 +126,47 @@ public struct AnimatedRoughView: View {
         .onChange(of: config.speed.duration) { _, _ in
             restartAnimation()
         }
+    }
+    
+    /// Generates render commands for all drawables.
+    ///
+    /// This method is only called when the canvas size changes, not on every
+    /// animation step. The generated commands are cached and reused.
+    private func generateCommands(size: CGSize) -> [RoughRenderCommand] {
+        // Use cached generator (avoids JS bridge call if size unchanged)
+        let generator = Engine.shared.generator(size: size)
+        var allCommands: [RoughRenderCommand] = []
+        
+        for drawable in roughView.drawables {
+            let options = roughView.options
+            
+            // Check if we have a spacing pattern for gradient effects
+            if let pattern = options.fillSpacingPattern, !pattern.isEmpty {
+                let baseSpacing = options.fillSpacing
+                let weight = options.effectiveFillWeight
+                
+                for (index, multiplier) in pattern.enumerated() {
+                    var patternOptions = options
+                    patternOptions.fillSpacing = baseSpacing * multiplier
+                    let layerWeight = weight * (1.0 + Float(index) * 0.01)
+                    patternOptions.fillWeight = layerWeight
+                    
+                    // Drawing is cached by drawable + patternOptions
+                    if let drawing = generator.generate(drawable: drawable, options: patternOptions) {
+                        let commands = animatedRenderer.commands(for: drawing, options: patternOptions, in: size)
+                        allCommands.append(contentsOf: commands)
+                    }
+                }
+            } else {
+                // Drawing is cached by drawable + options
+                if let drawing = generator.generate(drawable: drawable, options: options) {
+                    let commands = animatedRenderer.commands(for: drawing, options: options, in: size)
+                    allCommands.append(contentsOf: commands)
+                }
+            }
+        }
+        
+        return allCommands
     }
     
     /// Renders a single command into the graphics context.

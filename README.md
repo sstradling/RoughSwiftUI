@@ -485,6 +485,50 @@ struct CustomCanvasView: View {
 }
 ```
 
+## Performance
+
+RoughSwift uses internal caching to optimize rendering performance:
+
+- **Generator caching**: Generators are cached by canvas size, avoiding repeated JavaScript context calls when the view size hasn't changed.
+- **Drawing caching**: Generated drawings are cached by drawable + options, avoiding repeated rough.js computations for the same shapes.
+
+The caches are automatically managed and evict old entries when capacity is reached.
+
+### Cache Management
+
+For memory-sensitive scenarios or when you need to force fresh renders, you can manually clear the caches:
+
+```swift
+// Clear all cached generators and drawings
+Engine.shared.clearCaches()
+```
+
+You can also monitor cache performance for debugging:
+
+```swift
+let stats = Engine.shared.cacheStats
+print("Cached generators: \(stats.generators)")
+print("Cached drawings: \(stats.drawings)")
+print("Cache hit rate: \(String(format: "%.1f%%", stats.hitRate * 100))")
+```
+
+### When to Clear Caches
+
+- **Memory warnings**: Clear caches when your app receives memory pressure notifications
+- **Scene transitions**: Consider clearing when moving between major app sections
+- **Dynamic content**: If you're generating many unique shapes that won't be reused
+
+```swift
+// Example: Clear caches on memory warning
+NotificationCenter.default.addObserver(
+    forName: UIApplication.didReceiveMemoryWarningNotification,
+    object: nil,
+    queue: .main
+) { _ in
+    Engine.shared.clearCaches()
+}
+```
+
 ## Installation
 
 Add the following line to the dependencies in your `Package.swift` file

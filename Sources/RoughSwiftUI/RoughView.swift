@@ -7,10 +7,24 @@
 import SwiftUI
 import UIKit
 
+/// Shared renderer instance to avoid allocations on every frame.
+private let sharedRenderer = SwiftUIRenderer()
+
 /// A SwiftUI view that renders hand‑drawn Rough.js primitives using `Canvas`.
 ///
 /// Configure it using the builder‑style modifiers (e.g. `.roughness`, `.stroke`)
 /// and one or more drawables via `.draw(Rectangle(...))`, `.rectangle()`, etc.
+///
+/// ## Performance
+///
+/// RoughView uses internal caching to optimize rendering performance:
+/// - **Generator caching**: Generators are cached by canvas size, avoiding
+///   repeated JavaScript context calls.
+/// - **Drawing caching**: Generated drawings are cached by drawable + options,
+///   avoiding repeated rough.js computations.
+///
+/// The caches are automatically managed and evict old entries when capacity
+/// is reached. You can manually clear caches via `Engine.shared.clearCaches()`.
 public struct RoughView: View {
     /// Rendering options forwarded to the Rough.js engine.
     public internal(set) var options = Options()
@@ -28,8 +42,8 @@ public struct RoughView: View {
                 let renderSize = canvasSize == .zero ? size : canvasSize
                 guard renderSize.width > 0, renderSize.height > 0 else { return }
 
+                // Use cached generator (avoids JS bridge call if size unchanged)
                 let generator = Engine.shared.generator(size: renderSize)
-                let renderer = SwiftUIRenderer()
 
                 for drawable in drawables {
                     // Check if we have a spacing pattern for gradient effects
@@ -46,8 +60,9 @@ public struct RoughView: View {
                             let layerWeight = weight * (1.0 + Float(index) * 0.01)
                             patternOptions.fillWeight = layerWeight
                             
+                            // Drawing is cached by drawable + patternOptions
                             if let drawing = generator.generate(drawable: drawable, options: patternOptions) {
-                                renderer.render(
+                                sharedRenderer.render(
                                     drawing: drawing,
                                     options: patternOptions,
                                     in: &context,
@@ -57,8 +72,9 @@ public struct RoughView: View {
                         }
                     } else {
                         // Standard single-pass rendering
+                        // Drawing is cached by drawable + options
                         if let drawing = generator.generate(drawable: drawable, options: options) {
-                            renderer.render(
+                            sharedRenderer.render(
                                 drawing: drawing,
                                 options: options,
                                 in: &context,
