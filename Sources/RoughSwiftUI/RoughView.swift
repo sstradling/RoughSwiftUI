@@ -190,6 +190,26 @@ public extension RoughView {
         v.options.fill = UIColor(value)
         return v
     }
+    
+    /// Set the stroke opacity (transparency).
+    ///
+    /// - Parameter value: Opacity from 0 (fully transparent) to 100 (fully opaque).
+    ///   Values are clamped to this range. Default is 100.
+    func strokeOpacity(_ value: Float) -> Self {
+        var v = self
+        v.options.strokeOpacity = max(0, min(100, value)) / 100.0
+        return v
+    }
+    
+    /// Set the fill opacity (transparency).
+    ///
+    /// - Parameter value: Opacity from 0 (fully transparent) to 100 (fully opaque).
+    ///   Values are clamped to this range. Default is 100.
+    func fillOpacity(_ value: Float) -> Self {
+        var v = self
+        v.options.fillOpacity = max(0, min(100, value)) / 100.0
+        return v
+    }
 
     func fillStyle(_ value: FillStyle) -> Self {
         var v = self

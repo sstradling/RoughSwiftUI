@@ -2,8 +2,8 @@
 //  SwiftUIRenderer.swift
 //  RoughSwift
 //
-//  Created by Cursor on 30/11/2025.
-//
+//  Created by Seth Stradling on 30/11/2025.
+//  Copyright ©️2025 Seth Stradling. All Rights Reserved.
 //  Native SwiftUI renderer for RoughSwift drawings.
 //
 
@@ -201,7 +201,7 @@ private extension SwiftUIRenderer {
             } else {
                 path = basePath
             }
-            let strokeColor = Color(options.stroke)
+            let strokeColor = Color(options.stroke).opacity(Double(options.strokeOpacity))
             
             // Check if brush profile requires custom rendering
             if options.brushProfile.requiresCustomRendering {
@@ -249,7 +249,7 @@ private extension SwiftUIRenderer {
             } else {
                 path = basePath
             }
-            let color = Color(options.fill)
+            let color = Color(options.fill).opacity(Double(options.fillOpacity))
             return [
                 RoughRenderCommand(
                     path: path,
@@ -274,7 +274,7 @@ private extension SwiftUIRenderer {
             } else {
                 path = basePath
             }
-            let color = Color(options.fill)
+            let color = Color(options.fill).opacity(Double(options.fillOpacity))
             return [
                 RoughRenderCommand(
                     path: path,
@@ -291,7 +291,7 @@ private extension SwiftUIRenderer {
             } else {
                 path = basePath
             }
-            let color = Color(options.fill)
+            let color = Color(options.fill).opacity(Double(options.fillOpacity))
             return [
                 RoughRenderCommand(
                     path: path,
@@ -309,7 +309,7 @@ private extension SwiftUIRenderer {
             } else {
                 path = basePath
             }
-            let color = Color(options.fill)
+            let color = Color(options.fill).opacity(Double(options.fillOpacity))
             return [
                 RoughRenderCommand(
                     path: path,
@@ -352,7 +352,7 @@ private extension SwiftUIRenderer {
             return base < 0 ? strokeWidth / 2 : base
         }()
         
-        let color = Color(options.fill)
+        let color = Color(options.fill).opacity(Double(options.fillOpacity))
         
         // Convert each scribble set to render commands
         return scribbleSets.flatMap { set -> [RoughRenderCommand] in

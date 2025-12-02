@@ -2,7 +2,8 @@
 //  AnimatedRoughView.swift
 //  RoughSwift
 //
-//  Created by Cursor on 02/12/2025.
+//  Created by Seth Stradling on 02/12/2025.
+//  Copyright ©️2025 Seth Stradling. All Rights Reserved.
 //
 //  An animated wrapper for RoughView that cycles through subtle variations.
 //
