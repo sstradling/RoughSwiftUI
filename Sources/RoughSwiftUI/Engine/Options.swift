@@ -28,7 +28,7 @@ public struct Options {
     // in terms of `UIColor` for now.
     private var strokeColor: RoughColor = RoughColor(uiColor: .black)
     private var fillColor: RoughColor = RoughColor(uiColor: .clear)
-    
+
     /// Opacity of stroke color (0.0 = fully transparent, 1.0 = fully opaque).
     /// Range: 0.0 to 1.0. Default is 1.0.
     public var strokeOpacity: Float = 1.0

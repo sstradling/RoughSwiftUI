@@ -1535,6 +1535,147 @@ struct ScribbleFillView: View {
                     }
                 }
                 
+                Divider()
+                    .padding(.horizontal)
+                
+                // MARK: - Opacity Examples
+                VStack(spacing: 16) {
+                    SwiftUI.Text("Opacity")
+                        .font(.headline)
+                    
+                    SwiftUI.Text("Transparency for fill and stroke (0-100%)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    
+                    HStack(spacing: 16) {
+                        VStack(spacing: 8) {
+                            RoughView()
+                                .stroke(Color.blue)
+                                .strokeOpacity(100)
+                                .fill(Color.blue)
+                                .fillOpacity(30)
+                                .fillStyle(.hachure)
+                                .rectangle()
+                                .frame(width: 80, height: 80)
+                            
+                            SwiftUI.Text("Fill 30%")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        
+                        VStack(spacing: 8) {
+                            RoughView()
+                                .stroke(Color.green)
+                                .strokeOpacity(50)
+                                .fill(Color.green)
+                                .fillOpacity(50)
+                                .fillStyle(.crossHatch)
+                                .circle()
+                                .frame(width: 80, height: 80)
+                            
+                            SwiftUI.Text("Both 50%")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        
+                        VStack(spacing: 8) {
+                            RoughView()
+                                .stroke(Color.red)
+                                .strokeOpacity(20)
+                                .fill(Color.red)
+                                .fillOpacity(80)
+                                .fillStyle(.solid)
+                                .rectangle()
+                                .frame(width: 80, height: 80)
+                            
+                            SwiftUI.Text("Stroke 20%")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                
+                Divider()
+                    .padding(.horizontal)
+                
+                // MARK: - Overlapping Scribbles with Opacity
+                VStack(spacing: 16) {
+                    SwiftUI.Text("Overlapping Scribbles")
+                        .font(.headline)
+                    
+                    SwiftUI.Text("High tightness + heavy weight + low opacity")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    
+                    HStack(spacing: 16) {
+                        VStack(spacing: 8) {
+                            RoughView()
+                                .stroke(Color.clear)
+                                .fill(Color.purple)
+                                .fillOpacity(25)
+                                .fillWeight(4)
+                                .fillStyle(.scribble)
+                                .scribble(tightness: 40, curvature: 35)
+                                .circle()
+                                .frame(width: 100, height: 100)
+                            
+                            SwiftUI.Text("T:40 W:4 O:25%")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        
+                        VStack(spacing: 8) {
+                            RoughView()
+                                .stroke(Color.clear)
+                                .fill(Color.orange)
+                                .fillOpacity(20)
+                                .fillWeight(5)
+                                .fillStyle(.scribble)
+                                .scribble(tightness: 50, curvature: 40)
+                                .rectangle()
+                                .frame(width: 100, height: 100)
+                            
+                            SwiftUI.Text("T:50 W:5 O:20%")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        
+                        VStack(spacing: 8) {
+                            RoughView()
+                                .stroke(Color.clear)
+                                .fill(Color.cyan)
+                                .fillOpacity(15)
+                                .fillWeight(6)
+                                .fillStyle(.scribble)
+                                .scribble(tightness: 60, curvature: 30)
+                                .draw(Ellipse(x: 50, y: 50, width: 90, height: 70))
+                                .frame(width: 100, height: 100)
+                            
+                            SwiftUI.Text("T:60 W:6 O:15%")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    
+                    // Extra large example showing the effect clearly
+                    VStack(spacing: 8) {
+                        RoughView()
+                            .stroke(Color.indigo.opacity(0.3))
+                            .strokeWidth(1)
+                            .fill(Color.indigo)
+                            .fillOpacity(12)
+                            .fillWeight(8)
+                            .fillStyle(.scribble)
+                            .scribble(tightness: 80, curvature: 45)
+                            .rectangle()
+                            .frame(width: 280, height: 140)
+                        
+                        SwiftUI.Text("Dense overlapping: T:80 W:8 O:12%")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                
                 Spacer()
                     .frame(height: 40)
             }
