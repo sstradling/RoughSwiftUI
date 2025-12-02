@@ -211,6 +211,43 @@ public extension RoughView {
         draw(FullCircle())
     }
     
+    // MARK: - Text modifiers
+    
+    /// Add text to be rendered with rough styling.
+    ///
+    /// The text is converted to vector paths using CoreText and rendered
+    /// with the current fill/stroke settings.
+    ///
+    /// - Parameters:
+    ///   - string: The text string to render.
+    ///   - font: The font to use for rendering.
+    /// - Returns: The view with text added.
+    func text(_ string: String, font: UIFont) -> Self {
+        draw(Text(string, font: font))
+    }
+    
+    /// Add attributed text to be rendered with rough styling.
+    ///
+    /// The attributed string can contain multiple fonts, sizes, and other text attributes.
+    ///
+    /// - Parameter attributedString: The attributed string to render.
+    /// - Returns: The view with text added.
+    func text(attributedString: NSAttributedString) -> Self {
+        draw(Text(attributedString: attributedString))
+    }
+    
+    /// Add text with a named font to be rendered with rough styling.
+    ///
+    /// - Parameters:
+    ///   - string: The text string to render.
+    ///   - fontName: The PostScript name of the font (e.g., "Helvetica-Bold").
+    ///   - fontSize: The font size in points.
+    /// - Returns: The view with text added.
+    func text(_ string: String, fontName: String, fontSize: CGFloat) -> Self {
+        let font = UIFont(name: fontName, size: fontSize) ?? UIFont.systemFont(ofSize: fontSize)
+        return text(string, font: font)
+    }
+    
     // MARK: - SVG-specific modifiers
     
     /// Set the stroke width specifically for SVG path rendering.

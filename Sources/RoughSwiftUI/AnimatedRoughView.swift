@@ -220,7 +220,7 @@ public extension AnimatedRoughView {
 struct AnimatedRoughView_Previews: PreviewProvider {
     static var previews: some View {
         VStack(spacing: 20) {
-            Text("Animated Rough Circles")
+            SwiftUI.Text("Animated Rough Circles")
                 .font(.headline)
             
             HStack(spacing: 20) {
@@ -237,7 +237,7 @@ struct AnimatedRoughView_Previews: PreviewProvider {
                     }
                     .frame(width: 80, height: 80)
                     
-                    Text("Slow/Low")
+                    SwiftUI.Text("Slow/Low")
                         .font(.caption)
                 }
                 
@@ -254,7 +254,7 @@ struct AnimatedRoughView_Previews: PreviewProvider {
                     }
                     .frame(width: 80, height: 80)
                     
-                    Text("Medium/Medium")
+                    SwiftUI.Text("Medium/Medium")
                         .font(.caption)
                 }
                 
@@ -271,7 +271,7 @@ struct AnimatedRoughView_Previews: PreviewProvider {
                     }
                     .frame(width: 80, height: 80)
                     
-                    Text("Fast/High")
+                    SwiftUI.Text("Fast/High")
                         .font(.caption)
                 }
             }

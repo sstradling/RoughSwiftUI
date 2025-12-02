@@ -25,6 +25,11 @@ struct ContentView: View {
                 .tabItem {
                     Label("SVG", systemImage: "swift")
                 }
+            
+            TextView()
+                .tabItem {
+                    Label("Text", systemImage: "textformat")
+                }
 
             CustomizeView()
                 .tabItem {
@@ -47,7 +52,7 @@ struct CustomizeView: View {
             Button(action: {
                 flag.toggle()
             }) {
-                Text("Click")
+                SwiftUI.Text("Click")
             }
 
             RoughView()
@@ -198,107 +203,350 @@ struct Chartview: View {
     }
 }
 
-struct AnimatedView: View {
+struct TextView: View {
     var body: some View {
-        VStack(spacing: 24) {
-            Text("Animated Rough Shapes")
-                .font(.title2)
-                .fontWeight(.semibold)
-            
-            Text("Watch the strokes subtly shift and wobble")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-            
-            // Speed comparison row
-            HStack(spacing: 20) {
-                VStack {
-                    RoughView()
-                        .fill(Color.red)
-                        .fillStyle(.hachure)
-                        .circle()
-                        .animated(steps: 4, speed: .slow, variance: .medium)
-                        .frame(width: 80, height: 80)
+        ScrollView {
+            VStack(spacing: 32) {
+                // Title
+                VStack(spacing: 8) {
+                    SwiftUI.Text("Rough Text")
+                        .font(.title2)
+                        .fontWeight(.semibold)
                     
-                    Text("Slow")
-                        .font(.caption)
+                    SwiftUI.Text("Text rendered with hand-drawn styling")
+                        .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
                 
-                VStack {
+                // Basic text examples
+                VStack(spacing: 16) {
+                    SwiftUI.Text("Using RoughText view")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    
+                    RoughText("Hello!", font: .systemFont(ofSize: 48, weight: .bold))
+                        .fill(Color.red)
+                        .stroke(Color.black)
+                        .fillStyle(.hachure)
+                        .frame(width: 200, height: 80)
+                    
+                    RoughText("Sketchy", font: .systemFont(ofSize: 36, weight: .medium))
+                        .fill(Color.blue)
+                        .stroke(Color.black)
+                        .fillStyle(.crossHatch)
+                        .frame(width: 180, height: 60)
+                }
+                
+                Divider()
+                    .padding(.horizontal)
+                
+                // RoughView with text modifier
+                VStack(spacing: 16) {
+                    SwiftUI.Text("Using RoughView.text() modifier")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    
                     RoughView()
                         .fill(Color.green)
-                        .fillStyle(.crossHatch)
-                        .circle()
-                        .animated(steps: 6, speed: .medium, variance: .medium)
-                        .frame(width: 80, height: 80)
-                    
-                    Text("Medium")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                
-                VStack {
-                    RoughView()
-                        .fill(Color.blue)
+                        .stroke(Color.black)
                         .fillStyle(.dots)
-                        .circle()
-                        .animated(steps: 8, speed: .fast, variance: .medium)
-                        .frame(width: 80, height: 80)
+                        .text("Dots!", font: .systemFont(ofSize: 40, weight: .heavy))
+                        .frame(width: 150, height: 70)
                     
-                    Text("Fast")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            
-            Divider()
-                .padding(.vertical, 8)
-            
-            // Variance comparison row
-            HStack(spacing: 20) {
-                VStack {
-                    RoughView()
-                        .fill(Color.purple)
-                        .fillStyle(.zigzag)
-                        .rectangle()
-                        .animated(steps: 5, speed: .medium, variance: .low)
-                        .frame(width: 80, height: 80)
-                    
-                    Text("Low Variance")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                
-                VStack {
                     RoughView()
                         .fill(Color.orange)
+                        .stroke(Color.black)
                         .fillStyle(.zigzag)
-                        .rectangle()
-                        .animated(steps: 5, speed: .medium, variance: .medium)
-                        .frame(width: 80, height: 80)
-                    
-                    Text("Medium")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .text("ZigZag", font: .systemFont(ofSize: 32, weight: .bold))
+                        .frame(width: 160, height: 60)
                 }
                 
-                VStack {
-                    RoughView()
-                        .fill(Color.cyan)
-                        .fillStyle(.zigzag)
-                        .rectangle()
-                        .animated(steps: 5, speed: .medium, variance: .high)
-                        .frame(width: 80, height: 80)
-                    
-                    Text("High Variance")
+                Divider()
+                    .padding(.horizontal)
+                
+                // Fill style showcase
+                VStack(spacing: 16) {
+                    SwiftUI.Text("Fill Styles")
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                    
+                    LazyVGrid(columns: [.init(), .init()], spacing: 16) {
+                        RoughText("ABC", font: .boldSystemFont(ofSize: 28))
+                            .fill(Color.purple)
+                            .fillStyle(.solid)
+                            .frame(width: 100, height: 50)
+                        
+                        RoughText("ABC", font: .boldSystemFont(ofSize: 28))
+                            .fill(Color.cyan)
+                            .fillStyle(.hachure)
+                            .frame(width: 100, height: 50)
+                        
+                        RoughText("ABC", font: .boldSystemFont(ofSize: 28))
+                            .fill(Color.pink)
+                            .fillStyle(.crossHatch)
+                            .frame(width: 100, height: 50)
+                        
+                        RoughText("ABC", font: .boldSystemFont(ofSize: 28))
+                            .fill(Color.yellow)
+                            .fillStyle(.zigzagLine)
+                            .frame(width: 100, height: 50)
+                    }
                 }
+                
+                Spacer()
+                    .frame(height: 40)
             }
-            
-            Spacer()
+            .padding()
         }
-        .padding()
+    }
+}
+
+struct AnimatedView: View {
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 24) {
+                // MARK: - Shapes Section
+                VStack(spacing: 16) {
+                    SwiftUI.Text("Animated Shapes")
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                    
+                    SwiftUI.Text("Watch the strokes subtly shift and wobble")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    
+                    // Speed comparison row
+                    HStack(spacing: 20) {
+                        VStack {
+                            RoughView()
+                                .fill(Color.red)
+                                .fillStyle(.hachure)
+                                .circle()
+                                .animated(steps: 4, speed: .slow, variance: .medium)
+                                .frame(width: 80, height: 80)
+                            
+                            SwiftUI.Text("Slow")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        
+                        VStack {
+                            RoughView()
+                                .fill(Color.green)
+                                .fillStyle(.crossHatch)
+                                .circle()
+                                .animated(steps: 6, speed: .medium, variance: .medium)
+                                .frame(width: 80, height: 80)
+                            
+                            SwiftUI.Text("Medium")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        
+                        VStack {
+                            RoughView()
+                                .fill(Color.blue)
+                                .fillStyle(.dots)
+                                .circle()
+                                .animated(steps: 8, speed: .fast, variance: .medium)
+                                .frame(width: 80, height: 80)
+                            
+                            SwiftUI.Text("Fast")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    
+                    // Variance comparison row
+                    HStack(spacing: 20) {
+                        VStack {
+                            RoughView()
+                                .fill(Color.purple)
+                                .fillStyle(.zigzag)
+                                .rectangle()
+                                .animated(steps: 5, speed: .medium, variance: .low)
+                                .frame(width: 80, height: 80)
+                            
+                            SwiftUI.Text("Low")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        
+                        VStack {
+                            RoughView()
+                                .fill(Color.orange)
+                                .fillStyle(.zigzag)
+                                .rectangle()
+                                .animated(steps: 5, speed: .medium, variance: .medium)
+                                .frame(width: 80, height: 80)
+                            
+                            SwiftUI.Text("Medium")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        
+                        VStack {
+                            RoughView()
+                                .fill(Color.cyan)
+                                .fillStyle(.zigzag)
+                                .rectangle()
+                                .animated(steps: 5, speed: .medium, variance: .high)
+                                .frame(width: 80, height: 80)
+                            
+                            SwiftUI.Text("High")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                
+                Divider()
+                    .padding(.vertical, 8)
+                
+                // MARK: - Animated Text Section
+                VStack(spacing: 20) {
+                    SwiftUI.Text("Animated Text")
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                    
+                    SwiftUI.Text("Text with hand-drawn wobble effects")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    
+                    // Main animated text
+                    RoughText("Wobble", font: .systemFont(ofSize: 44, weight: .black))
+                        .fill(Color.mint)
+                        .stroke(Color.black)
+                        .fillStyle(.hachure)
+                        .animated(steps: 6, speed: .medium, variance: .low)
+                        .frame(width: 220, height: 80)
+                    
+                    // Text speed comparison
+                    VStack(spacing: 8) {
+                        SwiftUI.Text("Animation Speeds")
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                        
+                        HStack(spacing: 16) {
+                            VStack(spacing: 4) {
+                                RoughText("Slow", font: .boldSystemFont(ofSize: 20))
+                                    .fill(Color.red)
+                                    .fillStyle(.hachure)
+                                    .animated(steps: 4, speed: .slow, variance: .medium)
+                                    .frame(width: 80, height: 40)
+                                
+                                SwiftUI.Text("600ms")
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            }
+                            
+                            VStack(spacing: 4) {
+                                RoughText("Med", font: .boldSystemFont(ofSize: 20))
+                                    .fill(Color.orange)
+                                    .fillStyle(.hachure)
+                                    .animated(steps: 4, speed: .medium, variance: .medium)
+                                    .frame(width: 80, height: 40)
+                                
+                                SwiftUI.Text("300ms")
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            }
+                            
+                            VStack(spacing: 4) {
+                                RoughText("Fast", font: .boldSystemFont(ofSize: 20))
+                                    .fill(Color.green)
+                                    .fillStyle(.hachure)
+                                    .animated(steps: 4, speed: .fast, variance: .medium)
+                                    .frame(width: 80, height: 40)
+                                
+                                SwiftUI.Text("100ms")
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                    
+                    // Text variance comparison
+                    VStack(spacing: 8) {
+                        SwiftUI.Text("Variance Levels")
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                        
+                        HStack(spacing: 12) {
+                            VStack(spacing: 4) {
+                                RoughText("Lo", font: .boldSystemFont(ofSize: 24))
+                                    .fill(Color.purple)
+                                    .fillStyle(.crossHatch)
+                                    .animated(steps: 6, speed: .medium, variance: .veryLow)
+                                    .frame(width: 60, height: 45)
+                                
+                                SwiftUI.Text("0.5%")
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            }
+                            
+                            VStack(spacing: 4) {
+                                RoughText("Med", font: .boldSystemFont(ofSize: 24))
+                                    .fill(Color.blue)
+                                    .fillStyle(.crossHatch)
+                                    .animated(steps: 6, speed: .medium, variance: .medium)
+                                    .frame(width: 70, height: 45)
+                                
+                                SwiftUI.Text("5%")
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            }
+                            
+                            VStack(spacing: 4) {
+                                RoughText("Hi", font: .boldSystemFont(ofSize: 24))
+                                    .fill(Color.cyan)
+                                    .fillStyle(.crossHatch)
+                                    .animated(steps: 6, speed: .medium, variance: .high)
+                                    .frame(width: 60, height: 45)
+                                
+                                SwiftUI.Text("10%")
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                    
+                    // Animated fill styles on text
+                    VStack(spacing: 8) {
+                        SwiftUI.Text("Animated Fill Styles")
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                        
+                        HStack(spacing: 16) {
+                            RoughText("Dots", font: .boldSystemFont(ofSize: 18))
+                                .fill(Color.yellow)
+                                .stroke(Color.black)
+                                .fillStyle(.dots)
+                                .animated(steps: 5, speed: .slow, variance: .low)
+                                .frame(width: 70, height: 35)
+                            
+                            RoughText("Zig", font: .boldSystemFont(ofSize: 18))
+                                .fill(Color.pink)
+                                .stroke(Color.black)
+                                .fillStyle(.zigzag)
+                                .animated(steps: 5, speed: .slow, variance: .low)
+                                .frame(width: 60, height: 35)
+                            
+                            RoughText("Star", font: .boldSystemFont(ofSize: 18))
+                                .fill(Color.indigo)
+                                .stroke(Color.black)
+                                .fillStyle(.starBurst)
+                                .animated(steps: 5, speed: .slow, variance: .low)
+                                .frame(width: 70, height: 35)
+                        }
+                    }
+                }
+                
+                Spacer()
+                    .frame(height: 40)
+            }
+            .padding()
+        }
     }
 }
 
@@ -322,6 +570,10 @@ struct ContentView_Previews: PreviewProvider {
 
 #Preview("Chart View") {
     Chartview()
+}
+
+#Preview("Text View") {
+    TextView()
 }
 
 #Preview("Animated View") {

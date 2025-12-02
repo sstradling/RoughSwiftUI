@@ -576,9 +576,9 @@ final class RoughSwiftTests: XCTestCase {
         XCTAssertNotEqual(variedPoint, originalPoint)
         
         // The variance should be reasonable (within 20% for high variance)
-        let maxOffset = max(abs(Float(originalPoint.x)), abs(Float(originalPoint.y))) * 0.10 * 2
-        XCTAssertLessThan(abs(Float(variedPoint.x - originalPoint.x)), CGFloat(maxOffset))
-        XCTAssertLessThan(abs(Float(variedPoint.y - originalPoint.y)), CGFloat(maxOffset))
+        let maxOffset = max(abs(originalPoint.x), abs(originalPoint.y)) * 0.10 * 2
+        XCTAssertLessThan(abs(variedPoint.x - originalPoint.x), maxOffset)
+        XCTAssertLessThan(abs(variedPoint.y - originalPoint.y), maxOffset)
     }
     
     func testPathVarianceGeneratorDifferentStepsProduceDifferentResults() {
@@ -762,5 +762,321 @@ final class RoughSwiftTests: XCTestCase {
         
         XCTAssertLessThan(actualOffsetX, maxExpectedOffset)
         XCTAssertLessThan(actualOffsetY, maxExpectedOffset)
+    }
+    
+    // MARK: - Text Path Conversion Tests
+    
+    func testTextPathConverterProducesNonEmptyPath() {
+        let font = UIFont.systemFont(ofSize: 48)
+        let path = TextPathConverter.path(from: "Hello", font: font)
+        
+        // The path should not be empty
+        XCTAssertFalse(path.isEmpty)
+        
+        // The bounding box should have reasonable dimensions
+        let bounds = path.boundingBox
+        XCTAssertGreaterThan(bounds.width, 0)
+        XCTAssertGreaterThan(bounds.height, 0)
+    }
+    
+    func testTextPathConverterWithAttributedString() {
+        let attributed = NSAttributedString(
+            string: "Test",
+            attributes: [.font: UIFont.boldSystemFont(ofSize: 36)]
+        )
+        let path = TextPathConverter.path(from: attributed)
+        
+        XCTAssertFalse(path.isEmpty)
+        XCTAssertGreaterThan(path.boundingBox.width, 0)
+    }
+    
+    func testTextPathConverterWithFontName() {
+        let path = TextPathConverter.path(from: "ABC", fontName: "Helvetica", fontSize: 24)
+        
+        XCTAssertFalse(path.isEmpty)
+    }
+    
+    func testTextPathConverterBoundingBox() {
+        let font = UIFont.systemFont(ofSize: 32)
+        let bounds = TextPathConverter.boundingBox(for: "Wide", font: font)
+        
+        // Bounding box should have positive dimensions
+        XCTAssertGreaterThan(bounds.width, 0)
+        XCTAssertGreaterThan(bounds.height, 0)
+    }
+    
+    func testTextPathConverterEmptyStringProducesEmptyPath() {
+        let font = UIFont.systemFont(ofSize: 24)
+        let path = TextPathConverter.path(from: "", font: font)
+        
+        // Empty string should produce an empty path
+        XCTAssertTrue(path.isEmpty)
+    }
+    
+    func testTextPathConverterDifferentFontSizesProduceDifferentBounds() {
+        let smallPath = TextPathConverter.path(from: "A", font: UIFont.systemFont(ofSize: 12))
+        let largePath = TextPathConverter.path(from: "A", font: UIFont.systemFont(ofSize: 48))
+        
+        // Larger font should produce larger bounds
+        XCTAssertGreaterThan(largePath.boundingBox.width, smallPath.boundingBox.width)
+        XCTAssertGreaterThan(largePath.boundingBox.height, smallPath.boundingBox.height)
+    }
+    
+    // MARK: - CGPath to SVG Tests
+    
+    func testCGPathToSVGSimpleLine() {
+        let path = CGMutablePath()
+        path.move(to: CGPoint(x: 0, y: 0))
+        path.addLine(to: CGPoint(x: 100, y: 100))
+        
+        let svg = path.toSVGPathString()
+        
+        // Should contain move and line commands
+        XCTAssertTrue(svg.contains("M"))
+        XCTAssertTrue(svg.contains("L"))
+    }
+    
+    func testCGPathToSVGTriangle() {
+        let path = CGMutablePath()
+        path.move(to: CGPoint(x: 0, y: 0))
+        path.addLine(to: CGPoint(x: 100, y: 0))
+        path.addLine(to: CGPoint(x: 50, y: 100))
+        path.closeSubpath()
+        
+        let svg = path.toSVGPathString()
+        
+        // Should contain move, lines, and close commands
+        XCTAssertTrue(svg.contains("M"))
+        XCTAssertTrue(svg.contains("L"))
+        XCTAssertTrue(svg.contains("Z"))
+    }
+    
+    func testCGPathToSVGQuadCurve() {
+        let path = CGMutablePath()
+        path.move(to: CGPoint(x: 0, y: 0))
+        path.addQuadCurve(to: CGPoint(x: 100, y: 100), control: CGPoint(x: 50, y: 0))
+        
+        let svg = path.toSVGPathString()
+        
+        // Should contain quad curve command
+        XCTAssertTrue(svg.contains("Q"))
+    }
+    
+    func testCGPathToSVGCubicCurve() {
+        let path = CGMutablePath()
+        path.move(to: CGPoint(x: 0, y: 0))
+        path.addCurve(to: CGPoint(x: 100, y: 100), control1: CGPoint(x: 25, y: 0), control2: CGPoint(x: 75, y: 100))
+        
+        let svg = path.toSVGPathString()
+        
+        // Should contain cubic curve command
+        XCTAssertTrue(svg.contains("C"))
+    }
+    
+    func testCGPathToSVGWithPrecision() {
+        let path = CGMutablePath()
+        path.move(to: CGPoint(x: 1.23456789, y: 9.87654321))
+        
+        let svg2 = path.toSVGPathString(precision: 2)
+        let svg4 = path.toSVGPathString(precision: 4)
+        
+        // Different precisions should produce different output
+        XCTAssertNotEqual(svg2, svg4)
+        
+        // Higher precision should result in longer string (more decimal places)
+        XCTAssertGreaterThan(svg4.count, svg2.count)
+    }
+    
+    func testCGPathToSVGFlippingY() {
+        let path = CGMutablePath()
+        path.move(to: CGPoint(x: 0, y: 0))
+        path.addLine(to: CGPoint(x: 100, y: 100))
+        
+        let normalSVG = path.toSVGPathString()
+        let flippedSVG = path.toSVGPathStringFlippingY()
+        
+        // Flipped should be different from normal
+        XCTAssertNotEqual(normalSVG, flippedSVG)
+    }
+    
+    func testCGPathToSVGWithTransform() {
+        let path = CGMutablePath()
+        path.move(to: CGPoint(x: 0, y: 0))
+        path.addLine(to: CGPoint(x: 10, y: 10))
+        
+        let transform = CGAffineTransform(scaleX: 2, y: 2)
+        let scaledSVG = path.toSVGPathString(applying: transform)
+        
+        // Scaled path should have larger coordinates
+        XCTAssertTrue(scaledSVG.contains("20"))
+    }
+    
+    func testCGPathToSVGEmptyPath() {
+        let path = CGMutablePath()
+        let svg = path.toSVGPathString()
+        
+        // Empty path should produce empty string
+        XCTAssertTrue(svg.isEmpty)
+    }
+    
+    // MARK: - Text Drawable Tests
+    
+    func testTextDrawableMethod() {
+        let text = Text("Hello", font: UIFont.systemFont(ofSize: 24))
+        
+        // Text should use "path" method (reuses SVG path rendering)
+        XCTAssertEqual(text.method, "path")
+    }
+    
+    func testTextDrawableArguments() {
+        let text = Text("A", font: UIFont.systemFont(ofSize: 48))
+        
+        // Arguments should contain a single SVG path string
+        XCTAssertEqual(text.arguments.count, 1)
+        XCTAssertTrue(text.arguments[0] is String)
+        
+        let svgPath = text.arguments[0] as! String
+        XCTAssertFalse(svgPath.isEmpty)
+        XCTAssertTrue(svgPath.contains("M"))  // Should have move commands
+    }
+    
+    func testTextDrawableWithAttributedString() {
+        let attributed = NSAttributedString(
+            string: "Bold",
+            attributes: [.font: UIFont.boldSystemFont(ofSize: 32)]
+        )
+        let text = Text(attributedString: attributed)
+        
+        XCTAssertEqual(text.method, "path")
+        XCTAssertEqual(text.arguments.count, 1)
+    }
+    
+    func testTextDrawableGeneratesDrawing() throws {
+        let engine = Engine()
+        let generator = engine.generator(size: CGSize(width: 300, height: 100))
+        
+        let text = Text("Test", font: UIFont.systemFont(ofSize: 36))
+        let drawing = try XCTUnwrap(generator.generate(drawable: text))
+        
+        // Should produce a path drawing
+        XCTAssertEqual(drawing.shape, "path")
+        XCTAssertFalse(drawing.sets.isEmpty)
+    }
+    
+    func testTextDrawableRendersCommands() throws {
+        let engine = Engine()
+        let generator = engine.generator(size: CGSize(width: 200, height: 80))
+        
+        var options = Options()
+        options.fill = UIColor.red
+        options.stroke = UIColor.black
+        
+        let text = Text("Hi", font: UIFont.boldSystemFont(ofSize: 48))
+        let drawing = try XCTUnwrap(generator.generate(drawable: text, options: options))
+        
+        let renderer = SwiftUIRenderer()
+        let commands = renderer.commands(for: drawing, options: options, in: CGSize(width: 200, height: 80))
+        
+        // Should produce render commands
+        XCTAssertFalse(commands.isEmpty)
+    }
+    
+    // MARK: - RoughView Text Modifier Tests
+    
+    func testRoughViewTextModifier() {
+        let view = RoughView()
+            .fill(Color.red)
+            .text("Hello", font: UIFont.systemFont(ofSize: 24))
+        
+        // Should have one drawable
+        XCTAssertEqual(view.drawables.count, 1)
+        
+        // Drawable should be a Text
+        XCTAssertTrue(view.drawables[0] is RoughSwiftUI.Text)
+    }
+    
+    func testRoughViewTextModifierWithAttributedString() {
+        let attributed = NSAttributedString(
+            string: "Styled",
+            attributes: [.font: UIFont.italicSystemFont(ofSize: 20)]
+        )
+        let view = RoughView()
+            .text(attributedString: attributed)
+        
+        XCTAssertEqual(view.drawables.count, 1)
+        XCTAssertTrue(view.drawables[0] is RoughSwiftUI.Text)
+    }
+    
+    func testRoughViewTextModifierWithFontName() {
+        let view = RoughView()
+            .text("ABC", fontName: "Helvetica-Bold", fontSize: 32)
+        
+        XCTAssertEqual(view.drawables.count, 1)
+    }
+    
+    func testRoughViewMultipleTexts() {
+        let view = RoughView()
+            .text("First", font: UIFont.systemFont(ofSize: 24))
+            .text("Second", font: UIFont.systemFont(ofSize: 24))
+        
+        // Should have two drawables
+        XCTAssertEqual(view.drawables.count, 2)
+    }
+    
+    // MARK: - RoughText View Tests
+    
+    func testRoughTextViewCreation() {
+        let roughText = RoughText("Hello", font: UIFont.systemFont(ofSize: 36))
+        
+        // Should compile and create successfully
+        XCTAssertNotNil(roughText)
+    }
+    
+    func testRoughTextViewWithAttributedString() {
+        let attributed = NSAttributedString(
+            string: "Styled",
+            attributes: [.font: UIFont.boldSystemFont(ofSize: 24)]
+        )
+        let roughText = RoughText(attributedString: attributed)
+        
+        XCTAssertNotNil(roughText)
+    }
+    
+    func testRoughTextViewWithFontName() {
+        let roughText = RoughText("Test", fontName: "Courier", fontSize: 28)
+        
+        XCTAssertNotNil(roughText)
+    }
+    
+    func testRoughTextViewModifiersReturnSelf() {
+        let roughText = RoughText("Test", font: UIFont.systemFont(ofSize: 24))
+            .fill(Color.red)
+            .stroke(Color.black)
+            .fillStyle(.hachure)
+            .strokeWidth(2)
+            .roughness(1.5)
+        
+        // All modifiers should chain properly
+        XCTAssertNotNil(roughText)
+    }
+    
+    func testRoughTextViewAnimatedModifier() {
+        let roughText = RoughText("Wobble", font: UIFont.boldSystemFont(ofSize: 32))
+            .fill(Color.blue)
+            .fillStyle(.crossHatch)
+        
+        let animatedView = roughText.animated(steps: 6, speed: .slow, variance: .low)
+        
+        // Should return AnimatedRoughView
+        XCTAssertNotNil(animatedView)
+    }
+    
+    func testRoughTextViewSVGModifiers() {
+        let roughText = RoughText("SVG", font: UIFont.systemFont(ofSize: 24))
+            .svgStrokeWidth(3)
+            .svgFillWeight(2)
+            .svgFillStrokeAlignment(.inside)
+        
+        XCTAssertNotNil(roughText)
     }
 }
