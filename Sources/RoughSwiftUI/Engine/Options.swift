@@ -55,6 +55,34 @@ public struct Options {
     public var dashGap: Float = -1
     public var zigzagOffset: Float = -1
     
+    // MARK: - Scribble Fill Options
+    
+    /// The starting angle for scribble fill (0-360 degrees).
+    /// 0 = right-center edge, 90 = bottom-center, 180 = left-center, 270 = top-center.
+    /// The scribble traverses from this point to the opposite point (origin + 180).
+    public var scribbleOrigin: Float = 0
+    
+    /// Number of zig-zags in the scribble fill. Higher values = denser fill.
+    /// Range: 1 to 100. Default is 10.
+    public var scribbleTightness: Int = 10
+    
+    /// Curvature of vertices in the zig-zag pattern.
+    /// 0 = sharp corners, 50 = maximum curve (50% of segment length).
+    /// Range: 0 to 50. Default is 0.
+    public var scribbleCurvature: Float = 0
+    
+    /// Whether to use brush strokes for scribble fill lines.
+    /// When true, applies the current brush profile for variable-width strokes.
+    /// When false, uses simple straight strokes.
+    public var scribbleUseBrushStroke: Bool = false
+    
+    /// Optional array of tightness values for variable density scribble fill.
+    /// The traversal axis is divided into sections corresponding to the array length.
+    /// Each section uses its corresponding tightness value from the array.
+    /// Example: [10, 30, 10] creates sparse-dense-sparse pattern.
+    /// When nil, uses uniform tightness from `scribbleTightness`.
+    public var scribbleTightnessPattern: [Int]? = nil
+    
     // MARK: - SVG-specific options
     
     /// Override stroke width for SVG paths. If nil, uses `strokeWidth`.

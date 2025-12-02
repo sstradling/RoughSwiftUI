@@ -18,4 +18,7 @@ public enum FillStyle: String {
     case starBurst = "starburst"
     case dashed
     case zigzagLine = "zigzag-line"
+    /// A single continuous zig-zag scribble that traverses from one edge of the shape to the opposite edge.
+    /// This fill style is rendered natively in Swift rather than through rough.js.
+    case scribble
 }

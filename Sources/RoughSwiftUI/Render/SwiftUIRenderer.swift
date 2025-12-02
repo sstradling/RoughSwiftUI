@@ -92,9 +92,26 @@ public struct SwiftUIRenderer {
             }
         }
         
-        return drawing.sets.flatMap { set in
-            commands(for: set, options: options, in: size, svgTransform: svgTransform, isSVGPath: isSVGPath, svgClipPath: scaledSVGClipPath)
+        var result: [RoughRenderCommand] = []
+        
+        // Check if scribble fill is requested - handle it with native generation
+        if options.fillStyle == .scribble {
+            let scribbleCommands = scribbleFillCommands(
+                for: drawing,
+                options: options,
+                in: size,
+                svgTransform: svgTransform,
+                isSVGPath: isSVGPath
+            )
+            result.append(contentsOf: scribbleCommands)
         }
+        
+        // Process standard operation sets
+        result.append(contentsOf: drawing.sets.flatMap { set in
+            commands(for: set, options: options, in: size, svgTransform: svgTransform, isSVGPath: isSVGPath, svgClipPath: scaledSVGClipPath)
+        })
+        
+        return result
     }
 
     /// Render a `Drawing` directly into a SwiftUI `GraphicsContext`.
@@ -220,6 +237,11 @@ private extension SwiftUIRenderer {
             }
 
         case .fillSketch:
+            // Skip fillSketch when using scribble fill (we handle it separately)
+            if options.fillStyle == .scribble {
+                return []
+            }
+            
             let basePath = SwiftPath.from(operationSet: set)
             let path: SwiftPath
             if let transform = svgTransform {
@@ -240,6 +262,11 @@ private extension SwiftUIRenderer {
             ]
 
         case .fillPath:
+            // Skip fillPath when using scribble fill (we handle it separately)
+            if options.fillStyle == .scribble {
+                return []
+            }
+            
             let basePath = SwiftPath.from(operationSet: set)
             let path: SwiftPath
             if let transform = svgTransform {
@@ -294,6 +321,130 @@ private extension SwiftUIRenderer {
                 )
             ]
         }
+    }
+    
+    // MARK: - Scribble Fill
+    
+    /// Generates scribble fill commands for a drawing.
+    func scribbleFillCommands(
+        for drawing: Drawing,
+        options: Options,
+        in size: CGSize,
+        svgTransform: CGAffineTransform?,
+        isSVGPath: Bool
+    ) -> [RoughRenderCommand] {
+        // Extract the shape path from the drawing
+        guard let shapePath = extractShapePath(from: drawing, svgTransform: svgTransform, isSVGPath: isSVGPath) else {
+            return []
+        }
+        
+        // Only use clip path for SVG paths (which may be concave shapes like stars)
+        // Simple shapes like rectangles and circles don't need clipping
+        let clipPath: SwiftPath? = isSVGPath ? SwiftPath(shapePath) : nil
+        
+        // Generate scribble fill operation sets
+        let scribbleSets = ScribbleFillGenerator.generate(for: shapePath, options: options)
+        
+        // Calculate fill weight
+        let strokeWidth = isSVGPath ? options.effectiveSVGStrokeWidth : options.strokeWidth
+        let fillWeight: Float = {
+            let base = isSVGPath ? options.effectiveSVGFillWeight : options.fillWeight
+            return base < 0 ? strokeWidth / 2 : base
+        }()
+        
+        let color = Color(options.fill)
+        
+        // Convert each scribble set to render commands
+        return scribbleSets.flatMap { set -> [RoughRenderCommand] in
+            let basePath = SwiftPath.from(operationSet: set)
+            
+            // Check if brush strokes are enabled and profile needs custom rendering
+            let useBrushStroke = options.scribbleUseBrushStroke && 
+                (options.brushProfile.requiresCustomRendering || 
+                 options.thicknessProfile != .uniform ||
+                 options.brushTip.roundness < 0.99)
+            
+            if useBrushStroke {
+                // Convert to filled path with variable width
+                let filledPath = StrokeToFillConverter.convert(
+                    operations: set.operations,
+                    baseWidth: CGFloat(fillWeight),
+                    profile: options.brushProfile
+                )
+                return [
+                    RoughRenderCommand(
+                        path: filledPath,
+                        style: .fill(color),
+                        clipPath: clipPath,
+                        inverseClip: false
+                    )
+                ]
+            } else {
+                // Standard stroke rendering
+                return [
+                    RoughRenderCommand(
+                        path: basePath,
+                        style: .stroke(color, lineWidth: CGFloat(fillWeight)),
+                        clipPath: clipPath,
+                        inverseClip: false,
+                        cap: options.strokeCap,
+                        join: options.strokeJoin
+                    )
+                ]
+            }
+        }
+    }
+    
+    /// Extracts the shape path from a drawing for scribble fill generation.
+    func extractShapePath(
+        from drawing: Drawing,
+        svgTransform: CGAffineTransform?,
+        isSVGPath: Bool
+    ) -> CGPath? {
+        // For SVG paths, use the path string
+        if isSVGPath {
+            if let svgPathString = drawing.sets.compactMap({ $0.path }).first {
+                let basePath = UIBezierPath(svgPath: svgPathString).cgPath
+                if let transform = svgTransform {
+                    return basePath.copy(using: [transform])
+                }
+                return basePath
+            }
+        }
+        
+        // For other shapes, reconstruct the path from the stroke operations
+        // Look for the outline path (type == .path)
+        for set in drawing.sets where set.type == .path {
+            let swiftPath = SwiftPath.from(operationSet: set)
+            let cgPath = swiftPath.cgPath
+            
+            // Check if the path is valid for ray-casting (has reasonable bounds)
+            let bounds = cgPath.boundingBox
+            if bounds.width > 1 && bounds.height > 1 {
+                // For rough.js shapes, the path might not be closed.
+                // Create a closed version by using the bounding box as an approximation
+                // for circle/ellipse shapes, or use the path directly for polygons.
+                
+                // Check if path approximates a circle/ellipse by comparing bounds aspect
+                let aspect = bounds.width / bounds.height
+                if drawing.shape == "circle" || drawing.shape == "ellipse" || 
+                   (aspect > 0.8 && aspect < 1.2 && drawing.shape != "rectangle") {
+                    // Create an ellipse path that matches the bounds
+                    let ellipsePath = UIBezierPath(ovalIn: bounds)
+                    return ellipsePath.cgPath
+                }
+                
+                return cgPath
+            }
+        }
+        
+        // Fallback: try fillPath type
+        for set in drawing.sets where set.type == .fillPath {
+            let swiftPath = SwiftPath.from(operationSet: set)
+            return swiftPath.cgPath
+        }
+        
+        return nil
     }
     
     /// Calculate effective line width and clipping for stroke alignment.

@@ -45,6 +45,11 @@ struct ContentView: View {
                 .tabItem {
                     Label("Brushes", systemImage: "pencil.tip")
                 }
+            
+            ScribbleFillView()
+                .tabItem {
+                    Label("Scribble", systemImage: "scribble.variable")
+                }
         }
     }
 }
@@ -1037,6 +1042,507 @@ struct BrushStrokeView: View {
     
 }
 
+struct ScribbleFillView: View {
+    // Star path for concave shape example
+    var starPath: String {
+        "M50 0 L61 35 L98 35 L68 57 L79 91 L50 70 L21 91 L32 57 L2 35 L39 35 Z"
+    }
+    
+    // Arrow/chevron path for another concave example
+    var arrowPath: String {
+        "M10 50 L50 10 L90 50 L70 50 L70 90 L30 90 L30 50 Z"
+    }
+    
+    // Crescent moon path
+    var crescentPath: String {
+        "M50 5 A45 45 0 1 1 50 95 A30 30 0 1 0 50 5"
+    }
+    
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 32) {
+                // MARK: - Header
+                VStack(spacing: 8) {
+                    SwiftUI.Text("Scribble Fill")
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                    
+                    SwiftUI.Text("A single continuous zig-zag traversing the shape")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.top)
+                
+                // MARK: - Convex Shapes
+                VStack(spacing: 16) {
+                    SwiftUI.Text("Convex Shapes")
+                        .font(.headline)
+                    
+                    SwiftUI.Text("Simple shapes filled with scribble pattern")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    
+                    HStack(spacing: 20) {
+                        // Circle
+                        VStack(spacing: 8) {
+                            RoughView()
+                                .stroke(Color.blue)
+                                .fill(Color.blue)
+                                .fillStyle(.scribble)
+                                .scribbleTightness(12)
+                                .circle()
+                                .frame(width: 100, height: 100)
+                            
+                            SwiftUI.Text("Circle")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        
+                        // Rectangle
+                        VStack(spacing: 8) {
+                            RoughView()
+                                .stroke(Color.green)
+                                .fill(Color.green)
+                                .fillStyle(.scribble)
+                                .scribbleTightness(15)
+                                .scribbleOrigin(45)
+                                .rectangle()
+                                .frame(width: 100, height: 100)
+                            
+                            SwiftUI.Text("Rectangle")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        
+                        // Ellipse
+                        VStack(spacing: 8) {
+                            RoughView()
+                                .stroke(Color.purple)
+                                .fill(Color.purple)
+                                .fillStyle(.scribble)
+                                .scribbleTightness(10)
+                                .scribbleOrigin(90)
+                                .draw(Ellipse(x: 50, y: 50, width: 90, height: 60))
+                                .frame(width: 100, height: 100)
+                            
+                            SwiftUI.Text("Ellipse")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                
+                Divider()
+                    .padding(.horizontal)
+                
+                // MARK: - Concave Shapes
+                VStack(spacing: 16) {
+                    SwiftUI.Text("Concave Shapes")
+                        .font(.headline)
+                    
+                    SwiftUI.Text("Complex shapes split into separate stroke segments")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    
+                    HStack(spacing: 20) {
+                        // Star
+                        VStack(spacing: 8) {
+                            RoughView()
+                                .stroke(Color.orange)
+                                .fill(Color.orange)
+                                .fillStyle(.scribble)
+                                .scribbleTightness(20)
+                                .draw(Path(d: starPath))
+                                .frame(width: 100, height: 100)
+                            
+                            SwiftUI.Text("Star")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        
+                        // Arrow
+                        VStack(spacing: 8) {
+                            RoughView()
+                                .stroke(Color.red)
+                                .fill(Color.red)
+                                .fillStyle(.scribble)
+                                .scribbleTightness(15)
+                                .scribbleOrigin(0)
+                                .draw(Path(d: arrowPath))
+                                .frame(width: 100, height: 100)
+                            
+                            SwiftUI.Text("Arrow")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        
+                        // Crescent
+                        VStack(spacing: 8) {
+                            RoughView()
+                                .stroke(Color.indigo)
+                                .fill(Color.indigo)
+                                .fillStyle(.scribble)
+                                .scribbleTightness(18)
+                                .draw(Path(d: crescentPath))
+                                .frame(width: 100, height: 100)
+                            
+                            SwiftUI.Text("Crescent")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                
+                Divider()
+                    .padding(.horizontal)
+                
+                // MARK: - Tightness Comparison
+                VStack(spacing: 16) {
+                    SwiftUI.Text("Tightness")
+                        .font(.headline)
+                    
+                    SwiftUI.Text("Number of zig-zags (density)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    
+                    HStack(spacing: 16) {
+                        VStack(spacing: 8) {
+                            RoughView()
+                                .stroke(Color.cyan)
+                                .fill(Color.cyan)
+                                .fillStyle(.scribble)
+                                .scribbleTightness(5)
+                                .circle()
+                                .frame(width: 80, height: 80)
+                            
+                            SwiftUI.Text("5")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        
+                        VStack(spacing: 8) {
+                            RoughView()
+                                .stroke(Color.cyan)
+                                .fill(Color.cyan)
+                                .fillStyle(.scribble)
+                                .scribbleTightness(15)
+                                .circle()
+                                .frame(width: 80, height: 80)
+                            
+                            SwiftUI.Text("15")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        
+                        VStack(spacing: 8) {
+                            RoughView()
+                                .stroke(Color.cyan)
+                                .fill(Color.cyan)
+                                .fillStyle(.scribble)
+                                .scribbleTightness(30)
+                                .circle()
+                                .frame(width: 80, height: 80)
+                            
+                            SwiftUI.Text("30")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        
+                        VStack(spacing: 8) {
+                            RoughView()
+                                .stroke(Color.cyan)
+                                .fill(Color.cyan)
+                                .fillStyle(.scribble)
+                                .scribbleTightness(50)
+                                .circle()
+                                .frame(width: 80, height: 80)
+                            
+                            SwiftUI.Text("50")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                
+                Divider()
+                    .padding(.horizontal)
+                
+                // MARK: - Curvature Comparison
+                VStack(spacing: 16) {
+                    SwiftUI.Text("Curvature")
+                        .font(.headline)
+                    
+                    SwiftUI.Text("Smoothness of zig-zag corners (0-50)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    
+                    HStack(spacing: 16) {
+                        VStack(spacing: 8) {
+                            RoughView()
+                                .stroke(Color.pink)
+                                .fill(Color.pink)
+                                .fillStyle(.scribble)
+                                .scribble(tightness: 12, curvature: 0)
+                                .rectangle()
+                                .frame(width: 80, height: 80)
+                            
+                            SwiftUI.Text("0 (sharp)")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        
+                        VStack(spacing: 8) {
+                            RoughView()
+                                .stroke(Color.pink)
+                                .fill(Color.pink)
+                                .fillStyle(.scribble)
+                                .scribble(tightness: 12, curvature: 15)
+                                .rectangle()
+                                .frame(width: 80, height: 80)
+                            
+                            SwiftUI.Text("15")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        
+                        VStack(spacing: 8) {
+                            RoughView()
+                                .stroke(Color.pink)
+                                .fill(Color.pink)
+                                .fillStyle(.scribble)
+                                .scribble(tightness: 12, curvature: 30)
+                                .rectangle()
+                                .frame(width: 80, height: 80)
+                            
+                            SwiftUI.Text("30")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        
+                        VStack(spacing: 8) {
+                            RoughView()
+                                .stroke(Color.pink)
+                                .fill(Color.pink)
+                                .fillStyle(.scribble)
+                                .scribble(tightness: 12, curvature: 50)
+                                .rectangle()
+                                .frame(width: 80, height: 80)
+                            
+                            SwiftUI.Text("50 (smooth)")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                
+                Divider()
+                    .padding(.horizontal)
+                
+                // MARK: - Origin Angle
+                VStack(spacing: 16) {
+                    SwiftUI.Text("Origin Angle")
+                        .font(.headline)
+                    
+                    SwiftUI.Text("Starting position on shape edge (0-360°)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    
+                    HStack(spacing: 16) {
+                        VStack(spacing: 8) {
+                            RoughView()
+                                .stroke(Color.mint)
+                                .fill(Color.mint)
+                                .fillStyle(.scribble)
+                                .scribble(origin: 0, tightness: 15)
+                                .rectangle()
+                                .frame(width: 80, height: 80)
+                            
+                            SwiftUI.Text("0° (right)")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        
+                        VStack(spacing: 8) {
+                            RoughView()
+                                .stroke(Color.mint)
+                                .fill(Color.mint)
+                                .fillStyle(.scribble)
+                                .scribble(origin: 45, tightness: 15)
+                                .rectangle()
+                                .frame(width: 80, height: 80)
+                            
+                            SwiftUI.Text("45°")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        
+                        VStack(spacing: 8) {
+                            RoughView()
+                                .stroke(Color.mint)
+                                .fill(Color.mint)
+                                .fillStyle(.scribble)
+                                .scribble(origin: 90, tightness: 15)
+                                .rectangle()
+                                .frame(width: 80, height: 80)
+                            
+                            SwiftUI.Text("90° (bottom)")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        
+                        VStack(spacing: 8) {
+                            RoughView()
+                                .stroke(Color.mint)
+                                .fill(Color.mint)
+                                .fillStyle(.scribble)
+                                .scribble(origin: 135, tightness: 15)
+                                .rectangle()
+                                .frame(width: 80, height: 80)
+                            
+                            SwiftUI.Text("135°")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                
+                Divider()
+                    .padding(.horizontal)
+                
+                // MARK: - Variable Tightness
+                VStack(spacing: 16) {
+                    SwiftUI.Text("Variable Tightness")
+                        .font(.headline)
+                    
+                    SwiftUI.Text("Tightness pattern creates variable density sections")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    
+                    HStack(spacing: 16) {
+                        VStack(spacing: 8) {
+                            RoughView()
+                                .stroke(Color.indigo)
+                                .fill(Color.indigo)
+                                .fillStyle(.scribble)
+                                .scribble(origin: 0, tightnessPattern: [5, 20, 5], curvature: 25)
+                                .rectangle()
+                                .frame(width: 100, height: 100)
+                            
+                            SwiftUI.Text("[5,20,5]")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            SwiftUI.Text("sparse-dense-sparse")
+                                .font(.caption2)
+                                .foregroundStyle(.tertiary)
+                        }
+                        
+                        VStack(spacing: 8) {
+                            RoughView()
+                                .stroke(Color.orange)
+                                .fill(Color.orange)
+                                .fillStyle(.scribble)
+                                .scribble(origin: 0, tightnessPattern: [3, 8, 15, 8, 3], curvature: 30)
+                                .rectangle()
+                                .frame(width: 100, height: 100)
+                            
+                            SwiftUI.Text("[3,8,15,8,3]")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            SwiftUI.Text("gradient density")
+                                .font(.caption2)
+                                .foregroundStyle(.tertiary)
+                        }
+                        
+                        VStack(spacing: 8) {
+                            RoughView()
+                                .stroke(Color.purple)
+                                .fill(Color.purple)
+                                .fillStyle(.scribble)
+                                .scribble(origin: 0, tightnessPattern: [15, 5, 15, 5], curvature: 20)
+                                .circle()
+                                .frame(width: 100, height: 100)
+                            
+                            SwiftUI.Text("[15,5,15,5]")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            SwiftUI.Text("alternating")
+                                .font(.caption2)
+                                .foregroundStyle(.tertiary)
+                        }
+                    }
+                }
+                
+                Divider()
+                    .padding(.horizontal)
+                
+                // MARK: - With Brush Strokes
+                VStack(spacing: 16) {
+                    SwiftUI.Text("With Brush Strokes")
+                        .font(.headline)
+                    
+                    SwiftUI.Text("Variable-width strokes using brush profiles")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    
+                    HStack(spacing: 20) {
+                        VStack(spacing: 8) {
+                            RoughView()
+                                .stroke(Color.brown)
+                                .fill(Color.brown)
+                                .fillStyle(.scribble)
+                                .fillWeight(3)
+                                .scribble(tightness: 10, curvature: 20, useBrushStroke: true)
+                                .thicknessProfile(.penPressure)
+                                .circle()
+                                .frame(width: 100, height: 100)
+                            
+                            SwiftUI.Text("Pressure")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        
+                        VStack(spacing: 8) {
+                            RoughView()
+                                .stroke(Color.teal)
+                                .fill(Color.teal)
+                                .fillStyle(.scribble)
+                                .fillWeight(3)
+                                .scribble(tightness: 12, curvature: 25, useBrushStroke: true)
+                                .thicknessProfile(.naturalPen)
+                                .rectangle()
+                                .frame(width: 100, height: 100)
+                            
+                            SwiftUI.Text("Natural Pen")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        
+                        VStack(spacing: 8) {
+                            RoughView()
+                                .stroke(Color.gray)
+                                .fill(Color.gray)
+                                .fillStyle(.scribble)
+                                .fillWeight(3)
+                                .scribble(tightness: 15, curvature: 30, useBrushStroke: true)
+                                .brushTip(.calligraphic)
+                                .draw(Ellipse(x: 50, y: 50, width: 90, height: 70))
+                                .frame(width: 100, height: 100)
+                            
+                            SwiftUI.Text("Calligraphic")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                
+                Spacer()
+                    .frame(height: 40)
+            }
+            .padding()
+        }
+    }
+}
+
 struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
         ContentView()
@@ -1069,4 +1575,8 @@ struct ContentView_Previews: PreviewProvider {
 
 #Preview("Brush Stroke View") {
     BrushStrokeView()
+}
+
+#Preview("Scribble Fill View") {
+    ScribbleFillView()
 }

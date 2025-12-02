@@ -196,6 +196,123 @@ public extension RoughView {
         v.options.fillStyle = value
         return v
     }
+    
+    // MARK: - Scribble Fill Modifiers
+    
+    /// Set the starting angle for scribble fill (0-360 degrees).
+    ///
+    /// The scribble pattern starts from this position on the shape's edge
+    /// and traverses to the opposite point (origin + 180 degrees).
+    ///
+    /// - Parameter degrees: Starting angle in degrees.
+    ///   - 0 = right-center edge
+    ///   - 90 = bottom-center
+    ///   - 180 = left-center
+    ///   - 270 = top-center
+    /// - Returns: The view with updated scribble origin.
+    func scribbleOrigin(_ degrees: Float) -> Self {
+        var v = self
+        v.options.scribbleOrigin = degrees.truncatingRemainder(dividingBy: 360)
+        return v
+    }
+    
+    /// Set the number of zig-zags in the scribble fill.
+    ///
+    /// Higher values create a denser fill pattern.
+    ///
+    /// - Parameter count: Number of zig-zags (1-100). Default is 10.
+    /// - Returns: The view with updated scribble tightness.
+    func scribbleTightness(_ count: Int) -> Self {
+        var v = self
+        v.options.scribbleTightness = max(1, min(100, count))
+        return v
+    }
+    
+    /// Set the curvature of vertices in the scribble zig-zag pattern.
+    ///
+    /// This controls how rounded the corners of the zig-zag are.
+    ///
+    /// - Parameter percent: Curvature amount (0-50).
+    ///   - 0 = sharp corners (default)
+    ///   - 50 = maximum curve (50% of segment length)
+    /// - Returns: The view with updated scribble curvature.
+    func scribbleCurvature(_ percent: Float) -> Self {
+        var v = self
+        v.options.scribbleCurvature = max(0, min(50, percent))
+        return v
+    }
+    
+    /// Enable or disable brush strokes for scribble fill lines.
+    ///
+    /// When enabled, the scribble lines will use the current brush profile
+    /// for variable-width stroke rendering.
+    ///
+    /// - Parameter enabled: Whether to use brush strokes. Default is false.
+    /// - Returns: The view with updated brush stroke setting.
+    func scribbleUseBrushStroke(_ enabled: Bool) -> Self {
+        var v = self
+        v.options.scribbleUseBrushStroke = enabled
+        return v
+    }
+    
+    /// Configure scribble fill with all parameters at once.
+    ///
+    /// - Parameters:
+    ///   - origin: Starting angle in degrees (0-360). Default is 0.
+    ///   - tightness: Number of zig-zags (1-100). Default is 10.
+    ///   - curvature: Vertex curvature (0-50). Default is 0.
+    ///   - useBrushStroke: Whether to use brush strokes. Default is false.
+    /// - Returns: The view with updated scribble settings.
+    func scribble(
+        origin: Float = 0,
+        tightness: Int = 10,
+        curvature: Float = 0,
+        useBrushStroke: Bool = false
+    ) -> Self {
+        var v = self
+        v.options.scribbleOrigin = origin.truncatingRemainder(dividingBy: 360)
+        v.options.scribbleTightness = max(1, min(100, tightness))
+        v.options.scribbleCurvature = max(0, min(50, curvature))
+        v.options.scribbleUseBrushStroke = useBrushStroke
+        return v
+    }
+    
+    /// Set a variable tightness pattern for scribble fill.
+    ///
+    /// The traversal axis is divided into sections corresponding to the array length.
+    /// Each section uses its corresponding tightness value from the array.
+    /// This creates variable density patterns within a single continuous scribble.
+    ///
+    /// - Parameter pattern: Array of tightness values (1-100) for each section.
+    ///   Example: `[10, 30, 10]` creates a sparse-dense-sparse pattern.
+    /// - Returns: The view with updated tightness pattern.
+    func scribbleTightnessPattern(_ pattern: [Int]) -> Self {
+        var v = self
+        v.options.scribbleTightnessPattern = pattern.isEmpty ? nil : pattern
+        return v
+    }
+    
+    /// Configure scribble fill with variable tightness pattern.
+    ///
+    /// - Parameters:
+    ///   - origin: Starting angle in degrees (0-360). Default is 0.
+    ///   - tightnessPattern: Array of tightness values for variable density sections.
+    ///   - curvature: Vertex curvature (0-50). Default is 0.
+    ///   - useBrushStroke: Whether to use brush strokes. Default is false.
+    /// - Returns: The view with updated scribble settings.
+    func scribble(
+        origin: Float = 0,
+        tightnessPattern: [Int],
+        curvature: Float = 0,
+        useBrushStroke: Bool = false
+    ) -> Self {
+        var v = self
+        v.options.scribbleOrigin = origin.truncatingRemainder(dividingBy: 360)
+        v.options.scribbleTightnessPattern = tightnessPattern.isEmpty ? nil : tightnessPattern
+        v.options.scribbleCurvature = max(0, min(50, curvature))
+        v.options.scribbleUseBrushStroke = useBrushStroke
+        return v
+    }
 
     func draw(_ drawable: Drawable) -> Self {
         var v = self
