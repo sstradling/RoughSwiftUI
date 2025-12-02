@@ -906,6 +906,128 @@ struct BrushStrokeView: View {
                     }
                 }
                 
+                Divider()
+                    .padding(.horizontal)
+                
+                // MARK: - Animated Brush Strokes
+                VStack(spacing: 16) {
+                    SwiftUI.Text("Animated Brush Strokes")
+                        .font(.headline)
+                    
+                    SwiftUI.Text("Shapes with brush profiles + animation")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    
+                    // Animated shapes with brush profiles
+                    HStack(spacing: 20) {
+                        // Animated calligraphic ellipse
+                        VStack(spacing: 8) {
+                            RoughView()
+                                .stroke(Color.purple)
+                                .fill(Color.purple.opacity(0.15))
+                                .fillStyle(.hachure)
+                                .strokeWidth(3)
+                                .strokeCap(.round)
+                                .strokeJoin(.round)
+                                .draw(Ellipse(x: 50, y: 50, width: 90, height: 70))
+                                .animated(steps: 6, speed: .slow, variance: .low)
+                                .frame(width: 100, height: 100)
+                            
+                            SwiftUI.Text("Ellipse")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        
+                        // Animated rectangle with round caps
+                        VStack(spacing: 8) {
+                            RoughView()
+                                .stroke(Color.orange)
+                                .fill(Color.orange.opacity(0.15))
+                                .fillStyle(.crossHatch)
+                                .strokeWidth(3)
+                                .strokeCap(.round)
+                                .strokeJoin(.round)
+                                .rectangle()
+                                .animated(steps: 8, speed: .medium, variance: .medium)
+                                .frame(width: 100, height: 100)
+                            
+                            SwiftUI.Text("Rectangle")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        
+                        // Animated circle with round styling
+                        VStack(spacing: 8) {
+                            RoughView()
+                                .stroke(Color.teal)
+                                .fill(Color.teal.opacity(0.15))
+                                .fillStyle(.dots)
+                                .strokeWidth(3)
+                                .strokeCap(.round)
+                                .strokeJoin(.round)
+                                .circle()
+                                .animated(steps: 5, speed: .fast, variance: .low)
+                                .frame(width: 100, height: 100)
+                            
+                            SwiftUI.Text("Circle")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    
+                    // Animated line with round caps
+                    VStack(spacing: 8) {
+                        RoughView()
+                            .stroke(Color.indigo)
+                            .strokeWidth(4)
+                            .strokeCap(.round)
+                            .draw(Line(from: Point(x: 20, y: 40), to: Point(x: 180, y: 40)))
+                            .animated(steps: 6, speed: .slow, variance: .medium)
+                            .frame(width: 200, height: 60)
+                        
+                        SwiftUI.Text("Animated line")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    
+                    // Multiple animated shapes in a row
+                    HStack(spacing: 16) {
+                        RoughView()
+                            .stroke(Color.pink)
+                            .fill(Color.pink.opacity(0.15))
+                            .fillStyle(.sunBurst)
+                            .strokeWidth(2)
+                            .strokeCap(.round)
+                            .circle()
+                            .animated(steps: 5, speed: .medium, variance: .low)
+                            .frame(width: 80, height: 80)
+                        
+                        RoughView()
+                            .stroke(Color.green)
+                            .fill(Color.green.opacity(0.15))
+                            .fillStyle(.starBurst)
+                            .strokeWidth(2)
+                            .strokeCap(.round)
+                            .rectangle()
+                            .animated(steps: 7, speed: .slow, variance: .medium)
+                            .frame(width: 80, height: 80)
+                        
+                        RoughView()
+                            .stroke(Color.blue)
+                            .fill(Color.blue.opacity(0.15))
+                            .fillStyle(.dashed)
+                            .strokeWidth(2)
+                            .strokeCap(.round)
+                            .draw(Ellipse(x: 40, y: 40, width: 70, height: 50))
+                            .animated(steps: 6, speed: .fast, variance: .low)
+                            .frame(width: 80, height: 80)
+                    }
+                    
+                    SwiftUI.Text("More animated shapes with round caps")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                
                 Spacer()
                     .frame(height: 40)
             }
