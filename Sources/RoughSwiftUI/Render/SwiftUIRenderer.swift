@@ -44,8 +44,20 @@ public struct SwiftUIRenderer {
     public func commands(for drawing: Drawing, in size: CGSize) -> [RoughRenderCommand] {
         // SVG paths need scaling to fit the canvas since they have their own coordinate system
         let needsScaling = drawing.shape == "path"
+        
+        // For SVG paths, compute a single transform from the original SVG bounds
+        // so that stroke and fill align properly
+        var svgTransform: CGAffineTransform? = nil
+        if needsScaling {
+            // Find the original SVG path from one of the sets
+            let svgPath = drawing.sets.compactMap { $0.path }.first
+            if let svg = svgPath {
+                svgTransform = computeSVGTransform(svg, in: size)
+            }
+        }
+        
         return drawing.sets.flatMap { set in
-            commands(for: set, options: drawing.options, in: size, scaleToFit: needsScaling)
+            commands(for: set, options: drawing.options, in: size, svgTransform: svgTransform)
         }
     }
 
@@ -86,15 +98,16 @@ private extension SwiftUIRenderer {
         for set: OperationSet,
         options: Options,
         in size: CGSize,
-        scaleToFit: Bool = false
+        svgTransform: CGAffineTransform? = nil
     ) -> [RoughRenderCommand] {
         switch set.type {
         case .path:
+            let basePath = SwiftPath.from(operationSet: set)
             let path: SwiftPath
-            if scaleToFit {
-                path = scaledPath(from: set, in: size)
+            if let transform = svgTransform {
+                path = basePath.applying(transform)
             } else {
-                path = SwiftPath.from(operationSet: set)
+                path = basePath
             }
             let strokeColor = Color(options.stroke)
             return [
@@ -105,11 +118,12 @@ private extension SwiftUIRenderer {
             ]
 
         case .fillSketch:
+            let basePath = SwiftPath.from(operationSet: set)
             let path: SwiftPath
-            if scaleToFit {
-                path = scaledPath(from: set, in: size)
+            if let transform = svgTransform {
+                path = basePath.applying(transform)
             } else {
-                path = SwiftPath.from(operationSet: set)
+                path = basePath
             }
             var fillWeight = options.fillWeight
             if fillWeight < 0 {
@@ -124,11 +138,12 @@ private extension SwiftUIRenderer {
             ]
 
         case .fillPath:
+            let basePath = SwiftPath.from(operationSet: set)
             let path: SwiftPath
-            if scaleToFit {
-                path = scaledPath(from: set, in: size)
+            if let transform = svgTransform {
+                path = basePath.applying(transform)
             } else {
-                path = SwiftPath.from(operationSet: set)
+                path = basePath
             }
             let color = Color(options.fill)
             return [
@@ -139,8 +154,14 @@ private extension SwiftUIRenderer {
             ]
 
         case .path2DFill:
-            guard let svgPath = set.path else { return [] }
-            let path = scaledSVGPath(svgPath, in: size)
+            guard let svgPathString = set.path else { return [] }
+            let basePath = SwiftPath(UIBezierPath(svgPath: svgPathString).cgPath)
+            let path: SwiftPath
+            if let transform = svgTransform {
+                path = basePath.applying(transform)
+            } else {
+                path = basePath
+            }
             let color = Color(options.fill)
             return [
                 RoughRenderCommand(
@@ -151,8 +172,14 @@ private extension SwiftUIRenderer {
 
         case .path2DPattern:
             // Approximate the pattern fill by stroking the SVG path with fill color.
-            guard let svgPath = set.path else { return [] }
-            let path = scaledSVGPath(svgPath, in: size)
+            guard let svgPathString = set.path else { return [] }
+            let basePath = SwiftPath(UIBezierPath(svgPath: svgPathString).cgPath)
+            let path: SwiftPath
+            if let transform = svgTransform {
+                path = basePath.applying(transform)
+            } else {
+                path = basePath
+            }
             var fillWeight = options.fillWeight
             if fillWeight < 0 {
                 fillWeight = options.strokeWidth / 2
@@ -167,14 +194,14 @@ private extension SwiftUIRenderer {
         }
     }
 
-    /// Build a SwiftUI `Path` from an operation set, scaled to fit the canvas.
-    func scaledPath(from set: OperationSet, in size: CGSize) -> SwiftPath {
-        let originalPath = SwiftPath.from(operationSet: set)
-        let bounds = originalPath.boundingRect
+    /// Compute a transform that scales and centers an SVG path to fit the canvas.
+    /// This transform can be applied to all related paths (stroke, fill) to ensure alignment.
+    func computeSVGTransform(_ svg: String, in size: CGSize) -> CGAffineTransform {
+        let bezier = UIBezierPath(svgPath: svg)
+        let bounds = bezier.cgPath.boundingBox
         
-        // If the path is empty or has no size, return as-is
         guard bounds.width > 0, bounds.height > 0 else {
-            return originalPath
+            return .identity
         }
         
         let frame = CGRect(
@@ -190,35 +217,19 @@ private extension SwiftUIRenderer {
         let sh = frame.height / bounds.height
         let scaleFactor = min(sw, sh)
         
-        // Scale around the center of the bounds
+        // Build transform: scale around center, then move to frame center
         let centerX = bounds.midX
         let centerY = bounds.midY
         
         var transform = CGAffineTransform.identity
-        // Move to origin
+        // Translate center of bounds to origin
         transform = transform.translatedBy(x: -centerX, y: -centerY)
         // Scale
         transform = transform.scaledBy(x: scaleFactor, y: scaleFactor)
-        // Move to center of frame
+        // Translate to center of frame
         transform = transform.translatedBy(x: frame.midX / scaleFactor, y: frame.midY / scaleFactor)
         
-        return originalPath.applying(transform)
-    }
-
-    /// Build a SwiftUI `Path` from an SVG path string, scaled into the canvas.
-    func scaledSVGPath(_ svg: String, in size: CGSize) -> SwiftPath {
-        let bezier = UIBezierPath(svgPath: svg)
-
-        let frame = CGRect(
-            origin: .zero,
-            size: CGSize(
-                width: max(size.width, 1),
-                height: max(size.height, 1)
-            )
-        )
-
-        _ = bezier.fit(into: frame).moveCenter(to: frame.center)
-        return SwiftPath(bezier.cgPath)
+        return transform
     }
 }
 
