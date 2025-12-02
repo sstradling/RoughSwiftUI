@@ -329,6 +329,22 @@ AnimatedRoughView(steps: 4, speed: .medium, variance: .low) {
 | `.medium` | 5% variation |
 | `.high` | 10% variation |
 
+### Animated SVG Paths
+
+Animation works with SVG paths too. **Important:** The `.animated()` modifier must be called **after** all RoughView configuration including `.draw()`:
+
+```swift
+RoughView()
+    .stroke(Color(.systemTeal))
+    .fill(Color.red)
+    .svgStrokeWidth(1)
+    .svgFillWeight(10)
+    .svgFillStrokeAlignment(.outside)
+    .draw(Path(d: svgPathString))  // Configure RoughView first
+    .animated(steps: 10, speed: .medium, variance: .veryLow)  // Then animate
+    .frame(width: 300, height: 300)
+```
+
 ## Creative shapes
 
 With all the primitive shapes, we can create more beautiful things. The only limit is your imagination.

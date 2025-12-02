@@ -70,11 +70,11 @@ struct SVGView: View {
             RoughView()
                 .stroke(Color(.systemTeal))
                 .fill(Color.red)
-                .animated(steps: 10, speed: .medium, variance: .veryLow)
-                .svgStrokeWidth(1)      // Thicker outline for SVG
+                .svgStrokeWidth(1)
                 .svgFillWeight(10)
                 .svgFillStrokeAlignment(.outside)
                 .draw(Path(d: apple))
+                .animated(steps: 10, speed: .medium, variance: .veryLow)
                 .frame(width: 300, height: 300)
         }
     }
@@ -128,10 +128,8 @@ struct StylesView: View {
             RoughView()
                 .fill(Color(.systemTeal))
                 .fillStyle(.zigzagLine)
-                .curveStepCount(20)
-                .strokeWidth(2)
-                .rectangle()
-                .animated(steps: 10, speed: .medium, variance: .veryLow)
+                .circle()
+                .animated(steps: 10, speed: .fast, variance: .veryLow)
                 .frame(width: 100, height: 100)
             
             RoughView()
