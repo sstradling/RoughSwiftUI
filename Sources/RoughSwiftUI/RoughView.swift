@@ -13,10 +13,10 @@ import UIKit
 /// and one or more drawables via `.draw(Rectangle(...))`, `.rectangle()`, etc.
 public struct RoughView: View {
     /// Rendering options forwarded to the Rough.js engine.
-    var options = Options()
+    public internal(set) var options = Options()
 
     /// The list of shapes to render.
-    var drawables: [Drawable] = []
+    public internal(set) var drawables: [Drawable] = []
 
     public init() {}
 
@@ -194,5 +194,36 @@ public extension RoughView {
         var v = self
         v.options.svgFillStrokeAlignment = value
         return v
+    }
+    
+    // MARK: - Animation
+    
+    /// Wraps this RoughView in an AnimatedRoughView with the given configuration.
+    ///
+    /// The animation applies subtle variations to strokes and fills on a loop,
+    /// creating a "breathing" or "sketchy" animation effect.
+    ///
+    /// - Parameter config: The animation configuration.
+    /// - Returns: An AnimatedRoughView wrapping this view.
+    func animated(config: AnimationConfig = .default) -> AnimatedRoughView {
+        AnimatedRoughView(config: config, roughView: self)
+    }
+    
+    /// Wraps this RoughView in an AnimatedRoughView with custom parameters.
+    ///
+    /// - Parameters:
+    ///   - steps: Number of variation steps before looping (default: 4).
+    ///   - speed: Speed of transitions (default: .medium).
+    ///   - variance: Amount of variation (default: .medium).
+    /// - Returns: An AnimatedRoughView wrapping this view.
+    func animated(
+        steps: Int = 4,
+        speed: AnimationSpeed = .medium,
+        variance: AnimationVariance = .medium
+    ) -> AnimatedRoughView {
+        AnimatedRoughView(
+            config: AnimationConfig(steps: steps, speed: speed, variance: variance),
+            roughView: self
+        )
     }
 }

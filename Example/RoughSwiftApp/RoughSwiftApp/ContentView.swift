@@ -30,6 +30,11 @@ struct ContentView: View {
                 .tabItem {
                     Label("Customize", systemImage: "paintbrush.pointed.fill")
                 }
+            
+            AnimatedView()
+                .tabItem {
+                    Label("Animated", systemImage: "sparkles")
+                }
         }
     }
 }
@@ -65,6 +70,7 @@ struct SVGView: View {
             RoughView()
                 .stroke(Color(.systemTeal))
                 .fill(Color.red)
+                .animated(steps: 10, speed: .medium, variance: .veryLow)
                 .svgStrokeWidth(1)      // Thicker outline for SVG
                 .svgFillWeight(10)
                 .svgFillStrokeAlignment(.outside)
@@ -122,7 +128,17 @@ struct StylesView: View {
             RoughView()
                 .fill(Color(.systemTeal))
                 .fillStyle(.zigzagLine)
+                .curveStepCount(20)
+                .strokeWidth(2)
+                .rectangle()
+                .animated(steps: 10, speed: .medium, variance: .veryLow)
+                .frame(width: 100, height: 100)
+            
+            RoughView()
+                .fill(Color.pink)
+                .fillStyle(.hachure)
                 .circle()
+                .animated(steps: 6, speed: .medium, variance: .medium)
                 .frame(width: 100, height: 100)
         }
     }
@@ -150,6 +166,110 @@ struct Chartview: View {
     }
 }
 
+struct AnimatedView: View {
+    var body: some View {
+        VStack(spacing: 24) {
+            Text("Animated Rough Shapes")
+                .font(.title2)
+                .fontWeight(.semibold)
+            
+            Text("Watch the strokes subtly shift and wobble")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            
+            // Speed comparison row
+            HStack(spacing: 20) {
+                VStack {
+                    RoughView()
+                        .fill(Color.red)
+                        .fillStyle(.hachure)
+                        .circle()
+                        .animated(steps: 4, speed: .slow, variance: .medium)
+                        .frame(width: 80, height: 80)
+                    
+                    Text("Slow")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                
+                VStack {
+                    RoughView()
+                        .fill(Color.green)
+                        .fillStyle(.crossHatch)
+                        .circle()
+                        .animated(steps: 6, speed: .medium, variance: .medium)
+                        .frame(width: 80, height: 80)
+                    
+                    Text("Medium")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                
+                VStack {
+                    RoughView()
+                        .fill(Color.blue)
+                        .fillStyle(.dots)
+                        .circle()
+                        .animated(steps: 8, speed: .fast, variance: .medium)
+                        .frame(width: 80, height: 80)
+                    
+                    Text("Fast")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            
+            Divider()
+                .padding(.vertical, 8)
+            
+            // Variance comparison row
+            HStack(spacing: 20) {
+                VStack {
+                    RoughView()
+                        .fill(Color.purple)
+                        .fillStyle(.zigzag)
+                        .rectangle()
+                        .animated(steps: 5, speed: .medium, variance: .low)
+                        .frame(width: 80, height: 80)
+                    
+                    Text("Low Variance")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                
+                VStack {
+                    RoughView()
+                        .fill(Color.orange)
+                        .fillStyle(.zigzag)
+                        .rectangle()
+                        .animated(steps: 5, speed: .medium, variance: .medium)
+                        .frame(width: 80, height: 80)
+                    
+                    Text("Medium")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                
+                VStack {
+                    RoughView()
+                        .fill(Color.cyan)
+                        .fillStyle(.zigzag)
+                        .rectangle()
+                        .animated(steps: 5, speed: .medium, variance: .high)
+                        .frame(width: 80, height: 80)
+                    
+                    Text("High Variance")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            
+            Spacer()
+        }
+        .padding()
+    }
+}
+
 struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
         ContentView()
@@ -170,4 +290,8 @@ struct ContentView_Previews: PreviewProvider {
 
 #Preview("Chart View") {
     Chartview()
+}
+
+#Preview("Animated View") {
+    AnimatedView()
 }

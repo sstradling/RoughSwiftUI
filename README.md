@@ -20,6 +20,7 @@ RoughSwift allows us to easily make shapes in hand drawn, sketchy, comic style i
 - [x] Test coverage
 - [x] Immutable and type safe data structure
 - [x] SVG path scaling and alignment
+- [x] Animated strokes and fills with configurable variations
 - [ ] SVG elliptical arc
 
 There are [Example](https://github.com/onmyway133/RoughSwift/tree/master/Example) project where you can explore further.
@@ -240,6 +241,93 @@ RoughView()
     .svgFillStrokeAlignment(.outside)
     .draw(Path(d: svgPath))
 ```
+
+## Animation
+
+RoughSwift supports animated strokes and fills that introduce subtle variations on a loop, creating a "breathing" or "sketchy" animation effect that brings your hand-drawn graphics to life.
+
+### Basic Animation
+
+Use the `.animated()` modifier to add animation to any `RoughView`:
+
+```swift
+RoughView()
+    .fill(.red)
+    .fillStyle(.hachure)
+    .circle()
+    .animated()
+    .frame(width: 100, height: 100)
+```
+
+### Animation Parameters
+
+The animation can be customized with three parameters:
+
+| Parameter | Options | Description |
+|-----------|---------|-------------|
+| `steps` | 2+ (default: 4) | Number of variation steps before looping back to initial state |
+| `speed` | `.slow`, `.medium`, `.fast` | Transition speed: 600ms, 300ms, or 100ms between steps |
+| `variance` | `.low`, `.medium`, `.high` | Amount of variation: 1%, 5%, or 10% |
+
+```swift
+// Custom animation settings
+RoughView()
+    .fill(.green)
+    .fillStyle(.crossHatch)
+    .circle()
+    .animated(steps: 6, speed: .slow, variance: .high)
+    .frame(width: 100, height: 100)
+```
+
+### Using AnimationConfig
+
+For reusable animation settings, use `AnimationConfig`:
+
+```swift
+let config = AnimationConfig(
+    steps: 8,
+    speed: .medium,
+    variance: .medium
+)
+
+RoughView()
+    .fill(.blue)
+    .fillStyle(.dots)
+    .rectangle()
+    .animated(config: config)
+    .frame(width: 100, height: 100)
+```
+
+### AnimatedRoughView
+
+You can also use `AnimatedRoughView` directly:
+
+```swift
+AnimatedRoughView(steps: 4, speed: .medium, variance: .low) {
+    RoughView()
+        .fill(.purple)
+        .fillStyle(.zigzag)
+        .circle()
+}
+.frame(width: 100, height: 100)
+```
+
+### Animation Speed Reference
+
+| Speed | Duration |
+|-------|----------|
+| `.slow` | 600ms between steps |
+| `.medium` | 300ms between steps |
+| `.fast` | 100ms between steps |
+
+### Animation Variance Reference
+
+| Variance | Amount |
+|----------|--------|
+| `.veryLow` | 0.5% variation |
+| `.low` | 1% variation |
+| `.medium` | 5% variation |
+| `.high` | 10% variation |
 
 ## Creative shapes
 
