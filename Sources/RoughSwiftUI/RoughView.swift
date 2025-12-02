@@ -162,6 +162,23 @@ public extension RoughView {
         v.options.curveStepCount = value
         return v
     }
+    
+    /// Set the smoothing level for strokes to achieve a more finished appearance.
+    ///
+    /// Smoothing converts jagged line segments into smooth Catmull-Rom curves,
+    /// giving the hand-drawn strokes a more polished look while retaining character.
+    ///
+    /// - Parameter value: Smoothing factor from 0.0 (no smoothing) to 1.0 (maximum).
+    ///   - 0.0 = No smoothing, original hand-drawn appearance (default)
+    ///   - 0.3 = Subtle smoothing, retains most rough character
+    ///   - 0.5 = Moderate smoothing, balanced appearance
+    ///   - 0.7 = Heavy smoothing, polished look
+    ///   - 1.0 = Maximum smoothing, very clean curves
+    func smoothing(_ value: Float) -> Self {
+        var v = self
+        v.options.smoothing = max(0, min(1, value))
+        return v
+    }
 
     func stroke(_ value: UIColor) -> Self {
         var v = self

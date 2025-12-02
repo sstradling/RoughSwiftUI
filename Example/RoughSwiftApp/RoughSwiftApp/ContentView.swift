@@ -46,22 +46,187 @@ struct ContentView: View {
 
 struct CustomizeView: View {
     @State var flag = false
+    @State var smoothing: Float = 0.0
+    @State var roughness: Float = 1.0
 
     var body: some View {
-        VStack {
-            Button(action: {
-                flag.toggle()
-            }) {
-                SwiftUI.Text("Click")
+        ScrollView {
+            VStack(spacing: 24) {
+                // Toggle example
+                VStack(spacing: 12) {
+                    SwiftUI.Text("Interactive Toggle")
+                        .font(.headline)
+                    
+                    Button(action: {
+                        flag.toggle()
+                    }) {
+                        SwiftUI.Text("Tap to Toggle")
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                            .background(Color.blue.opacity(0.1))
+                            .cornerRadius(8)
+                    }
+
+                    RoughView()
+                        .fill(flag ? UIColor.green : UIColor.yellow)
+                        .fillStyle(flag ? .hachure : .dots)
+                        .circle()
+                        .frame(width: flag ? 200 : 100, height: flag ? 200 : 100)
+                        .animation(.spring(), value: flag)
+                }
+                
+                Divider()
+                    .padding(.horizontal)
+                
+                // Smoothing example
+                VStack(spacing: 16) {
+                    SwiftUI.Text("Stroke Smoothing")
+                        .font(.headline)
+                    
+                    SwiftUI.Text("Smooths jagged strokes for a more polished look")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    
+                    // Smoothing slider
+                    VStack(spacing: 4) {
+                        HStack {
+                            SwiftUI.Text("Smoothing: \(String(format: "%.1f", smoothing))")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            Spacer()
+                        }
+                        Slider(value: Binding(
+                            get: { Double(smoothing) },
+                            set: { smoothing = Float($0) }
+                        ), in: 0...1, step: 0.1)
+                    }
+                    .padding(.horizontal)
+                    
+                    // Comparison: No smoothing vs Smoothed
+                    HStack(spacing: 20) {
+                        VStack(spacing: 8) {
+                            RoughView()
+                                .fill(Color.orange)
+                                .stroke(Color.black)
+                                .fillStyle(.hachure)
+                                .roughness(1.5)
+                                .rectangle()
+                                .frame(width: 120, height: 120)
+                            
+                            SwiftUI.Text("No Smoothing")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        
+                        VStack(spacing: 8) {
+                            RoughView()
+                                .fill(Color.orange)
+                                .stroke(Color.black)
+                                .fillStyle(.hachure)
+                                .roughness(1.5)
+                                .smoothing(smoothing)
+                                .rectangle()
+                                .frame(width: 120, height: 120)
+                            
+                            SwiftUI.Text("Smoothing: \(String(format: "%.1f", smoothing))")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    
+                    // Preset smoothing levels
+                    VStack(spacing: 8) {
+                        SwiftUI.Text("Preset Levels")
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                        
+                        HStack(spacing: 12) {
+                            ForEach([0.0, 0.3, 0.6, 1.0], id: \.self) { level in
+                                VStack(spacing: 4) {
+                                    RoughView()
+                                        .fill(Color.teal)
+                                        .stroke(Color.black)
+                                        .fillStyle(.crossHatch)
+                                        .roughness(1.2)
+                                        .smoothing(Float(level))
+                                        .circle()
+                                        .frame(width: 70, height: 70)
+                                    
+                                    SwiftUI.Text(level == 0 ? "Raw" : String(format: "%.1f", level))
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                Divider()
+                    .padding(.horizontal)
+                
+                // Roughness + Smoothing combo
+                VStack(spacing: 16) {
+                    SwiftUI.Text("Roughness + Smoothing")
+                        .font(.headline)
+                    
+                    SwiftUI.Text("Combine high roughness with smoothing for organic curves")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                    
+                    // Roughness slider
+                    VStack(spacing: 4) {
+                        HStack {
+                            SwiftUI.Text("Roughness: \(String(format: "%.1f", roughness))")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            Spacer()
+                        }
+                        Slider(value: Binding(
+                            get: { Double(roughness) },
+                            set: { roughness = Float($0) }
+                        ), in: 0...3, step: 0.5)
+                    }
+                    .padding(.horizontal)
+                    
+                    HStack(spacing: 16) {
+                        VStack(spacing: 4) {
+                            RoughView()
+                                .fill(Color.purple)
+                                .stroke(Color.black)
+                                .fillStyle(.hachure)
+                                .roughness(roughness)
+                                .smoothing(0)
+                                .circle()
+                                .frame(width: 100, height: 100)
+                            
+                            SwiftUI.Text("Unsmoothed")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                        
+                        VStack(spacing: 4) {
+                            RoughView()
+                                .fill(Color.purple)
+                                .stroke(Color.black)
+                                .fillStyle(.hachure)
+                                .roughness(roughness)
+                                .smoothing(0.7)
+                                .circle()
+                                .frame(width: 100, height: 100)
+                            
+                            SwiftUI.Text("Smoothed (0.7)")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                
+                Spacer()
+                    .frame(height: 40)
             }
-
-            RoughView()
-                .fill(flag ? UIColor.green : UIColor.yellow)
-                .fillStyle(flag ? .hachure : .dots)
-                .circle()
-                .frame(width: flag ? 200 : 100, height: flag ? 200 : 100)
+            .padding()
         }
-
     }
 }
 

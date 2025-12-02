@@ -155,9 +155,12 @@ private extension SwiftUIRenderer {
             clipPath: svgClipPath
         )
         
+        // Get smoothing value for path generation
+        let smoothing = options.smoothing
+        
         switch set.type {
         case .path:
-            let basePath = SwiftPath.from(operationSet: set)
+            let basePath = SwiftPath.from(operationSet: set, smoothing: smoothing)
             let path: SwiftPath
             if let transform = svgTransform {
                 path = basePath.applying(transform)
@@ -173,7 +176,7 @@ private extension SwiftUIRenderer {
             ]
 
         case .fillSketch:
-            let basePath = SwiftPath.from(operationSet: set)
+            let basePath = SwiftPath.from(operationSet: set, smoothing: smoothing)
             let path: SwiftPath
             if let transform = svgTransform {
                 path = basePath.applying(transform)
@@ -191,7 +194,7 @@ private extension SwiftUIRenderer {
             ]
 
         case .fillPath:
-            let basePath = SwiftPath.from(operationSet: set)
+            let basePath = SwiftPath.from(operationSet: set, smoothing: smoothing)
             let path: SwiftPath
             if let transform = svgTransform {
                 path = basePath.applying(transform)

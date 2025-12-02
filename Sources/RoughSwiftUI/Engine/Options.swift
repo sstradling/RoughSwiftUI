@@ -55,6 +55,18 @@ public struct Options {
     public var dashGap: Float = -1
     public var zigzagOffset: Float = -1
     
+    // MARK: - Smoothing options
+    
+    /// Controls smoothing of stroke paths for a more finished appearance.
+    /// Range: 0.0 (no smoothing, raw rough output) to 1.0 (maximum smoothing).
+    /// Default is 0.0 (disabled).
+    /// - 0.0 = No smoothing, original hand-drawn appearance
+    /// - 0.3 = Subtle smoothing, retains most character
+    /// - 0.5 = Moderate smoothing, balanced appearance
+    /// - 0.7 = Heavy smoothing, polished look
+    /// - 1.0 = Maximum smoothing, very clean curves
+    public var smoothing: Float = 0
+    
     // MARK: - SVG-specific options
     
     /// Override stroke width for SVG paths. If nil, uses `strokeWidth`.
