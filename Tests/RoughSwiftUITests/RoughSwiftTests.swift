@@ -1079,4 +1079,613 @@ final class RoughSwiftTests: XCTestCase {
         
         XCTAssertNotNil(roughText)
     }
+    
+    // MARK: - Brush Tip Tests
+    
+    func testBrushTipDefaults() {
+        let tip = BrushTip()
+        
+        XCTAssertEqual(tip.roundness, 1.0)
+        XCTAssertEqual(tip.angle, 0)
+        XCTAssertTrue(tip.directionSensitive)
+    }
+    
+    func testBrushTipCircularPreset() {
+        let tip = BrushTip.circular
+        
+        XCTAssertEqual(tip.roundness, 1.0)
+        XCTAssertEqual(tip.angle, 0)
+        XCTAssertFalse(tip.directionSensitive)
+    }
+    
+    func testBrushTipCalligraphicPreset() {
+        let tip = BrushTip.calligraphic
+        
+        XCTAssertEqual(tip.roundness, 0.3)
+        XCTAssertEqual(tip.angle, .pi / 4, accuracy: 0.001)
+        XCTAssertTrue(tip.directionSensitive)
+    }
+    
+    func testBrushTipFlatPreset() {
+        let tip = BrushTip.flat
+        
+        XCTAssertEqual(tip.roundness, 0.2)
+        XCTAssertEqual(tip.angle, 0)
+        XCTAssertTrue(tip.directionSensitive)
+    }
+    
+    func testBrushTipRoundnessClamping() {
+        // Test that roundness is clamped to valid range
+        let tooLow = BrushTip(roundness: -0.5)
+        let tooHigh = BrushTip(roundness: 2.0)
+        
+        XCTAssertEqual(tooLow.roundness, 0.01)
+        XCTAssertEqual(tooHigh.roundness, 1.0)
+    }
+    
+    func testBrushTipEffectiveWidthCircular() {
+        let tip = BrushTip.circular
+        let baseWidth: CGFloat = 10
+        
+        // Circular tip should return same width regardless of direction
+        let width0 = tip.effectiveWidth(baseWidth: baseWidth, strokeAngle: 0)
+        let width45 = tip.effectiveWidth(baseWidth: baseWidth, strokeAngle: .pi / 4)
+        let width90 = tip.effectiveWidth(baseWidth: baseWidth, strokeAngle: .pi / 2)
+        
+        XCTAssertEqual(width0, baseWidth)
+        XCTAssertEqual(width45, baseWidth)
+        XCTAssertEqual(width90, baseWidth)
+    }
+    
+    func testBrushTipEffectiveWidthDirectionSensitive() {
+        let tip = BrushTip(roundness: 0.5, angle: 0, directionSensitive: true)
+        let baseWidth: CGFloat = 10
+        
+        // With flat horizontal brush, horizontal stroke should be narrower than vertical
+        let widthHorizontal = tip.effectiveWidth(baseWidth: baseWidth, strokeAngle: 0)
+        let widthVertical = tip.effectiveWidth(baseWidth: baseWidth, strokeAngle: .pi / 2)
+        
+        // Vertical stroke cuts through the thin part, horizontal through the wide part
+        XCTAssertNotEqual(widthHorizontal, widthVertical)
+    }
+    
+    func testBrushTipEffectiveWidthDirectionInsensitive() {
+        let tip = BrushTip(roundness: 0.5, angle: 0, directionSensitive: false)
+        let baseWidth: CGFloat = 10
+        
+        // Direction-insensitive should return base width regardless of angle
+        let width0 = tip.effectiveWidth(baseWidth: baseWidth, strokeAngle: 0)
+        let width90 = tip.effectiveWidth(baseWidth: baseWidth, strokeAngle: .pi / 2)
+        
+        XCTAssertEqual(width0, baseWidth)
+        XCTAssertEqual(width90, baseWidth)
+    }
+    
+    func testBrushTipEquatable() {
+        let tip1 = BrushTip(roundness: 0.5, angle: 0.1, directionSensitive: true)
+        let tip2 = BrushTip(roundness: 0.5, angle: 0.1, directionSensitive: true)
+        let tip3 = BrushTip(roundness: 0.6, angle: 0.1, directionSensitive: true)
+        
+        XCTAssertEqual(tip1, tip2)
+        XCTAssertNotEqual(tip1, tip3)
+    }
+    
+    // MARK: - Thickness Profile Tests
+    
+    func testThicknessProfileUniform() {
+        let profile = ThicknessProfile.uniform
+        
+        XCTAssertEqual(profile.multiplier(at: 0), 1.0)
+        XCTAssertEqual(profile.multiplier(at: 0.5), 1.0)
+        XCTAssertEqual(profile.multiplier(at: 1.0), 1.0)
+    }
+    
+    func testThicknessProfileTaperIn() {
+        let profile = ThicknessProfile.taperIn(start: 0.5)
+        
+        // At start, should be thin
+        XCTAssertEqual(profile.multiplier(at: 0), 0, accuracy: 0.001)
+        
+        // At midpoint (end of taper), should be full
+        XCTAssertEqual(profile.multiplier(at: 0.5), 1.0, accuracy: 0.001)
+        
+        // After taper, should stay full
+        XCTAssertEqual(profile.multiplier(at: 0.75), 1.0, accuracy: 0.001)
+        XCTAssertEqual(profile.multiplier(at: 1.0), 1.0, accuracy: 0.001)
+    }
+    
+    func testThicknessProfileTaperOut() {
+        let profile = ThicknessProfile.taperOut(end: 0.5)
+        
+        // At start, should be full
+        XCTAssertEqual(profile.multiplier(at: 0), 1.0, accuracy: 0.001)
+        
+        // At midpoint (start of taper), should be full
+        XCTAssertEqual(profile.multiplier(at: 0.5), 1.0, accuracy: 0.001)
+        
+        // At end, should be thin
+        XCTAssertEqual(profile.multiplier(at: 1.0), 0, accuracy: 0.001)
+    }
+    
+    func testThicknessProfileTaperBoth() {
+        let profile = ThicknessProfile.taperBoth(start: 0.25, end: 0.25)
+        
+        // At start, should be thin
+        XCTAssertEqual(profile.multiplier(at: 0), 0, accuracy: 0.001)
+        
+        // In middle, should be full
+        XCTAssertEqual(profile.multiplier(at: 0.5), 1.0, accuracy: 0.001)
+        
+        // At end, should be thin
+        XCTAssertEqual(profile.multiplier(at: 1.0), 0, accuracy: 0.001)
+    }
+    
+    func testThicknessProfilePressure() {
+        let profile = ThicknessProfile.pressure([0.2, 0.6, 1.0, 0.8, 0.4])
+        
+        // At start, should match first value
+        XCTAssertEqual(profile.multiplier(at: 0), 0.2, accuracy: 0.001)
+        
+        // At end, should match last value
+        XCTAssertEqual(profile.multiplier(at: 1.0), 0.4, accuracy: 0.001)
+        
+        // Mid values should be interpolated
+        let midValue = profile.multiplier(at: 0.5)
+        XCTAssertGreaterThan(midValue, 0.5)
+    }
+    
+    func testThicknessProfileCustom() {
+        let profile = ThicknessProfile.custom([0.5, 1.0, 0.5])
+        
+        XCTAssertEqual(profile.multiplier(at: 0), 0.5, accuracy: 0.001)
+        XCTAssertEqual(profile.multiplier(at: 0.5), 1.0, accuracy: 0.001)
+        XCTAssertEqual(profile.multiplier(at: 1.0), 0.5, accuracy: 0.001)
+    }
+    
+    func testThicknessProfileNaturalPenPreset() {
+        let profile = ThicknessProfile.naturalPen
+        
+        // Should taper at both ends
+        XCTAssertLessThan(profile.multiplier(at: 0), 1.0)
+        XCTAssertEqual(profile.multiplier(at: 0.5), 1.0, accuracy: 0.001)
+        XCTAssertLessThan(profile.multiplier(at: 1.0), 1.0)
+    }
+    
+    func testThicknessProfileBrushStartPreset() {
+        let profile = ThicknessProfile.brushStart
+        
+        // Should taper at start only
+        XCTAssertLessThan(profile.multiplier(at: 0), 1.0)
+        XCTAssertEqual(profile.multiplier(at: 1.0), 1.0, accuracy: 0.001)
+    }
+    
+    func testThicknessProfileBrushEndPreset() {
+        let profile = ThicknessProfile.brushEnd
+        
+        // Should taper at end only
+        XCTAssertEqual(profile.multiplier(at: 0), 1.0, accuracy: 0.001)
+        XCTAssertLessThan(profile.multiplier(at: 1.0), 1.0)
+    }
+    
+    func testThicknessProfileEmptyArrayFallback() {
+        let profile = ThicknessProfile.custom([])
+        
+        // Empty array should fallback to 1.0
+        XCTAssertEqual(profile.multiplier(at: 0.5), 1.0)
+    }
+    
+    func testThicknessProfileSingleValueArray() {
+        let profile = ThicknessProfile.custom([0.7])
+        
+        // Single value should return that value everywhere
+        XCTAssertEqual(profile.multiplier(at: 0), 0.7)
+        XCTAssertEqual(profile.multiplier(at: 0.5), 0.7)
+        XCTAssertEqual(profile.multiplier(at: 1.0), 0.7)
+    }
+    
+    func testThicknessProfileClampsTParameter() {
+        let profile = ThicknessProfile.taperIn(start: 0.5)
+        
+        // Values outside 0-1 should be clamped
+        XCTAssertEqual(profile.multiplier(at: -0.5), profile.multiplier(at: 0))
+        XCTAssertEqual(profile.multiplier(at: 1.5), profile.multiplier(at: 1.0))
+    }
+    
+    func testThicknessProfileEquatable() {
+        let profile1 = ThicknessProfile.taperIn(start: 0.3)
+        let profile2 = ThicknessProfile.taperIn(start: 0.3)
+        let profile3 = ThicknessProfile.taperIn(start: 0.5)
+        
+        XCTAssertEqual(profile1, profile2)
+        XCTAssertNotEqual(profile1, profile3)
+    }
+    
+    // MARK: - Brush Cap Tests
+    
+    func testBrushCapCGLineCapConversion() {
+        XCTAssertEqual(BrushCap.butt.cgLineCap, .butt)
+        XCTAssertEqual(BrushCap.round.cgLineCap, .round)
+        XCTAssertEqual(BrushCap.square.cgLineCap, .square)
+    }
+    
+    // MARK: - Brush Join Tests
+    
+    func testBrushJoinCGLineJoinConversion() {
+        XCTAssertEqual(BrushJoin.miter.cgLineJoin, .miter)
+        XCTAssertEqual(BrushJoin.round.cgLineJoin, .round)
+        XCTAssertEqual(BrushJoin.bevel.cgLineJoin, .bevel)
+    }
+    
+    // MARK: - Brush Profile Tests
+    
+    func testBrushProfileDefaults() {
+        let profile = BrushProfile()
+        
+        XCTAssertEqual(profile.tip, .circular)
+        XCTAssertEqual(profile.thicknessProfile, .uniform)
+        XCTAssertEqual(profile.cap, .round)
+        XCTAssertEqual(profile.join, .round)
+    }
+    
+    func testBrushProfileDefaultPreset() {
+        let profile = BrushProfile.default
+        
+        XCTAssertFalse(profile.requiresCustomRendering)
+    }
+    
+    func testBrushProfileCalligraphicPreset() {
+        let profile = BrushProfile.calligraphic
+        
+        XCTAssertEqual(profile.tip, .calligraphic)
+        XCTAssertEqual(profile.thicknessProfile, .naturalPen)
+        XCTAssertTrue(profile.requiresCustomRendering)
+    }
+    
+    func testBrushProfileMarkerPreset() {
+        let profile = BrushProfile.marker
+        
+        XCTAssertEqual(profile.tip, .flat)
+        XCTAssertEqual(profile.thicknessProfile, .uniform)
+        XCTAssertEqual(profile.cap, .butt)
+        XCTAssertEqual(profile.join, .bevel)
+        XCTAssertTrue(profile.requiresCustomRendering)
+    }
+    
+    func testBrushProfilePenPreset() {
+        let profile = BrushProfile.pen
+        
+        XCTAssertEqual(profile.tip, .circular)
+        XCTAssertEqual(profile.thicknessProfile, .penPressure)
+        XCTAssertTrue(profile.requiresCustomRendering)
+    }
+    
+    func testBrushProfileRequiresCustomRenderingWithNonCircularTip() {
+        let profile = BrushProfile(tip: .flat, thicknessProfile: .uniform)
+        
+        XCTAssertTrue(profile.requiresCustomRendering)
+    }
+    
+    func testBrushProfileRequiresCustomRenderingWithVariableThickness() {
+        let profile = BrushProfile(tip: .circular, thicknessProfile: .naturalPen)
+        
+        XCTAssertTrue(profile.requiresCustomRendering)
+    }
+    
+    func testBrushProfileNoCustomRenderingForSimpleProfile() {
+        let profile = BrushProfile(
+            tip: BrushTip(roundness: 1.0, angle: 0, directionSensitive: false),
+            thicknessProfile: .uniform
+        )
+        
+        XCTAssertFalse(profile.requiresCustomRendering)
+    }
+    
+    func testBrushProfileEquatable() {
+        let profile1 = BrushProfile.calligraphic
+        let profile2 = BrushProfile.calligraphic
+        let profile3 = BrushProfile.marker
+        
+        XCTAssertEqual(profile1, profile2)
+        XCTAssertNotEqual(profile1, profile3)
+    }
+    
+    // MARK: - Options Brush Profile Tests
+    
+    func testOptionsBrushProfileDefaults() {
+        let options = Options()
+        
+        XCTAssertEqual(options.brushProfile, .default)
+        XCTAssertEqual(options.brushTip, .circular)
+        XCTAssertEqual(options.thicknessProfile, .uniform)
+        XCTAssertEqual(options.strokeCap, .round)
+        XCTAssertEqual(options.strokeJoin, .round)
+    }
+    
+    func testOptionsBrushProfileConvenienceAccessors() {
+        var options = Options()
+        
+        options.brushTip = .calligraphic
+        XCTAssertEqual(options.brushProfile.tip, .calligraphic)
+        
+        options.thicknessProfile = .naturalPen
+        XCTAssertEqual(options.brushProfile.thicknessProfile, .naturalPen)
+        
+        options.strokeCap = .butt
+        XCTAssertEqual(options.brushProfile.cap, .butt)
+        
+        options.strokeJoin = .bevel
+        XCTAssertEqual(options.brushProfile.join, .bevel)
+    }
+    
+    func testOptionsBrushProfileFullAssignment() {
+        var options = Options()
+        options.brushProfile = .marker
+        
+        XCTAssertEqual(options.brushTip, .flat)
+        XCTAssertEqual(options.thicknessProfile, .uniform)
+        XCTAssertEqual(options.strokeCap, .butt)
+        XCTAssertEqual(options.strokeJoin, .bevel)
+    }
+    
+    // MARK: - RoughView Brush Profile Modifiers Tests
+    
+    func testRoughViewBrushProfileModifier() {
+        let view = RoughView()
+            .brushProfile(.calligraphic)
+        
+        XCTAssertEqual(view.options.brushProfile, .calligraphic)
+    }
+    
+    func testRoughViewBrushTipModifier() {
+        let view = RoughView()
+            .brushTip(roundness: 0.4, angle: 0.5, directionSensitive: true)
+        
+        XCTAssertEqual(view.options.brushTip.roundness, 0.4)
+        XCTAssertEqual(view.options.brushTip.angle, 0.5)
+        XCTAssertTrue(view.options.brushTip.directionSensitive)
+    }
+    
+    func testRoughViewBrushTipPresetModifier() {
+        let view = RoughView()
+            .brushTip(.flat)
+        
+        XCTAssertEqual(view.options.brushTip, .flat)
+    }
+    
+    func testRoughViewThicknessProfileModifier() {
+        let view = RoughView()
+            .thicknessProfile(.taperBoth(start: 0.2, end: 0.3))
+        
+        XCTAssertEqual(view.options.thicknessProfile, .taperBoth(start: 0.2, end: 0.3))
+    }
+    
+    func testRoughViewStrokeCapModifier() {
+        let view = RoughView()
+            .strokeCap(.butt)
+        
+        XCTAssertEqual(view.options.strokeCap, .butt)
+    }
+    
+    func testRoughViewStrokeJoinModifier() {
+        let view = RoughView()
+            .strokeJoin(.miter)
+        
+        XCTAssertEqual(view.options.strokeJoin, .miter)
+    }
+    
+    func testRoughViewBrushModifiersChaining() {
+        let view = RoughView()
+            .strokeWidth(8)
+            .brushTip(.calligraphic)
+            .thicknessProfile(.naturalPen)
+            .strokeCap(.round)
+            .strokeJoin(.round)
+            .stroke(Color.black)
+            .draw(Line(from: Point(x: 0, y: 0), to: Point(x: 100, y: 100)))
+        
+        XCTAssertEqual(view.options.strokeWidth, 8)
+        XCTAssertEqual(view.options.brushTip, .calligraphic)
+        XCTAssertEqual(view.options.thicknessProfile, .naturalPen)
+        XCTAssertEqual(view.drawables.count, 1)
+    }
+    
+    // MARK: - Renderer Brush Profile Tests
+    
+    func testRendererUsesFillStyleForCustomBrushProfile() {
+        var options = Options()
+        options.brushProfile = .calligraphic
+        options.strokeWidth = 8
+        options.stroke = UIColor.black
+        
+        let move = Move(data: [0, 0])
+        let line = LineTo(data: [100, 100])
+        let operations: [RoughSwiftUI.Operation] = [move, line]
+        
+        let pathSet = OperationSet(
+            type: .path,
+            operations: operations,
+            path: nil,
+            size: nil
+        )
+        let drawing = Drawing(shape: "test", sets: [pathSet], options: options)
+        
+        let renderer = SwiftUIRenderer()
+        let commands = renderer.commands(for: drawing, options: options, in: CGSize(width: 200, height: 200))
+        
+        XCTAssertFalse(commands.isEmpty)
+        
+        // With custom brush profile, should use fill style instead of stroke
+        if case .fill(_) = commands[0].style {
+            // Expected - custom brush profiles convert to filled paths
+        } else {
+            XCTFail("Expected fill style for custom brush profile")
+        }
+    }
+    
+    func testRendererUsesStrokeStyleForDefaultBrushProfile() {
+        var options = Options()
+        options.brushProfile = .default
+        options.strokeWidth = 4
+        options.stroke = UIColor.blue
+        
+        let move = Move(data: [0, 0])
+        let line = LineTo(data: [50, 50])
+        let operations: [RoughSwiftUI.Operation] = [move, line]
+        
+        let pathSet = OperationSet(
+            type: .path,
+            operations: operations,
+            path: nil,
+            size: nil
+        )
+        let drawing = Drawing(shape: "test", sets: [pathSet], options: options)
+        
+        let renderer = SwiftUIRenderer()
+        let commands = renderer.commands(for: drawing, options: options, in: CGSize(width: 100, height: 100))
+        
+        XCTAssertFalse(commands.isEmpty)
+        
+        // With default brush profile, should use standard stroke style
+        if case .stroke(_, let lineWidth) = commands[0].style {
+            XCTAssertEqual(lineWidth, 4)
+        } else {
+            XCTFail("Expected stroke style for default brush profile")
+        }
+    }
+    
+    func testRendererCapAndJoinWithDefaultProfile() {
+        var options = Options()
+        options.strokeCap = .square
+        options.strokeJoin = .miter
+        options.strokeWidth = 5
+        options.stroke = UIColor.red
+        
+        let move = Move(data: [0, 0])
+        let line = LineTo(data: [50, 50])
+        let operations: [RoughSwiftUI.Operation] = [move, line]
+        
+        let pathSet = OperationSet(
+            type: .path,
+            operations: operations,
+            path: nil,
+            size: nil
+        )
+        let drawing = Drawing(shape: "test", sets: [pathSet], options: options)
+        
+        let renderer = SwiftUIRenderer()
+        let commands = renderer.commands(for: drawing, options: options, in: CGSize(width: 100, height: 100))
+        
+        XCTAssertFalse(commands.isEmpty)
+        
+        // Check cap and join are set correctly
+        XCTAssertEqual(commands[0].cap, .square)
+        XCTAssertEqual(commands[0].join, .miter)
+    }
+    
+    // MARK: - StrokeToFillConverter Tests
+    
+    func testStrokeToFillConverterProducesPath() {
+        let move = Move(data: [0, 0])
+        let line = LineTo(data: [100, 100])
+        let operations: [RoughSwiftUI.Operation] = [move, line]
+        
+        let profile = BrushProfile.calligraphic
+        let result = StrokeToFillConverter.convert(
+            operations: operations,
+            baseWidth: 10,
+            profile: profile
+        )
+        
+        // Should produce a non-empty path
+        XCTAssertFalse(result.isEmpty)
+    }
+    
+    func testStrokeToFillConverterWithCurve() {
+        let move = Move(data: [0, 0])
+        let curve = BezierCurveTo(data: [25, 0, 75, 100, 100, 100])
+        let operations: [RoughSwiftUI.Operation] = [move, curve]
+        
+        let profile = BrushProfile(
+            tip: .circular,
+            thicknessProfile: .taperBoth(start: 0.2, end: 0.2)
+        )
+        let result = StrokeToFillConverter.convert(
+            operations: operations,
+            baseWidth: 8,
+            profile: profile
+        )
+        
+        XCTAssertFalse(result.isEmpty)
+    }
+    
+    func testStrokeToFillConverterWithQuadCurve() {
+        let move = Move(data: [0, 0])
+        let quad = QuadraticCurveTo(data: [50, 0, 100, 100])
+        let operations: [RoughSwiftUI.Operation] = [move, quad]
+        
+        let profile = BrushProfile.pen
+        let result = StrokeToFillConverter.convert(
+            operations: operations,
+            baseWidth: 6,
+            profile: profile
+        )
+        
+        XCTAssertFalse(result.isEmpty)
+    }
+    
+    func testStrokeToFillConverterEmptyOperations() {
+        let operations: [RoughSwiftUI.Operation] = []
+        
+        let profile = BrushProfile.calligraphic
+        let result = StrokeToFillConverter.convert(
+            operations: operations,
+            baseWidth: 10,
+            profile: profile
+        )
+        
+        // Empty operations should produce empty path
+        XCTAssertTrue(result.isEmpty)
+    }
+    
+    func testStrokeToFillConverterFromSwiftUIPath() {
+        var path = SwiftUI.Path()
+        path.move(to: CGPoint(x: 0, y: 0))
+        path.addLine(to: CGPoint(x: 100, y: 0))
+        path.addLine(to: CGPoint(x: 100, y: 100))
+        
+        let profile = BrushProfile.marker
+        let result = StrokeToFillConverter.convert(
+            path: path,
+            baseWidth: 12,
+            profile: profile
+        )
+        
+        XCTAssertFalse(result.isEmpty)
+        
+        // Result should be wider than original path (it's an outline)
+        let originalBounds = path.boundingRect
+        let resultBounds = result.boundingRect
+        
+        XCTAssertGreaterThan(resultBounds.width, originalBounds.width - 1)
+        XCTAssertGreaterThan(resultBounds.height, originalBounds.height - 1)
+    }
+    
+    func testStrokeToFillConverterMultipleSubpaths() {
+        var path = SwiftUI.Path()
+        // First subpath
+        path.move(to: CGPoint(x: 0, y: 0))
+        path.addLine(to: CGPoint(x: 50, y: 50))
+        // Second subpath
+        path.move(to: CGPoint(x: 100, y: 0))
+        path.addLine(to: CGPoint(x: 150, y: 50))
+        
+        let profile = BrushProfile.pen
+        let result = StrokeToFillConverter.convert(
+            path: path,
+            baseWidth: 8,
+            profile: profile
+        )
+        
+        XCTAssertFalse(result.isEmpty)
+    }
 }
