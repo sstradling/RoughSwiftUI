@@ -439,17 +439,58 @@ public struct ScribbleFillGenerator {
         )
     }
     
-    /// Removes duplicate points within a tolerance.
+    /// Removes duplicate points within a tolerance using spatial bucketing.
+    /// Uses O(n) average case instead of O(n²) brute force comparison.
     private static func removeDuplicatePoints(_ points: [CGPoint], tolerance: CGFloat) -> [CGPoint] {
+        guard !points.isEmpty else { return [] }
+        guard tolerance > 0 else { return points }
+        
+        // Spatial hash buckets - bucket size equals tolerance for efficient neighbor lookup
+        var buckets: [Int: [CGPoint]] = [:]
         var result: [CGPoint] = []
+        result.reserveCapacity(points.count)
+        
+        // Spatial hash function combining x and y bucket indices
+        // Uses prime multipliers for better distribution
+        func bucketKey(bx: Int, by: Int) -> Int {
+            return bx &* 73856093 ^ by &* 19349663
+        }
+        
+        func getBucketIndices(_ point: CGPoint) -> (Int, Int) {
+            let bx = Int(floor(point.x / tolerance))
+            let by = Int(floor(point.y / tolerance))
+            return (bx, by)
+        }
+        
         for point in points {
-            let isDuplicate = result.contains { existing in
-                hypot(existing.x - point.x, existing.y - point.y) < tolerance
+            let (bx, by) = getBucketIndices(point)
+            
+            // Check this bucket and all 8 adjacent buckets for duplicates
+            // This handles points near bucket boundaries
+            var isDuplicate = false
+            
+            outerLoop: for dx in -1...1 {
+                for dy in -1...1 {
+                    let adjacentKey = bucketKey(bx: bx + dx, by: by + dy)
+                    if let bucketPoints = buckets[adjacentKey] {
+                        for existing in bucketPoints {
+                            let dist = hypot(existing.x - point.x, existing.y - point.y)
+                            if dist < tolerance {
+                                isDuplicate = true
+                                break outerLoop
+                            }
+                        }
+                    }
+                }
             }
+            
             if !isDuplicate {
                 result.append(point)
+                let key = bucketKey(bx: bx, by: by)
+                buckets[key, default: []].append(point)
             }
         }
+        
         return result
     }
     
