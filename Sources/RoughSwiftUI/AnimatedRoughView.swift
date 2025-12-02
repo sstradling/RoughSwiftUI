@@ -14,6 +14,76 @@ import Combine
 /// Shared renderer for animations to avoid per-frame allocations.
 private let animatedRenderer = SwiftUIRenderer()
 
+/// Pre-computed animation frame containing all render commands for a single step.
+///
+/// This struct holds the fully computed paths with variance already applied,
+/// avoiding any computation during the animation render loop.
+struct AnimationFrame {
+    /// The render commands with variance pre-applied.
+    let commands: [RoughRenderCommand]
+}
+
+/// Cache for pre-computed animation frames.
+///
+/// Stores all animation steps pre-computed, allowing O(1) frame lookup
+/// during animation without any path manipulation.
+struct AnimationFrameCache {
+    /// All pre-computed frames indexed by animation step.
+    let frames: [AnimationFrame]
+    
+    /// The size this cache was computed for.
+    let size: CGSize
+    
+    /// The number of steps in the animation.
+    var stepCount: Int { frames.count }
+    
+    /// Gets the frame for a given step (with bounds checking).
+    subscript(step: Int) -> AnimationFrame {
+        frames[step % max(1, frames.count)]
+    }
+    
+    /// Creates an empty cache.
+    static var empty: AnimationFrameCache {
+        AnimationFrameCache(frames: [], size: .zero)
+    }
+    
+    /// Pre-computes all animation frames using optimized path extraction.
+    ///
+    /// This method extracts path elements once per command and then builds
+    /// all animation frames from the extracted data, avoiding repeated
+    /// path iteration.
+    ///
+    /// - Parameters:
+    ///   - baseCommands: The base render commands to apply variance to.
+    ///   - generator: The variance generator.
+    ///   - size: The canvas size.
+    /// - Returns: A fully pre-computed animation frame cache.
+    static func precompute(
+        baseCommands: [RoughRenderCommand],
+        generator: PathVarianceGenerator,
+        size: CGSize
+    ) -> AnimationFrameCache {
+        let stepCount = generator.stepCount
+        
+        // Pre-compute all variations for each command using optimized extraction
+        // This extracts path elements once per command, then builds all frames
+        let allCommandVariations: [[RoughRenderCommand]] = baseCommands.map { command in
+            command.precomputeAllSteps(generator: generator)
+        }
+        
+        // Transpose: convert from [commands][steps] to [steps][commands]
+        var frames: [AnimationFrame] = []
+        frames.reserveCapacity(stepCount)
+        
+        for step in 0..<stepCount {
+            let commands = allCommandVariations.map { $0[step] }
+            frames.append(AnimationFrame(commands: commands))
+        }
+        
+        return AnimationFrameCache(frames: frames, size: size)
+    }
+}
+
 /// A SwiftUI view that renders animated hand-drawn Rough.js primitives.
 ///
 /// This view wraps a `RoughView` and applies subtle variations to strokes and fills
@@ -21,9 +91,15 @@ private let animatedRenderer = SwiftUIRenderer()
 ///
 /// ## Performance
 ///
-/// AnimatedRoughView caches the base drawing commands and only recomputes the
-/// variance on each animation step. This avoids repeated JavaScript bridge calls
-/// and drawing generation during animation.
+/// AnimatedRoughView **pre-computes all animation frames upfront** when the size changes.
+/// During animation, it simply swaps between pre-computed paths with O(1) lookup,
+/// making the per-frame rendering cost nearly zero (just drawing pre-computed paths).
+///
+/// The expensive work (JavaScript bridge calls, path generation, variance computation)
+/// only happens once when:
+/// - The view first appears
+/// - The canvas size changes
+/// - The animation configuration changes
 ///
 /// Usage:
 /// ```swift
@@ -42,17 +118,15 @@ public struct AnimatedRoughView: View {
     /// The base RoughView to animate.
     private let roughView: RoughView
     
-    /// Current animation step.
+    /// Current animation step (cycles 0 to steps-1).
     @State private var currentStep: Int = 0
     
-    /// Variance generator (created once and reused).
-    @State private var varianceGenerator: PathVarianceGenerator?
+    /// Pre-computed animation frames cache.
+    /// All frames are computed upfront when size changes.
+    @State private var frameCache: AnimationFrameCache = .empty
     
-    /// Cached base commands (regenerated only when size or drawables change).
-    @State private var cachedCommands: [RoughRenderCommand] = []
-    
-    /// Size for which commands were cached.
-    @State private var cachedSize: CGSize = .zero
+    /// Whether frames are currently being computed.
+    @State private var isComputingFrames: Bool = false
     
     /// Timer for animation loop.
     @State private var timer: Timer.TimerPublisher?
@@ -90,30 +164,20 @@ public struct AnimatedRoughView: View {
                 let renderSize = canvasSize == .zero ? size : canvasSize
                 guard renderSize.width > 0, renderSize.height > 0 else { return }
                 
-                // Get or create variance generator
-                let varGen = varianceGenerator ?? PathVarianceGenerator(config: config)
-                
-                // Check if we need to regenerate base commands
-                // This only happens when size changes, not on every animation step
-                let commands: [RoughRenderCommand]
-                if cachedSize == renderSize && !cachedCommands.isEmpty {
-                    // Use cached commands (fast path - no JS calls)
-                    commands = cachedCommands
-                } else {
-                    // Generate and cache commands (slow path - only on size change)
-                    commands = generateCommands(size: renderSize)
-                    
-                    // Update cache on main thread after render
+                // Check if we need to regenerate frames
+                if frameCache.size != renderSize && !isComputingFrames {
+                    // Trigger async computation of all frames
                     DispatchQueue.main.async {
-                        cachedSize = renderSize
-                        cachedCommands = commands
+                        computeAllFrames(for: renderSize)
                     }
                 }
                 
-                // Apply variance and render (fast - just path transforms)
-                for command in commands {
-                    let variedCommand = command.withVariance(generator: varGen, step: currentStep)
-                    renderCommand(variedCommand, in: &context)
+                // Render the current pre-computed frame (O(1) lookup, no computation)
+                guard !frameCache.frames.isEmpty else { return }
+                
+                let frame = frameCache[currentStep]
+                for command in frame.commands {
+                    renderCommand(command, in: &context)
                 }
             }
         }
@@ -128,12 +192,38 @@ public struct AnimatedRoughView: View {
         }
     }
     
-    /// Generates render commands for all drawables.
+    /// Pre-computes all animation frames for the given size.
     ///
-    /// This method is only called when the canvas size changes, not on every
-    /// animation step. The generated commands are cached and reused.
-    private func generateCommands(size: CGSize) -> [RoughRenderCommand] {
-        // Use cached generator (avoids JS bridge call if size unchanged)
+    /// This is the only expensive operation, and it only runs when size changes.
+    /// After this completes, animation is essentially free (just swapping frames).
+    private func computeAllFrames(for size: CGSize) {
+        guard !isComputingFrames else { return }
+        isComputingFrames = true
+        
+        // Generate base commands (involves JS bridge)
+        let baseCommands = generateBaseCommands(size: size)
+        
+        // Create variance generator (determines step count)
+        let varGen = PathVarianceGenerator(config: config)
+        
+        // Pre-compute all frames using optimized path extraction
+        // Each path is extracted once, then all frames are built from extracted data
+        let cache = AnimationFrameCache.precompute(
+            baseCommands: baseCommands,
+            generator: varGen,
+            size: size
+        )
+        
+        // Update state
+        frameCache = cache
+        isComputingFrames = false
+    }
+    
+    /// Generates base render commands for all drawables.
+    ///
+    /// This method involves JavaScript bridge calls and is only called
+    /// when the canvas size changes.
+    private func generateBaseCommands(size: CGSize) -> [RoughRenderCommand] {
         let generator = Engine.shared.generator(size: size)
         var allCommands: [RoughRenderCommand] = []
         
@@ -151,14 +241,12 @@ public struct AnimatedRoughView: View {
                     let layerWeight = weight * (1.0 + Float(index) * 0.01)
                     patternOptions.fillWeight = layerWeight
                     
-                    // Drawing is cached by drawable + patternOptions
                     if let drawing = generator.generate(drawable: drawable, options: patternOptions) {
                         let commands = animatedRenderer.commands(for: drawing, options: patternOptions, in: size)
                         allCommands.append(contentsOf: commands)
                     }
                 }
             } else {
-                // Drawing is cached by drawable + options
                 if let drawing = generator.generate(drawable: drawable, options: options) {
                     let commands = animatedRenderer.commands(for: drawing, options: options, in: size)
                     allCommands.append(contentsOf: commands)
@@ -170,6 +258,8 @@ public struct AnimatedRoughView: View {
     }
     
     /// Renders a single command into the graphics context.
+    ///
+    /// Note: The command's paths are pre-computed, so this is just drawing.
     private func renderCommand(_ command: RoughRenderCommand, in context: inout GraphicsContext) {
         // Handle clipping for inside/outside stroke alignment
         if let clipPath = command.clipPath {
@@ -189,10 +279,15 @@ public struct AnimatedRoughView: View {
     private func drawCommand(_ command: RoughRenderCommand, in context: inout GraphicsContext) {
         switch command.style {
         case let .stroke(color, lineWidth):
+            let strokeStyle = StrokeStyle(
+                lineWidth: lineWidth,
+                lineCap: command.cap.cgLineCap,
+                lineJoin: command.join.cgLineJoin
+            )
             context.stroke(
                 command.path,
                 with: .color(color),
-                lineWidth: lineWidth
+                style: strokeStyle
             )
         case let .fill(color):
             context.fill(
@@ -204,11 +299,6 @@ public struct AnimatedRoughView: View {
     
     /// Starts the animation timer.
     private func startAnimation() {
-        // Initialize variance generator if needed
-        if varianceGenerator == nil {
-            varianceGenerator = PathVarianceGenerator(config: config)
-        }
-        
         // Create timer
         let publisher = Timer.publish(every: config.speed.duration, on: .main, in: .common)
         timer = publisher
@@ -216,6 +306,7 @@ public struct AnimatedRoughView: View {
         timerCancellable = publisher
             .autoconnect()
             .sink { _ in
+                // Just increment step - all frames are pre-computed
                 withAnimation(.easeInOut(duration: config.speed.duration * 0.5)) {
                     currentStep = (currentStep + 1) % config.steps
                 }
@@ -232,6 +323,8 @@ public struct AnimatedRoughView: View {
     /// Restarts the animation with updated configuration.
     private func restartAnimation() {
         stopAnimation()
+        // Invalidate frame cache so new frames are computed with new speed
+        frameCache = .empty
         startAnimation()
     }
 }
@@ -324,4 +417,3 @@ struct AnimatedRoughView_Previews: PreviewProvider {
     }
 }
 #endif
-
