@@ -42,8 +42,10 @@ public struct SwiftUIRenderer {
     ///   - size: The available canvas size.
     /// - Returns: A collection of `RoughRenderCommand` describing how to render the drawing.
     public func commands(for drawing: Drawing, in size: CGSize) -> [RoughRenderCommand] {
-        drawing.sets.flatMap { set in
-            commands(for: set, options: drawing.options, in: size)
+        // SVG paths need scaling to fit the canvas since they have their own coordinate system
+        let needsScaling = drawing.shape == "path"
+        return drawing.sets.flatMap { set in
+            commands(for: set, options: drawing.options, in: size, scaleToFit: needsScaling)
         }
     }
 
@@ -83,11 +85,17 @@ private extension SwiftUIRenderer {
     func commands(
         for set: OperationSet,
         options: Options,
-        in size: CGSize
+        in size: CGSize,
+        scaleToFit: Bool = false
     ) -> [RoughRenderCommand] {
         switch set.type {
         case .path:
-            let path = SwiftPath.from(operationSet: set)
+            let path: SwiftPath
+            if scaleToFit {
+                path = scaledPath(from: set, in: size)
+            } else {
+                path = SwiftPath.from(operationSet: set)
+            }
             let strokeColor = Color(options.stroke)
             return [
                 RoughRenderCommand(
@@ -97,7 +105,12 @@ private extension SwiftUIRenderer {
             ]
 
         case .fillSketch:
-            let path = SwiftPath.from(operationSet: set)
+            let path: SwiftPath
+            if scaleToFit {
+                path = scaledPath(from: set, in: size)
+            } else {
+                path = SwiftPath.from(operationSet: set)
+            }
             var fillWeight = options.fillWeight
             if fillWeight < 0 {
                 fillWeight = options.strokeWidth / 2
@@ -111,7 +124,12 @@ private extension SwiftUIRenderer {
             ]
 
         case .fillPath:
-            let path = SwiftPath.from(operationSet: set)
+            let path: SwiftPath
+            if scaleToFit {
+                path = scaledPath(from: set, in: size)
+            } else {
+                path = SwiftPath.from(operationSet: set)
+            }
             let color = Color(options.fill)
             return [
                 RoughRenderCommand(
@@ -147,6 +165,44 @@ private extension SwiftUIRenderer {
                 )
             ]
         }
+    }
+
+    /// Build a SwiftUI `Path` from an operation set, scaled to fit the canvas.
+    func scaledPath(from set: OperationSet, in size: CGSize) -> SwiftPath {
+        let originalPath = SwiftPath.from(operationSet: set)
+        let bounds = originalPath.boundingRect
+        
+        // If the path is empty or has no size, return as-is
+        guard bounds.width > 0, bounds.height > 0 else {
+            return originalPath
+        }
+        
+        let frame = CGRect(
+            origin: .zero,
+            size: CGSize(
+                width: max(size.width, 1),
+                height: max(size.height, 1)
+            )
+        )
+        
+        // Calculate scale factor to fit while maintaining aspect ratio
+        let sw = frame.width / bounds.width
+        let sh = frame.height / bounds.height
+        let scaleFactor = min(sw, sh)
+        
+        // Scale around the center of the bounds
+        let centerX = bounds.midX
+        let centerY = bounds.midY
+        
+        var transform = CGAffineTransform.identity
+        // Move to origin
+        transform = transform.translatedBy(x: -centerX, y: -centerY)
+        // Scale
+        transform = transform.scaledBy(x: scaleFactor, y: scaleFactor)
+        // Move to center of frame
+        transform = transform.translatedBy(x: frame.midX / scaleFactor, y: frame.midY / scaleFactor)
+        
+        return originalPath.applying(transform)
     }
 
     /// Build a SwiftUI `Path` from an SVG path string, scaled into the canvas.
@@ -232,5 +288,3 @@ private extension UIBezierPath {
         return self
     }
 }
-
-
