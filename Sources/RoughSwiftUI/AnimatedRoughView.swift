@@ -81,14 +81,34 @@ public struct AnimatedRoughView: View {
                 let varGen = varianceGenerator ?? PathVarianceGenerator(config: config)
                 
                 for drawable in roughView.drawables {
-                    if let drawing = generator.generate(drawable: drawable, options: roughView.options) {
-                        // Get base commands
-                        let commands = renderer.commands(for: drawing, options: roughView.options, in: renderSize)
+                    let options = roughView.options
+                    
+                    // Check if we have a spacing pattern for gradient effects
+                    if let pattern = options.fillSpacingPattern, !pattern.isEmpty {
+                        let baseSpacing = options.fillSpacing
+                        let weight = options.effectiveFillWeight
                         
-                        // Apply variance to each command
-                        for command in commands {
-                            let variedCommand = command.withVariance(generator: varGen, step: currentStep)
-                            renderCommand(variedCommand, in: &context)
+                        for (index, multiplier) in pattern.enumerated() {
+                            var patternOptions = options
+                            patternOptions.fillSpacing = baseSpacing * multiplier
+                            let layerWeight = weight * (1.0 + Float(index) * 0.01)
+                            patternOptions.fillWeight = layerWeight
+                            
+                            if let drawing = generator.generate(drawable: drawable, options: patternOptions) {
+                                let commands = renderer.commands(for: drawing, options: patternOptions, in: renderSize)
+                                for command in commands {
+                                    let variedCommand = command.withVariance(generator: varGen, step: currentStep)
+                                    renderCommand(variedCommand, in: &context)
+                                }
+                            }
+                        }
+                    } else {
+                        if let drawing = generator.generate(drawable: drawable, options: options) {
+                            let commands = renderer.commands(for: drawing, options: options, in: renderSize)
+                            for command in commands {
+                                let variedCommand = command.withVariance(generator: varGen, step: currentStep)
+                                renderCommand(variedCommand, in: &context)
+                            }
                         }
                     }
                 }

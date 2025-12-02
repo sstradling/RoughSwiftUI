@@ -68,8 +68,9 @@ SwiftUI modifiers.
 - curveStepCount
 - fillStyle
 - fillWeight
-- hachureAngle
-- hachureGap
+- fillAngle
+- fillSpacing
+- fillSpacingPattern
 - dashOffset
 - dashGap
 - zigzagOffset
@@ -110,6 +111,76 @@ Available fill styles
 - starBurst
 - zigzag
 - zigzagLine
+
+### Fill Angle
+
+Use `fillAngle` to rotate the direction of fill lines (0-360 degrees):
+
+```swift
+RoughView()
+    .fill(.blue)
+    .fillStyle(.hachure)
+    .fillAngle(0)    // Horizontal lines
+    .circle()
+
+RoughView()
+    .fill(.green)
+    .fillStyle(.hachure)
+    .fillAngle(45)   // Diagonal lines (default)
+    .circle()
+
+RoughView()
+    .fill(.red)
+    .fillStyle(.hachure)
+    .fillAngle(90)   // Vertical lines
+    .circle()
+```
+
+### Fill Spacing
+
+Use `fillSpacing` to control the gap between fill lines as a factor of the fill line weight (0.5x to 100x):
+
+```swift
+RoughView()
+    .fill(.blue)
+    .fillStyle(.hachure)
+    .fillSpacing(1)   // Dense fill (1x line weight)
+    .circle()
+
+RoughView()
+    .fill(.green)
+    .fillStyle(.hachure)
+    .fillSpacing(4)   // Normal fill (4x, default)
+    .circle()
+
+RoughView()
+    .fill(.red)
+    .fillStyle(.hachure)
+    .fillSpacing(10)  // Sparse fill (10x line weight)
+    .circle()
+```
+
+### Fill Spacing Pattern (Gradients)
+
+Use `fillSpacingPattern` to create gradient-like effects with varying line density:
+
+```swift
+// Fibonacci-style gradient - lines get progressively sparser
+RoughView()
+    .fill(.purple)
+    .fillStyle(.hachure)
+    .fillSpacing(2)
+    .fillSpacingPattern([1, 1, 2, 3, 5, 8, 13])
+    .circle()
+
+// Dense-to-sparse-to-dense pattern
+RoughView()
+    .fill(.orange)
+    .fillStyle(.hachure)
+    .fillSpacing(1)
+    .fillSpacingPattern([1, 2, 4, 8, 4, 2, 1])
+    .rectangle()
+```
 
 Here's how to draw circles in different fill styles. The default fill style is hachure
 

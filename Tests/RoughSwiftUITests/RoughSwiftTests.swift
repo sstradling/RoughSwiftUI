@@ -24,8 +24,8 @@ final class RoughSwiftTests: XCTestCase {
         let generator = engine.generator(size: CGSize(width: 300, height: 300))
 
         var options = Options()
-        options.hachureAngle = 60
-        options.hachureGap = 8
+        options.fillAngle = 60
+        options.fillSpacing = 8
         options.fillStyle = .zigzag
         options.fill = UIColor.red
         let drawing = try XCTUnwrap(
@@ -39,8 +39,8 @@ final class RoughSwiftTests: XCTestCase {
         XCTAssertTrue(set.operations.count == 68 || set.operations.count == 76)
 
         XCTAssertEqual(drawing.options.fillStyle, .zigzag)
-        XCTAssertEqual(drawing.options.hachureAngle, 60)
-        XCTAssertEqual(drawing.options.hachureGap, 8)
+        XCTAssertEqual(drawing.options.fillAngle, 60)
+        XCTAssertEqual(drawing.options.fillSpacing, 8)
     }
 
     func testSwiftUIRendererProducesCommands() throws {
@@ -189,8 +189,8 @@ final class RoughSwiftTests: XCTestCase {
         base.curveStepCount = 12
         base.fillStyle = .zigzag
         base.fillWeight = 4
-        base.hachureAngle = 30
-        base.hachureGap = 6
+        base.fillAngle = 30
+        base.fillSpacing = 6
         base.dashOffset = 2
         base.dashGap = 3
         base.zigzagOffset = 7
@@ -208,8 +208,8 @@ final class RoughSwiftTests: XCTestCase {
         XCTAssertEqual(decoded.curveStepCount, base.curveStepCount)
         XCTAssertEqual(decoded.fillStyle, base.fillStyle)
         XCTAssertEqual(decoded.fillWeight, base.fillWeight)
-        XCTAssertEqual(decoded.hachureAngle, base.hachureAngle)
-        XCTAssertEqual(decoded.hachureGap, base.hachureGap)
+        XCTAssertEqual(decoded.fillAngle, base.fillAngle)
+        XCTAssertEqual(decoded.fillSpacing, base.fillSpacing)
         XCTAssertEqual(decoded.dashOffset, base.dashOffset)
         XCTAssertEqual(decoded.dashGap, base.dashGap)
         XCTAssertEqual(decoded.zigzagOffset, base.zigzagOffset)

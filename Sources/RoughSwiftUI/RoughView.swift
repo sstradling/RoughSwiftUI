@@ -32,14 +32,39 @@ public struct RoughView: View {
                 let renderer = SwiftUIRenderer()
 
                 for drawable in drawables {
-                    if let drawing = generator.generate(drawable: drawable, options: options) {
-                        // Pass original options to preserve SVG-specific settings
-                        renderer.render(
-                            drawing: drawing,
-                            options: options,
-                            in: &context,
-                            size: renderSize
-                        )
+                    // Check if we have a spacing pattern for gradient effects
+                    if let pattern = options.fillSpacingPattern, !pattern.isEmpty {
+                        // Render multiple passes with different spacing for gradient effect
+                        let baseSpacing = options.fillSpacing
+                        let weight = options.effectiveFillWeight
+                        
+                        for (index, multiplier) in pattern.enumerated() {
+                            var patternOptions = options
+                            patternOptions.fillSpacing = baseSpacing * multiplier
+                            // Offset each layer slightly to create the gradient effect
+                            // by adjusting the fill weight slightly for each pass
+                            let layerWeight = weight * (1.0 + Float(index) * 0.01)
+                            patternOptions.fillWeight = layerWeight
+                            
+                            if let drawing = generator.generate(drawable: drawable, options: patternOptions) {
+                                renderer.render(
+                                    drawing: drawing,
+                                    options: patternOptions,
+                                    in: &context,
+                                    size: renderSize
+                                )
+                            }
+                        }
+                    } else {
+                        // Standard single-pass rendering
+                        if let drawing = generator.generate(drawable: drawable, options: options) {
+                            renderer.render(
+                                drawing: drawing,
+                                options: options,
+                                in: &context,
+                                size: renderSize
+                                )
+                        }
                     }
                 }
             }
@@ -96,15 +121,33 @@ public extension RoughView {
         return v
     }
 
-    func hachureGap(_ value: Float) -> Self {
+    /// Set the spacing between fill lines as a factor of fill line weight.
+    /// - Parameter value: Spacing factor (0.5 to 100). Default is 4.0.
+    ///   - Lower values = denser fill
+    ///   - Higher values = sparser fill
+    func fillSpacing(_ value: Float) -> Self {
         var v = self
-        v.options.hachureGap = value
+        v.options.fillSpacing = max(0.5, min(100, value))
+        return v
+    }
+    
+    /// Set a pattern of spacing factors for gradient effects.
+    /// Each value is a multiplier applied to the base fillSpacing.
+    /// - Parameter pattern: Array of spacing multipliers.
+    ///   Example: `[1, 1, 2, 3, 5, 8]` creates increasingly sparse lines.
+    func fillSpacingPattern(_ pattern: [Float]) -> Self {
+        var v = self
+        v.options.fillSpacingPattern = pattern
         return v
     }
 
-    func hachureAngle(_ value: Float) -> Self {
+    /// Set the angle of fill lines in degrees (0-360).
+    /// - 0° = horizontal lines
+    /// - 45° = diagonal lines (default)
+    /// - 90° = vertical lines
+    func fillAngle(_ value: Float) -> Self {
         var v = self
-        v.options.hachureAngle = value
+        v.options.fillAngle = value
         return v
     }
 

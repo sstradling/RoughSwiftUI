@@ -34,8 +34,23 @@ public struct Options {
     public var curveStepCount: Float = 9
     public var fillStyle: FillStyle = .hachure
     public var fillWeight: Float = -1
-    public var hachureAngle: Float = -41
-    public var hachureGap: Float = -1
+    
+    /// The angle of fill lines in degrees (0-360). Default is 45°.
+    /// - 0° = horizontal lines
+    /// - 45° = diagonal lines (default)
+    /// - 90° = vertical lines
+    public var fillAngle: Float = 45
+    
+    /// Spacing between fill lines as a factor of fill line weight.
+    /// Range: 0.5 to 100. Default is 4.0 (4x the fill weight).
+    /// Lower values = denser fill, higher values = sparser fill.
+    public var fillSpacing: Float = 4.0
+    
+    /// Optional pattern of spacing factors for creating gradient effects.
+    /// Each value is a multiplier applied to fillSpacing.
+    /// Example: [1, 1, 2, 3, 5, 8] creates increasingly sparse lines.
+    /// When nil, uniform spacing (fillSpacing) is used.
+    public var fillSpacingPattern: [Float]? = nil
     public var dashOffset: Float = -1
     public var dashGap: Float = -1
     public var zigzagOffset: Float = -1
@@ -78,6 +93,18 @@ public struct Options {
 
     public init() {}
 
+    /// Computes the effective fill weight, handling the -1 auto value.
+    var effectiveFillWeight: Float {
+        fillWeight < 0 ? max(strokeWidth / 2, 1) : fillWeight
+    }
+    
+    /// Computes the hachure gap from fillSpacing and fillWeight.
+    var computedHachureGap: Float {
+        let weight = effectiveFillWeight
+        let clampedSpacing = max(0.5, min(100, fillSpacing))
+        return weight * clampedSpacing
+    }
+    
     func toRoughDictionary() -> JSONDictionary {
         return [
             "maxRandomnessOffset": maxRandomnessOffset,
@@ -90,12 +117,20 @@ public struct Options {
             "curveStepCount": curveStepCount,
             "fillStyle": fillStyle.rawValue,
             "fillWeight": fillWeight,
-            "hachureAngle": hachureAngle,
-            "hachureGap": hachureGap,
+            "hachureAngle": fillAngle,
+            "hachureGap": computedHachureGap,
             "dashOffset": dashOffset,
             "dashGap": dashGap,
             "zigzagOffset": zigzagOffset
         ]
+    }
+    
+    /// Creates a copy of options with a specific hachure gap override.
+    /// Used internally for pattern-based spacing.
+    func withHachureGap(_ gap: Float) -> Options {
+        var copy = self
+        copy.fillSpacing = gap / copy.effectiveFillWeight
+        return copy
     }
 }
 
@@ -108,11 +143,16 @@ public extension Options {
         curveTightness <-? (dictionary["curveTightness"] as? NSNumber)?.floatValue
         curveStepCount <-? (dictionary["curveStepCount"] as? NSNumber)?.floatValue
         fillWeight <-? (dictionary["fillWeight"] as? NSNumber)?.floatValue
-        hachureAngle <-? (dictionary["hachureAngle"] as? NSNumber)?.floatValue
-        hachureGap <-? (dictionary["hachureGap"] as? NSNumber)?.floatValue
+        fillAngle <-? (dictionary["hachureAngle"] as? NSNumber)?.floatValue
         dashOffset <-? (dictionary["dashOffset"] as? NSNumber)?.floatValue
         dashGap <-? (dictionary["dashGap"] as? NSNumber)?.floatValue
         zigzagOffset <-? (dictionary["zigzagOffset"] as? NSNumber)?.floatValue
+        
+        // Convert hachureGap back to fillSpacing factor
+        if let gap = (dictionary["hachureGap"] as? NSNumber)?.floatValue, gap > 0 {
+            let weight = effectiveFillWeight
+            fillSpacing = gap / weight
+        }
 
         if let fillStyleRawValue = dictionary["fillStyle"] as? String,
            let fillStyle = FillStyle(rawValue: fillStyleRawValue) {

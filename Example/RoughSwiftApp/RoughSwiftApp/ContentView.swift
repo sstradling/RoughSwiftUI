@@ -146,7 +146,7 @@ struct StylesView: View {
                 .fill(Color(.systemTeal))
                 .fillStyle(.zigzagLine)
                 .circle()
-                .animated(steps: 10, speed: .fast, variance: .veryLow)
+                .animated(steps: 10, speed: .slow, variance: .veryLow)
                 .frame(width: 100, height: 100)
             
             RoughView()
@@ -154,6 +154,23 @@ struct StylesView: View {
                 .fillStyle(.hachure)
                 .circle()
                 .animated(steps: 6, speed: .medium, variance: .medium)
+                .frame(width: 100, height: 100)
+            
+            RoughView()
+                .fill(Color.indigo)
+                .fillStyle(.hachure)
+                .fillAngle(235)
+                .circle()
+                .frame(width: 100, height: 100)
+            
+            // Gradient pattern example
+            RoughView()
+                .fill(Color.mint)
+                .fillStyle(.hachure)
+//                .fillSpacing(10)
+                .fillAngle(19)
+                .fillSpacingPattern([10, 11, 30, 3, 30, 2, 90])
+                .circle()
                 .frame(width: 100, height: 100)
         }
     }
