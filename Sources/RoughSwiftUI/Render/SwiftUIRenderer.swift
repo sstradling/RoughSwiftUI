@@ -354,17 +354,33 @@ private extension SwiftUIRenderer {
         
         let color = Color(options.fill).opacity(Double(options.fillOpacity))
         
+        // Check if we need to split into individual segments for opacity layering
+        // When opacity < 1, rendering as a single path won't accumulate at intersections
+        let needsSegmentSplitting = options.fillOpacity < 1.0
+        
         // Convert each scribble set to render commands
         return scribbleSets.flatMap { set -> [RoughRenderCommand] in
-            let basePath = SwiftPath.from(operationSet: set)
-            
             // Check if brush strokes are enabled and profile needs custom rendering
             let useBrushStroke = options.scribbleUseBrushStroke && 
                 (options.brushProfile.requiresCustomRendering || 
                  options.thicknessProfile != .uniform ||
                  options.brushTip.roundness < 0.99)
             
-            if useBrushStroke {
+            if needsSegmentSplitting && !useBrushStroke {
+                // Split operations into individual line segments for proper opacity layering
+                return splitOperationsIntoSegments(set.operations).map { segmentOps in
+                    let segmentSet = OperationSet(type: .path, operations: segmentOps, path: nil, size: nil)
+                    let segmentPath = SwiftPath.from(operationSet: segmentSet)
+                    return RoughRenderCommand(
+                        path: segmentPath,
+                        style: .stroke(color, lineWidth: CGFloat(fillWeight)),
+                        clipPath: clipPath,
+                        inverseClip: false,
+                        cap: options.strokeCap,
+                        join: options.strokeJoin
+                    )
+                }
+            } else if useBrushStroke {
                 // Convert to filled path with variable width
                 let filledPath = StrokeToFillConverter.convert(
                     operations: set.operations,
@@ -380,7 +396,8 @@ private extension SwiftUIRenderer {
                     )
                 ]
             } else {
-                // Standard stroke rendering
+                // Standard stroke rendering as single path
+                let basePath = SwiftPath.from(operationSet: set)
                 return [
                     RoughRenderCommand(
                         path: basePath,
@@ -393,6 +410,62 @@ private extension SwiftUIRenderer {
                 ]
             }
         }
+    }
+    
+    /// Splits operations into individual line segments for proper opacity layering.
+    /// Each Move followed by drawing operations becomes its own segment.
+    private func splitOperationsIntoSegments(_ operations: [Operation]) -> [[Operation]] {
+        var segments: [[Operation]] = []
+        var currentSegment: [Operation] = []
+        var lastPoint: CGPoint?
+        
+        for op in operations {
+            if let moveOp = op as? Move {
+                // Start of a new potential segment
+                if !currentSegment.isEmpty {
+                    segments.append(currentSegment)
+                    currentSegment = []
+                }
+                currentSegment.append(op)
+                lastPoint = CGPoint(x: CGFloat(moveOp.point.x), y: CGFloat(moveOp.point.y))
+            } else if let lineOp = op as? LineTo {
+                if currentSegment.isEmpty, let last = lastPoint {
+                    // Add a Move to start this segment from the last known position
+                    currentSegment.append(Move(data: [Float(last.x), Float(last.y)]))
+                }
+                currentSegment.append(op)
+                lastPoint = CGPoint(x: CGFloat(lineOp.point.x), y: CGFloat(lineOp.point.y))
+                
+                // Save this segment and prepare for next
+                segments.append(currentSegment)
+                currentSegment = []
+            } else if let quadOp = op as? QuadraticCurveTo {
+                if currentSegment.isEmpty, let last = lastPoint {
+                    currentSegment.append(Move(data: [Float(last.x), Float(last.y)]))
+                }
+                currentSegment.append(op)
+                lastPoint = CGPoint(x: CGFloat(quadOp.point.x), y: CGFloat(quadOp.point.y))
+                
+                segments.append(currentSegment)
+                currentSegment = []
+            } else if let bezierOp = op as? BezierCurveTo {
+                if currentSegment.isEmpty, let last = lastPoint {
+                    currentSegment.append(Move(data: [Float(last.x), Float(last.y)]))
+                }
+                currentSegment.append(op)
+                lastPoint = CGPoint(x: CGFloat(bezierOp.point.x), y: CGFloat(bezierOp.point.y))
+                
+                segments.append(currentSegment)
+                currentSegment = []
+            }
+        }
+        
+        // Don't forget any remaining segment
+        if !currentSegment.isEmpty {
+            segments.append(currentSegment)
+        }
+        
+        return segments.filter { $0.count >= 2 } // Must have at least Move + drawing op
     }
     
     /// Extracts the shape path from a drawing for scribble fill generation.
