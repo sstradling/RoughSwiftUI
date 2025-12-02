@@ -78,6 +78,36 @@ public struct Options {
     public var effectiveSVGFillWeight: Float {
         svgFillWeight ?? fillWeight
     }
+    
+    // MARK: - Brush Profile Options
+    
+    /// The brush profile for stroke rendering.
+    /// Controls brush tip shape, thickness variation, and stroke caps/joins.
+    public var brushProfile: BrushProfile = .default
+    
+    /// Convenience accessor for the brush tip configuration.
+    public var brushTip: BrushTip {
+        get { brushProfile.tip }
+        set { brushProfile.tip = newValue }
+    }
+    
+    /// Convenience accessor for the thickness profile.
+    public var thicknessProfile: ThicknessProfile {
+        get { brushProfile.thicknessProfile }
+        set { brushProfile.thicknessProfile = newValue }
+    }
+    
+    /// Convenience accessor for the stroke cap style.
+    public var strokeCap: BrushCap {
+        get { brushProfile.cap }
+        set { brushProfile.cap = newValue }
+    }
+    
+    /// Convenience accessor for the stroke join style.
+    public var strokeJoin: BrushJoin {
+        get { brushProfile.join }
+        set { brushProfile.join = newValue }
+    }
 
     /// Public-facing stroke color as `UIColor` for backward compatibility.
     public var stroke: UIColor {

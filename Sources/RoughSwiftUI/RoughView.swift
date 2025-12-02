@@ -276,6 +276,89 @@ public extension RoughView {
         return v
     }
     
+    // MARK: - Brush Profile Modifiers
+    
+    /// Set the complete brush profile for stroke rendering.
+    ///
+    /// A brush profile controls the brush tip shape, thickness variation along
+    /// the stroke, and stroke cap/join styles.
+    ///
+    /// - Parameter profile: The brush profile to use.
+    /// - Returns: The view with updated brush profile.
+    func brushProfile(_ profile: BrushProfile) -> Self {
+        var v = self
+        v.options.brushProfile = profile
+        return v
+    }
+    
+    /// Configure the brush tip shape for calligraphic effects.
+    ///
+    /// The brush tip determines how stroke width varies based on stroke direction.
+    /// A circular tip produces uniform width, while a flat ellipse creates
+    /// calligraphic-style strokes with direction-dependent width.
+    ///
+    /// - Parameters:
+    ///   - roundness: Aspect ratio of the ellipse (0.01-1.0). 1.0 = circle.
+    ///   - angle: Rotation angle in radians. 0 = horizontal.
+    ///   - directionSensitive: Whether width varies with stroke direction.
+    /// - Returns: The view with updated brush tip.
+    func brushTip(
+        roundness: CGFloat = 1.0,
+        angle: CGFloat = 0,
+        directionSensitive: Bool = true
+    ) -> Self {
+        var v = self
+        v.options.brushTip = BrushTip(
+            roundness: roundness,
+            angle: angle,
+            directionSensitive: directionSensitive
+        )
+        return v
+    }
+    
+    /// Set a preset brush tip style.
+    ///
+    /// - Parameter tip: The brush tip preset to use.
+    /// - Returns: The view with updated brush tip.
+    func brushTip(_ tip: BrushTip) -> Self {
+        var v = self
+        v.options.brushTip = tip
+        return v
+    }
+    
+    /// Set the thickness profile for stroke width variation along the path.
+    ///
+    /// Thickness profiles create effects like tapered ends, pressure simulation,
+    /// or custom artistic variations.
+    ///
+    /// - Parameter profile: The thickness profile to apply.
+    /// - Returns: The view with updated thickness profile.
+    func thicknessProfile(_ profile: ThicknessProfile) -> Self {
+        var v = self
+        v.options.thicknessProfile = profile
+        return v
+    }
+    
+    /// Set the stroke cap style for line endings.
+    ///
+    /// - Parameter cap: The cap style (.butt, .round, or .square).
+    /// - Returns: The view with updated stroke cap.
+    func strokeCap(_ cap: BrushCap) -> Self {
+        var v = self
+        v.options.strokeCap = cap
+        return v
+    }
+    
+    /// Set the stroke join style for corners/vertices.
+    ///
+    /// - Parameter join: The join style (.miter, .round, or .bevel).
+    /// - Returns: The view with updated stroke join.
+    func strokeJoin(_ join: BrushJoin) -> Self {
+        var v = self
+        v.options.strokeJoin = join
+        return v
+    }
+    
     // MARK: - Animation
     
     /// Wraps this RoughView in an AnimatedRoughView with the given configuration.

@@ -40,6 +40,11 @@ struct ContentView: View {
                 .tabItem {
                     Label("Animated", systemImage: "sparkles")
                 }
+            
+            BrushStrokeView()
+                .tabItem {
+                    Label("Brushes", systemImage: "pencil.tip")
+                }
         }
     }
 }
@@ -550,6 +555,366 @@ struct AnimatedView: View {
     }
 }
 
+struct BrushStrokeView: View {
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 32) {
+                // MARK: - Header
+                VStack(spacing: 8) {
+                    SwiftUI.Text("Custom Brush Profiles")
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                    
+                    SwiftUI.Text("Variable-width strokes with calligraphic effects")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.top)
+                
+                // MARK: - Brush Tip Comparison
+                VStack(spacing: 16) {
+                    SwiftUI.Text("Brush Tips")
+                        .font(.headline)
+                    
+                    SwiftUI.Text("Direction-sensitive ellipse-based brush tips")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    
+                    HStack(spacing: 24) {
+                        // Circular brush
+                        VStack(spacing: 8) {
+                            RoughView()
+                                .stroke(Color.blue)
+                                .strokeWidth(4)
+                                .brushTip(.circular)
+                                .rectangle()
+                                .frame(width: 80, height: 80)
+                            
+                            SwiftUI.Text("Circular")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        
+                        // Calligraphic brush
+                        VStack(spacing: 8) {
+                            RoughView()
+                                .stroke(Color.purple)
+                                .strokeWidth(4)
+                                .brushTip(.calligraphic)
+                                .rectangle()
+                                .frame(width: 80, height: 80)
+                            
+                            SwiftUI.Text("Calligraphic")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        
+                        // Flat brush
+                        VStack(spacing: 8) {
+                            RoughView()
+                                .stroke(Color.orange)
+                                .strokeWidth(4)
+                                .brushTip(.flat)
+                                .rectangle()
+                                .frame(width: 80, height: 80)
+                            
+                            SwiftUI.Text("Flat")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                
+                Divider()
+                    .padding(.horizontal)
+                
+                // MARK: - Thickness Profiles
+                VStack(spacing: 16) {
+                    SwiftUI.Text("Thickness Profiles")
+                        .font(.headline)
+                    
+                    SwiftUI.Text("Stroke width varies along the path")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    
+                    // Taper examples
+                    VStack(spacing: 16) {
+                        HStack(spacing: 24) {
+                            // Uniform
+                            VStack(spacing: 8) {
+                                RoughView()
+                                    .stroke(Color.gray)
+                                    .strokeWidth(8)
+                                    .thicknessProfile(.uniform)
+                                    .draw(Line(from: Point(x: 10, y: 40), to: Point(x: 90, y: 40)))
+                                    .frame(width: 100, height: 60)
+                                
+                                SwiftUI.Text("Uniform")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            
+                            // Taper In
+                            VStack(spacing: 8) {
+                                RoughView()
+                                    .stroke(Color.green)
+                                    .strokeWidth(8)
+                                    .thicknessProfile(.taperIn(start: 0.3))
+                                    .draw(Line(from: Point(x: 10, y: 40), to: Point(x: 90, y: 40)))
+                                    .frame(width: 100, height: 60)
+                                
+                                SwiftUI.Text("Taper In")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            
+                            // Taper Out
+                            VStack(spacing: 8) {
+                                RoughView()
+                                    .stroke(Color.red)
+                                    .strokeWidth(8)
+                                    .thicknessProfile(.taperOut(end: 0.3))
+                                    .draw(Line(from: Point(x: 10, y: 40), to: Point(x: 90, y: 40)))
+                                    .frame(width: 100, height: 60)
+                                
+                                SwiftUI.Text("Taper Out")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        
+                        HStack(spacing: 24) {
+                            // Natural Pen
+                            VStack(spacing: 8) {
+                                RoughView()
+                                    .stroke(Color.indigo)
+                                    .strokeWidth(8)
+                                    .thicknessProfile(.naturalPen)
+                                    .draw(Line(from: Point(x: 10, y: 40), to: Point(x: 90, y: 40)))
+                                    .frame(width: 100, height: 60)
+                                
+                                SwiftUI.Text("Natural Pen")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            
+                            // Pressure Curve
+                            VStack(spacing: 8) {
+                                RoughView()
+                                    .stroke(Color.cyan)
+                                    .strokeWidth(8)
+                                    .thicknessProfile(.penPressure)
+                                    .draw(Line(from: Point(x: 10, y: 40), to: Point(x: 90, y: 40)))
+                                    .frame(width: 100, height: 60)
+                                
+                                SwiftUI.Text("Pressure")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            
+                            // Custom profile
+                            VStack(spacing: 8) {
+                                RoughView()
+                                    .stroke(Color.pink)
+                                    .strokeWidth(8)
+                                    .thicknessProfile(.custom([0.3, 1.0, 0.5, 1.0, 0.3]))
+                                    .draw(Line(from: Point(x: 10, y: 40), to: Point(x: 90, y: 40)))
+                                    .frame(width: 100, height: 60)
+                                
+                                SwiftUI.Text("Custom")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                }
+                
+                Divider()
+                    .padding(.horizontal)
+                
+                // MARK: - Stroke Caps & Joins
+                VStack(spacing: 16) {
+                    SwiftUI.Text("Stroke Caps & Joins")
+                        .font(.headline)
+                    
+                    SwiftUI.Text("Customize line endings and corners")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    
+                    HStack(spacing: 24) {
+                        // Butt cap
+                        VStack(spacing: 8) {
+                            RoughView()
+                                .stroke(Color.brown)
+                                .strokeWidth(10)
+                                .strokeCap(.butt)
+                                .draw(Line(from: Point(x: 20, y: 30), to: Point(x: 80, y: 30)))
+                                .frame(width: 100, height: 50)
+                            
+                            SwiftUI.Text("Butt")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        
+                        // Round cap
+                        VStack(spacing: 8) {
+                            RoughView()
+                                .stroke(Color.teal)
+                                .strokeWidth(10)
+                                .strokeCap(.round)
+                                .draw(Line(from: Point(x: 20, y: 30), to: Point(x: 80, y: 30)))
+                                .frame(width: 100, height: 50)
+                            
+                            SwiftUI.Text("Round")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        
+                        // Square cap
+                        VStack(spacing: 8) {
+                            RoughView()
+                                .stroke(Color.mint)
+                                .strokeWidth(10)
+                                .strokeCap(.square)
+                                .draw(Line(from: Point(x: 20, y: 30), to: Point(x: 80, y: 30)))
+                                .frame(width: 100, height: 50)
+                            
+                            SwiftUI.Text("Square")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                
+                Divider()
+                    .padding(.horizontal)
+                
+                // MARK: - Complete Brush Profiles
+                VStack(spacing: 16) {
+                    SwiftUI.Text("Brush Profile Presets")
+                        .font(.headline)
+                    
+                    SwiftUI.Text("Combined tip, thickness, and style settings")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    
+                    HStack(spacing: 20) {
+                        // Calligraphic preset
+                        VStack(spacing: 8) {
+                            RoughView()
+                                .stroke(Color.black)
+                                .strokeWidth(3)
+                                .brushProfile(.calligraphic)
+                                .circle()
+                                .frame(width: 100, height: 100)
+                            
+                            SwiftUI.Text("Calligraphic")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        
+                        // Marker preset
+                        VStack(spacing: 8) {
+                            RoughView()
+                                .stroke(Color.blue)
+                                .strokeWidth(4)
+                                .brushProfile(.marker)
+                                .circle()
+                                .frame(width: 100, height: 100)
+                            
+                            SwiftUI.Text("Marker")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        
+                        // Pen preset
+                        VStack(spacing: 8) {
+                            RoughView()
+                                .stroke(Color.purple)
+                                .strokeWidth(3)
+                                .brushProfile(.pen)
+                                .circle()
+                                .frame(width: 100, height: 100)
+                            
+                            SwiftUI.Text("Pen")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                
+                Divider()
+                    .padding(.horizontal)
+                
+                // MARK: - Combined Example
+                VStack(spacing: 16) {
+                    SwiftUI.Text("Combined Effects")
+                        .font(.headline)
+                    
+                    SwiftUI.Text("Custom brush tip + thickness profile on shapes")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    
+                    HStack(spacing: 20) {
+                        // Rectangle with calligraphic + taper
+                        VStack(spacing: 8) {
+                            RoughView()
+                                .stroke(Color.black)
+                                .strokeWidth(4)
+                                .brushTip(roundness: 0.3, angle: .pi / 4, directionSensitive: true)
+                                .thicknessProfile(.naturalPen)
+                                .rectangle()
+                                .frame(width: 100, height: 100)
+                            
+                            SwiftUI.Text("Calligraphic\n+ Taper")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .multilineTextAlignment(.center)
+                        }
+                        
+                        // Circle with flat brush + pressure
+                        VStack(spacing: 8) {
+                            RoughView()
+                                .stroke(Color.indigo)
+                                .strokeWidth(5)
+                                .brushTip(.flat)
+                                .thicknessProfile(.penPressure)
+                                .circle()
+                                .frame(width: 100, height: 100)
+                            
+                            SwiftUI.Text("Flat\n+ Pressure")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .multilineTextAlignment(.center)
+                        }
+                        
+                        // Ellipse with custom settings
+                        VStack(spacing: 8) {
+                            RoughView()
+                                .stroke(Color.teal)
+                                .strokeWidth(4)
+                                .brushTip(roundness: 0.5, angle: .pi / 6, directionSensitive: true)
+                                .thicknessProfile(.taperBoth(start: 0.2, end: 0.2))
+                                .draw(Ellipse(x: 50, y: 50, width: 90, height: 70))
+                                .frame(width: 100, height: 100)
+                            
+                            SwiftUI.Text("Custom\nBrush")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .multilineTextAlignment(.center)
+                        }
+                    }
+                }
+                
+                Spacer()
+                    .frame(height: 40)
+            }
+            .padding()
+        }
+    }
+    
+}
+
 struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
         ContentView()
@@ -578,4 +943,8 @@ struct ContentView_Previews: PreviewProvider {
 
 #Preview("Animated View") {
     AnimatedView()
+}
+
+#Preview("Brush Stroke View") {
+    BrushStrokeView()
 }

@@ -26,6 +26,12 @@ public struct RoughRenderCommand {
     
     /// Whether to use inverse clipping (for outside strokes).
     public let inverseClip: Bool
+    
+    /// Line cap style for strokes.
+    public let cap: BrushCap
+    
+    /// Line join style for strokes.
+    public let join: BrushJoin
 
     /// Description of stroke or fill styling.
     public enum Style {
@@ -35,11 +41,20 @@ public struct RoughRenderCommand {
         case fill(Color)
     }
     
-    public init(path: SwiftUI.Path, style: Style, clipPath: SwiftUI.Path? = nil, inverseClip: Bool = false) {
+    public init(
+        path: SwiftUI.Path,
+        style: Style,
+        clipPath: SwiftUI.Path? = nil,
+        inverseClip: Bool = false,
+        cap: BrushCap = .round,
+        join: BrushJoin = .round
+    ) {
         self.path = path
         self.style = style
         self.clipPath = clipPath
         self.inverseClip = inverseClip
+        self.cap = cap
+        self.join = join
     }
 }
 
@@ -115,10 +130,15 @@ public struct SwiftUIRenderer {
     private func renderCommand(_ command: RoughRenderCommand, in context: inout GraphicsContext) {
         switch command.style {
         case let .stroke(color, lineWidth):
+            let strokeStyle = StrokeStyle(
+                lineWidth: lineWidth,
+                lineCap: command.cap.cgLineCap,
+                lineJoin: command.join.cgLineJoin
+            )
             context.stroke(
                 command.path,
                 with: .color(color),
-                lineWidth: lineWidth
+                style: strokeStyle
             )
         case let .fill(color):
             context.fill(
@@ -165,12 +185,39 @@ private extension SwiftUIRenderer {
                 path = basePath
             }
             let strokeColor = Color(options.stroke)
-            return [
-                RoughRenderCommand(
-                    path: path,
-                    style: .stroke(strokeColor, lineWidth: CGFloat(strokeWidth))
+            
+            // Check if brush profile requires custom rendering
+            if options.brushProfile.requiresCustomRendering {
+                // Convert stroke to filled path with variable width
+                let filledPath = StrokeToFillConverter.convert(
+                    operations: set.operations,
+                    baseWidth: CGFloat(strokeWidth),
+                    profile: options.brushProfile
                 )
-            ]
+                // Apply transform if needed
+                let finalPath: SwiftPath
+                if let transform = svgTransform {
+                    finalPath = filledPath.applying(transform)
+                } else {
+                    finalPath = filledPath
+                }
+                return [
+                    RoughRenderCommand(
+                        path: finalPath,
+                        style: .fill(strokeColor)
+                    )
+                ]
+            } else {
+                // Standard stroke rendering with cap and join
+                return [
+                    RoughRenderCommand(
+                        path: path,
+                        style: .stroke(strokeColor, lineWidth: CGFloat(strokeWidth)),
+                        cap: options.strokeCap,
+                        join: options.strokeJoin
+                    )
+                ]
+            }
 
         case .fillSketch:
             let basePath = SwiftPath.from(operationSet: set)
@@ -186,7 +233,9 @@ private extension SwiftUIRenderer {
                     path: path,
                     style: .stroke(color, lineWidth: CGFloat(effectiveFillWeight)),
                     clipPath: clipPath,
-                    inverseClip: inverseClip
+                    inverseClip: inverseClip,
+                    cap: options.strokeCap,
+                    join: options.strokeJoin
                 )
             ]
 
@@ -239,7 +288,9 @@ private extension SwiftUIRenderer {
                     path: path,
                     style: .stroke(color, lineWidth: CGFloat(effectiveFillWeight)),
                     clipPath: clipPath,
-                    inverseClip: inverseClip
+                    inverseClip: inverseClip,
+                    cap: options.strokeCap,
+                    join: options.strokeJoin
                 )
             ]
         }
