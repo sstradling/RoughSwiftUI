@@ -152,3 +152,19 @@ struct ContentView_Previews: PreviewProvider {
         ContentView()
     }
 }
+
+#Preview("Customize View") {
+    CustomizeView()
+}
+
+#Preview("SVG View") {
+    SVGView()
+}
+
+#Preview("Styles View") {
+    StylesView()
+}
+
+#Preview("Chart View") {
+    Chartview()
+}
