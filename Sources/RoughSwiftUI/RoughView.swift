@@ -165,4 +165,22 @@ public extension RoughView {
     func circle() -> Self {
         draw(FullCircle())
     }
+    
+    // MARK: - SVG-specific modifiers
+    
+    /// Set the stroke width specifically for SVG path rendering.
+    /// If not set, falls back to `strokeWidth`.
+    func svgStrokeWidth(_ value: Float) -> Self {
+        var v = self
+        v.options.svgStrokeWidth = value
+        return v
+    }
+    
+    /// Set the fill weight specifically for SVG path rendering.
+    /// If not set, falls back to `fillWeight`.
+    func svgFillWeight(_ value: Float) -> Self {
+        var v = self
+        v.options.svgFillWeight = value
+        return v
+    }
 }

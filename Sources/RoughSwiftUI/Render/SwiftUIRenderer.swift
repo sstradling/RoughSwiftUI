@@ -43,12 +43,12 @@ public struct SwiftUIRenderer {
     /// - Returns: A collection of `RoughRenderCommand` describing how to render the drawing.
     public func commands(for drawing: Drawing, in size: CGSize) -> [RoughRenderCommand] {
         // SVG paths need scaling to fit the canvas since they have their own coordinate system
-        let needsScaling = drawing.shape == "path"
+        let isSVGPath = drawing.shape == "path"
         
         // For SVG paths, compute a single transform from the original SVG bounds
         // so that stroke and fill align properly
         var svgTransform: CGAffineTransform? = nil
-        if needsScaling {
+        if isSVGPath {
             // Find the original SVG path from one of the sets
             let svgPath = drawing.sets.compactMap { $0.path }.first
             if let svg = svgPath {
@@ -57,7 +57,7 @@ public struct SwiftUIRenderer {
         }
         
         return drawing.sets.flatMap { set in
-            commands(for: set, options: drawing.options, in: size, svgTransform: svgTransform)
+            commands(for: set, options: drawing.options, in: size, svgTransform: svgTransform, isSVGPath: isSVGPath)
         }
     }
 
@@ -98,8 +98,16 @@ private extension SwiftUIRenderer {
         for set: OperationSet,
         options: Options,
         in size: CGSize,
-        svgTransform: CGAffineTransform? = nil
+        svgTransform: CGAffineTransform? = nil,
+        isSVGPath: Bool = false
     ) -> [RoughRenderCommand] {
+        // Use SVG-specific widths when rendering SVG paths
+        let strokeWidth = isSVGPath ? options.effectiveSVGStrokeWidth : options.strokeWidth
+        let fillWeight: Float = {
+            let base = isSVGPath ? options.effectiveSVGFillWeight : options.fillWeight
+            return base < 0 ? strokeWidth / 2 : base
+        }()
+        
         switch set.type {
         case .path:
             let basePath = SwiftPath.from(operationSet: set)
@@ -113,7 +121,7 @@ private extension SwiftUIRenderer {
             return [
                 RoughRenderCommand(
                     path: path,
-                    style: .stroke(strokeColor, lineWidth: CGFloat(options.strokeWidth))
+                    style: .stroke(strokeColor, lineWidth: CGFloat(strokeWidth))
                 )
             ]
 
@@ -124,10 +132,6 @@ private extension SwiftUIRenderer {
                 path = basePath.applying(transform)
             } else {
                 path = basePath
-            }
-            var fillWeight = options.fillWeight
-            if fillWeight < 0 {
-                fillWeight = options.strokeWidth / 2
             }
             let color = Color(options.fill)
             return [
@@ -179,10 +183,6 @@ private extension SwiftUIRenderer {
                 path = basePath.applying(transform)
             } else {
                 path = basePath
-            }
-            var fillWeight = options.fillWeight
-            if fillWeight < 0 {
-                fillWeight = options.strokeWidth / 2
             }
             let color = Color(options.fill)
             return [

@@ -29,6 +29,24 @@ public struct Options {
     public var dashOffset: Float = -1
     public var dashGap: Float = -1
     public var zigzagOffset: Float = -1
+    
+    // MARK: - SVG-specific options
+    
+    /// Override stroke width for SVG paths. If nil, uses `strokeWidth`.
+    public var svgStrokeWidth: Float? = nil
+    
+    /// Override fill weight for SVG paths. If nil, uses `fillWeight`.
+    public var svgFillWeight: Float? = nil
+    
+    /// Computed property that returns the effective stroke width for SVG rendering.
+    public var effectiveSVGStrokeWidth: Float {
+        svgStrokeWidth ?? strokeWidth
+    }
+    
+    /// Computed property that returns the effective fill weight for SVG rendering.
+    public var effectiveSVGFillWeight: Float {
+        svgFillWeight ?? fillWeight
+    }
 
     /// Public-facing stroke color as `UIColor` for backward compatibility.
     public var stroke: UIColor {
