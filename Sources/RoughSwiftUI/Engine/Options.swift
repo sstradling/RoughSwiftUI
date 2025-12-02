@@ -8,6 +8,16 @@
 
 import UIKit
 
+/// Controls how the SVG fill stroke is aligned relative to the path.
+public enum SVGFillStrokeAlignment {
+    /// Stroke is centered on the path (default behavior).
+    case center
+    /// Stroke is applied to the inside/inner edge of the path.
+    case inside
+    /// Stroke is applied to the outside/outer edge of the path.
+    case outside
+}
+
 public struct Options {
     public var maxRandomnessOffset: Float = 2
     public var roughness: Float = 1
@@ -37,6 +47,12 @@ public struct Options {
     
     /// Override fill weight for SVG paths. If nil, uses `fillWeight`.
     public var svgFillWeight: Float? = nil
+    
+    /// Controls how the SVG fill stroke is aligned relative to the path.
+    /// - `.center`: Stroke centered on path (default)
+    /// - `.inside`: Stroke on inner edge of path
+    /// - `.outside`: Stroke on outer edge of path
+    public var svgFillStrokeAlignment: SVGFillStrokeAlignment = .center
     
     /// Computed property that returns the effective stroke width for SVG rendering.
     public var effectiveSVGStrokeWidth: Float {

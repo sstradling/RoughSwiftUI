@@ -185,4 +185,14 @@ public extension RoughView {
         v.options.svgFillWeight = value
         return v
     }
+    
+    /// Set the alignment of the SVG fill stroke relative to the path.
+    /// - `.center`: Stroke centered on path (default)
+    /// - `.inside`: Stroke on inner edge of path
+    /// - `.outside`: Stroke on outer edge of path
+    func svgFillStrokeAlignment(_ value: SVGFillStrokeAlignment) -> Self {
+        var v = self
+        v.options.svgFillStrokeAlignment = value
+        return v
+    }
 }

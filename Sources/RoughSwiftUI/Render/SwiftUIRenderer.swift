@@ -20,6 +20,12 @@ public struct RoughRenderCommand {
 
     /// The style used when rendering the path.
     public let style: Style
+    
+    /// The clip path for inside/outside stroke alignment (optional).
+    public let clipPath: SwiftUI.Path?
+    
+    /// Whether to use inverse clipping (for outside strokes).
+    public let inverseClip: Bool
 
     /// Description of stroke or fill styling.
     public enum Style {
@@ -27,6 +33,13 @@ public struct RoughRenderCommand {
         case stroke(Color, lineWidth: CGFloat)
         /// Fill path with a solid color.
         case fill(Color)
+    }
+    
+    public init(path: SwiftUI.Path, style: Style, clipPath: SwiftUI.Path? = nil, inverseClip: Bool = false) {
+        self.path = path
+        self.style = style
+        self.clipPath = clipPath
+        self.inverseClip = inverseClip
     }
 }
 
@@ -49,16 +62,23 @@ public struct SwiftUIRenderer {
         // For SVG paths, compute a single transform from the original SVG bounds
         // so that stroke and fill align properly
         var svgTransform: CGAffineTransform? = nil
+        var scaledSVGClipPath: SwiftPath? = nil
+        
         if isSVGPath {
             // Find the original SVG path from one of the sets
             let svgPath = drawing.sets.compactMap { $0.path }.first
             if let svg = svgPath {
                 svgTransform = computeSVGTransform(svg, in: size)
+                // Pre-compute the scaled SVG path for clipping (used for inside/outside stroke alignment)
+                let basePath = SwiftPath(UIBezierPath(svgPath: svg).cgPath)
+                if let transform = svgTransform {
+                    scaledSVGClipPath = basePath.applying(transform)
+                }
             }
         }
         
         return drawing.sets.flatMap { set in
-            commands(for: set, options: options, in: size, svgTransform: svgTransform, isSVGPath: isSVGPath)
+            commands(for: set, options: options, in: size, svgTransform: svgTransform, isSVGPath: isSVGPath, svgClipPath: scaledSVGClipPath)
         }
     }
 
@@ -77,19 +97,34 @@ public struct SwiftUIRenderer {
     ) {
         let commands = commands(for: drawing, options: options, in: size)
         for command in commands {
-            switch command.style {
-            case let .stroke(color, lineWidth):
-                context.stroke(
-                    command.path,
-                    with: .color(color),
-                    lineWidth: lineWidth
-                )
-            case let .fill(color):
-                context.fill(
-                    command.path,
-                    with: .color(color)
-                )
+            // Handle clipping for inside/outside stroke alignment
+            if let clipPath = command.clipPath {
+                var clippedContext = context
+                if command.inverseClip {
+                    clippedContext.clip(to: clipPath, options: .inverse)
+                } else {
+                    clippedContext.clip(to: clipPath)
+                }
+                renderCommand(command, in: &clippedContext)
+            } else {
+                renderCommand(command, in: &context)
             }
+        }
+    }
+    
+    private func renderCommand(_ command: RoughRenderCommand, in context: inout GraphicsContext) {
+        switch command.style {
+        case let .stroke(color, lineWidth):
+            context.stroke(
+                command.path,
+                with: .color(color),
+                lineWidth: lineWidth
+            )
+        case let .fill(color):
+            context.fill(
+                command.path,
+                with: .color(color)
+            )
         }
     }
 }
@@ -102,7 +137,8 @@ private extension SwiftUIRenderer {
         options: Options,
         in size: CGSize,
         svgTransform: CGAffineTransform? = nil,
-        isSVGPath: Bool = false
+        isSVGPath: Bool = false,
+        svgClipPath: SwiftPath? = nil
     ) -> [RoughRenderCommand] {
         // Use SVG-specific widths when rendering SVG paths
         let strokeWidth = isSVGPath ? options.effectiveSVGStrokeWidth : options.strokeWidth
@@ -110,6 +146,14 @@ private extension SwiftUIRenderer {
             let base = isSVGPath ? options.effectiveSVGFillWeight : options.fillWeight
             return base < 0 ? strokeWidth / 2 : base
         }()
+        
+        // Determine stroke alignment settings for fill strokes
+        let alignment = isSVGPath ? options.svgFillStrokeAlignment : .center
+        let (effectiveFillWeight, clipPath, inverseClip) = strokeAlignmentSettings(
+            lineWidth: fillWeight,
+            alignment: alignment,
+            clipPath: svgClipPath
+        )
         
         switch set.type {
         case .path:
@@ -140,7 +184,9 @@ private extension SwiftUIRenderer {
             return [
                 RoughRenderCommand(
                     path: path,
-                    style: .stroke(color, lineWidth: CGFloat(fillWeight))
+                    style: .stroke(color, lineWidth: CGFloat(effectiveFillWeight)),
+                    clipPath: clipPath,
+                    inverseClip: inverseClip
                 )
             ]
 
@@ -191,9 +237,35 @@ private extension SwiftUIRenderer {
             return [
                 RoughRenderCommand(
                     path: path,
-                    style: .stroke(color, lineWidth: CGFloat(fillWeight))
+                    style: .stroke(color, lineWidth: CGFloat(effectiveFillWeight)),
+                    clipPath: clipPath,
+                    inverseClip: inverseClip
                 )
             ]
+        }
+    }
+    
+    /// Calculate effective line width and clipping for stroke alignment.
+    /// - Parameters:
+    ///   - lineWidth: The desired visual line width.
+    ///   - alignment: The stroke alignment mode.
+    ///   - clipPath: The path to use for clipping (typically the SVG outline).
+    /// - Returns: Tuple of (effectiveLineWidth, clipPath, inverseClip).
+    func strokeAlignmentSettings(
+        lineWidth: Float,
+        alignment: SVGFillStrokeAlignment,
+        clipPath: SwiftPath?
+    ) -> (Float, SwiftPath?, Bool) {
+        switch alignment {
+        case .center:
+            // No clipping needed, use normal line width
+            return (lineWidth, nil, false)
+        case .inside:
+            // Clip to path, stroke with 2x width (outside half gets clipped)
+            return (lineWidth * 2, clipPath, false)
+        case .outside:
+            // Clip to inverse of path, stroke with 2x width (inside half gets clipped)
+            return (lineWidth * 2, clipPath, true)
         }
     }
 
