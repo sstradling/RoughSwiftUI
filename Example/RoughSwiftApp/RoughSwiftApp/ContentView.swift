@@ -16,6 +16,10 @@ struct ContentView: View {
                 .tabItem {
                     Label("Styles", systemImage: "paintpalette.fill")
                 }
+            BoundsView()
+                .tabItem {
+                    Label("Bounds", systemImage: "square.dashed")
+                }
             Chartview()
                 .tabItem {
                     Label("Chart", systemImage: "chart.bar")
@@ -45,13 +49,48 @@ struct CustomizeView: View {
                 Text("Click")
             }
             
+            // Unconstrained (may clip at the edges)
             RoughView()
                 .fill(flag ? UIColor.green : UIColor.yellow)
                 .fillStyle(flag ? .hachure : .dots)
                 .circle()
                 .frame(width: flag ? 200 : 100, height: flag ? 200 : 100)
+
+            // Constrained to bounds (inset to avoid clipping)
+            RoughView()
+                .fill(flag ? UIColor.green : UIColor.yellow)
+                .fillStyle(flag ? .hachure : .dots)
+                .constrainToBounds()
+                .circle()
+                .frame(width: flag ? 200 : 100, height: flag ? 200 : 100)
         }
 
+    }
+}
+
+struct BoundsView: View {
+    var body: some View {
+        VStack(spacing: 40) {
+            Text("Unconstrained")
+                .font(.headline)
+
+            RoughView()
+                .fill(Color.orange)
+                .fillStyle(.hachure)
+                .circle()
+                .frame(width: 160, height: 160)
+
+            Text("Constrained to Bounds")
+                .font(.headline)
+
+            RoughView()
+                .fill(Color.orange)
+                .fillStyle(.hachure)
+                .constrainToBounds()
+                .circle()
+                .frame(width: 160, height: 160)
+        }
+        .padding()
     }
 }
 
@@ -150,5 +189,17 @@ struct Chartview: View {
 struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
         ContentView()
+    }
+}
+
+struct CustomizeView_Previews: PreviewProvider {
+    static var previews: some View {
+        CustomizeView()
+    }
+}
+
+struct BoundsView_Previews: PreviewProvider {
+    static var previews: some View {
+        BoundsView()
     }
 }

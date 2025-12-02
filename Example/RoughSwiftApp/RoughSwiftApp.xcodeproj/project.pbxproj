@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		BACB84922EDE7B8D00878DDE /* Inject in Frameworks */ = {isa = PBXBuildFile; productRef = BACB84912EDE7B8D00878DDE /* Inject */; };
 		BAEF0FA72EDE5CD800C46DE6 /* RoughSwiftUI in Frameworks */ = {isa = PBXBuildFile; productRef = BAEF0FA62EDE5CD800C46DE6 /* RoughSwiftUI */; };
 		BAEF0FA92EDE5CF200C46DE6 /* RoughSwiftUI in Frameworks */ = {isa = PBXBuildFile; productRef = BAEF0FA82EDE5CF200C46DE6 /* RoughSwiftUI */; };
 		D2C5CBF127EF63D200BBE97D /* RoughSwiftAppApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2C5CBF027EF63D200BBE97D /* RoughSwiftAppApp.swift */; };
@@ -32,6 +33,7 @@
 			files = (
 				BAEF0FA92EDE5CF200C46DE6 /* RoughSwiftUI in Frameworks */,
 				BAEF0FA72EDE5CD800C46DE6 /* RoughSwiftUI in Frameworks */,
+				BACB84922EDE7B8D00878DDE /* Inject in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -109,6 +111,7 @@
 			packageProductDependencies = (
 				BAEF0FA62EDE5CD800C46DE6 /* RoughSwiftUI */,
 				BAEF0FA82EDE5CF200C46DE6 /* RoughSwiftUI */,
+				BACB84912EDE7B8D00878DDE /* Inject */,
 			);
 			productName = RoughSwiftApp;
 			productReference = D2C5CBED27EF63D200BBE97D /* RoughSwiftApp.app */;
@@ -140,6 +143,7 @@
 			mainGroup = D2C5CBE427EF63D200BBE97D;
 			packageReferences = (
 				BAEF0FA52EDE5CD800C46DE6 /* XCLocalSwiftPackageReference "../../../RoughSwiftUI" */,
+				BACB84902EDE7B8D00878DDE /* XCRemoteSwiftPackageReference "Inject" */,
 			);
 			productRefGroup = D2C5CBEE27EF63D200BBE97D /* Products */;
 			projectDirPath = "";
@@ -380,7 +384,23 @@
 		};
 /* End XCLocalSwiftPackageReference section */
 
+/* Begin XCRemoteSwiftPackageReference section */
+		BACB84902EDE7B8D00878DDE /* XCRemoteSwiftPackageReference "Inject" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/krzysztofzablocki/Inject.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.5.2;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
 /* Begin XCSwiftPackageProductDependency section */
+		BACB84912EDE7B8D00878DDE /* Inject */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = BACB84902EDE7B8D00878DDE /* XCRemoteSwiftPackageReference "Inject" */;
+			productName = Inject;
+		};
 		BAEF0FA62EDE5CD800C46DE6 /* RoughSwiftUI */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = RoughSwiftUI;

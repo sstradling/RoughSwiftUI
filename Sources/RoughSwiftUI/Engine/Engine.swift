@@ -20,7 +20,7 @@ public typealias JSONArray = [JSONDictionary]
 public final class Engine {
     private let context: JSContext
     private let rough: JSValue
-
+    
     public static let shared = Engine()
 
     public init() {
@@ -43,7 +43,7 @@ public final class Engine {
 
         do {
             let content = try String(contentsOf: path)
-            context.evaluateScript(content)
+        context.evaluateScript(content)
         } catch {
             fatalError("RoughSwiftUI.Engine failed to load rough.js: \(error)")
         }
