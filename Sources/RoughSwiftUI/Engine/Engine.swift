@@ -8,6 +8,7 @@
 
 import UIKit
 import JavaScriptCore
+import os.signpost
 
 public typealias JSONDictionary = [String: Any]
 public typealias JSONArray = [JSONDictionary]
@@ -80,16 +81,18 @@ public final class Engine {
     /// - Parameter size: The drawing surface size.
     /// - Returns: A new generator instance.
     internal func createGenerator(size: CGSize) -> Generator {
-        let drawingSurface: JSONDictionary = [
-            "width": size.width,
-            "height": size.height
-        ]
+        measurePerformance(GenerationSignpost.createGenerator, log: RoughPerformanceLog.generation, metadata: "\(Int(size.width))x\(Int(size.height))") {
+            let drawingSurface: JSONDictionary = [
+                "width": size.width,
+                "height": size.height
+            ]
 
-        guard let value = rough.invokeMethod("generator", withArguments: [drawingSurface]) else {
-            fatalError("RoughSwiftUI.Engine failed to create rough.js generator")
+            guard let value = rough.invokeMethod("generator", withArguments: [drawingSurface]) else {
+                fatalError("RoughSwiftUI.Engine failed to create rough.js generator")
+            }
+
+            return Generator(size: size, jsValue: value, drawingCache: drawingCache)
         }
-
-        return Generator(size: size, jsValue: value, drawingCache: drawingCache)
     }
     
     /// Clears all cached generators and drawings.

@@ -11,6 +11,7 @@
 import Foundation
 import CoreGraphics
 import UIKit
+import os.signpost
 
 /// Generates scribble fill patterns for shapes.
 ///
@@ -28,6 +29,13 @@ public struct ScribbleFillGenerator {
     ///   - options: The rendering options containing scribble parameters.
     /// - Returns: An array of OperationSets, one per continuous stroke segment.
     public static func generate(for path: CGPath, options: Options) -> [OperationSet] {
+        measurePerformance(PathOpsSignpost.scribbleFill, log: RoughPerformanceLog.pathOps, metadata: "tightness=\(options.scribbleTightness)") {
+            generateInternal(for: path, options: options)
+        }
+    }
+    
+    /// Internal implementation of scribble fill generation.
+    private static func generateInternal(for path: CGPath, options: Options) -> [OperationSet] {
         let bounds = path.boundingBox
         guard bounds.width > 0, bounds.height > 0 else { return [] }
         
@@ -259,6 +267,12 @@ public struct ScribbleFillGenerator {
         rayAngle: CGFloat,
         bounds: CGRect
     ) -> [CGPoint] {
+        #if ROUGH_PERFORMANCE_INSTRUMENTATION || DEBUG
+        let signpostID = OSSignpostID(log: RoughPerformanceLog.pathOps)
+        os_signpost(.begin, log: RoughPerformanceLog.pathOps, name: PathOpsSignpost.rayIntersection, signpostID: signpostID)
+        defer { os_signpost(.end, log: RoughPerformanceLog.pathOps, name: PathOpsSignpost.rayIntersection, signpostID: signpostID) }
+        #endif
+        
         // Create a very long line segment for the ray
         let rayLength = max(bounds.width, bounds.height) * 3
         let rayStart = CGPoint(
@@ -547,6 +561,12 @@ public struct ScribbleFillGenerator {
     /// Removes duplicate points within a tolerance using spatial bucketing.
     /// Uses O(n) average case instead of O(n²) brute force comparison.
     private static func removeDuplicatePoints(_ points: [CGPoint], tolerance: CGFloat) -> [CGPoint] {
+        #if ROUGH_PERFORMANCE_INSTRUMENTATION || DEBUG
+        let signpostID = OSSignpostID(log: RoughPerformanceLog.pathOps)
+        os_signpost(.begin, log: RoughPerformanceLog.pathOps, name: PathOpsSignpost.duplicateRemoval, signpostID: signpostID, "points=%d", points.count)
+        defer { os_signpost(.end, log: RoughPerformanceLog.pathOps, name: PathOpsSignpost.duplicateRemoval, signpostID: signpostID) }
+        #endif
+        
         guard !points.isEmpty else { return [] }
         guard tolerance > 0 else { return points }
         

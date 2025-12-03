@@ -7,6 +7,7 @@
 //
 
 import JavaScriptCore
+import os.signpost
 
 /// Wrapper around a `rough.js` generator bound to a specific canvas size.
 ///
@@ -64,17 +65,19 @@ public final class Generator {
     ///
     /// This is used internally and by the cache's generator closure.
     private func generateUncached(drawable: Drawable, options: Options) -> Drawing? {
-        let arguments: [Any]
-        if let fullable = drawable as? Fulfillable {
-            arguments = fullable.arguments(size: size.toSize)
-        } else {
-            arguments = drawable.arguments
-        }
+        measurePerformance(GenerationSignpost.generateDrawing, log: RoughPerformanceLog.generation, metadata: drawable.method) {
+            let arguments: [Any]
+            if let fullable = drawable as? Fulfillable {
+                arguments = fullable.arguments(size: size.toSize)
+            } else {
+                arguments = drawable.arguments
+            }
 
-        return jsValue.invokeMethod(
-            drawable.method,
-            withArguments: arguments + [options.toRoughDictionary()]
-        ).toDrawing
+            return jsValue.invokeMethod(
+                drawable.method,
+                withArguments: arguments + [options.toRoughDictionary()]
+            ).toDrawing
+        }
     }
 }
 

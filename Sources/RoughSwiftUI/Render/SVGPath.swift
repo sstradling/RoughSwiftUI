@@ -1,4 +1,3 @@
-
 //
 //  SVGPath.swift
 //  SVGPath
@@ -9,13 +8,16 @@
 
 import UIKit
 import CoreGraphics
+import os.signpost
 
 // MARK: UIBezierPath
 
 public extension UIBezierPath {
     convenience init (svgPath: String) {
         self.init()
-        applyCommands(from: SVGPath(svgPath))
+        measurePerformance(ParsingSignpost.svgParse, log: RoughPerformanceLog.parsing, metadata: "len=\(svgPath.count)") {
+            applyCommands(from: SVGPath(svgPath))
+        }
     }
 }
 

@@ -563,6 +563,84 @@ NotificationCenter.default.addObserver(
 }
 ```
 
+## Performance Instrumentation
+
+RoughSwiftUI includes built-in performance instrumentation using Apple's `os_signpost` API. This allows you to profile rendering performance using Instruments.app.
+
+### Enabling Instrumentation
+
+Instrumentation is **enabled by default in DEBUG builds** and disabled in release builds for zero overhead. To enable it explicitly in other build configurations, add the following Swift compiler flag:
+
+```
+-DROUGH_PERFORMANCE_INSTRUMENTATION
+```
+
+In Xcode:
+1. Select your target
+2. Go to Build Settings → Swift Compiler - Custom Flags
+3. Add `-DROUGH_PERFORMANCE_INSTRUMENTATION` to "Other Swift Flags"
+
+### Viewing Performance Data in Instruments
+
+1. Open **Instruments.app**
+2. Choose the **Blank** template
+3. Click **+** and add the **os_signpost** instrument
+4. In the filter field, type: `com.roughswiftui`
+5. Run your app and observe the timeline
+
+### Instrumented Operations
+
+The following operations are measured with signposts:
+
+| Category | Operations |
+|----------|------------|
+| `rendering` | Canvas Render, Build Commands, Command Execution, SVG Transform |
+| `generation` | Create Generator (JS bridge), Generate Drawing (rough.js) |
+| `pathOps` | Scribble Fill, Ray Intersection, Stroke to Fill, Duplicate Removal |
+| `animation` | Frame Render, Variance Compute, Precompute Variance |
+| `parsing` | SVG Parse |
+
+### Aggregate Statistics
+
+For quick debugging without Instruments, you can collect aggregate statistics:
+
+```swift
+import RoughSwiftUI
+
+// After rendering operations...
+PerformanceStatistics.shared.printReport()
+```
+
+This outputs a summary like:
+
+```
+=== RoughSwiftUI Performance Report ===
+
+Duration Measurements:
+  Generate Drawing:
+    Count: 10
+    Total: 45.230ms
+    Average: 4.523ms
+    Max: 8.102ms
+  Canvas Render:
+    Count: 60
+    Total: 120.500ms
+    Average: 2.008ms
+    Max: 5.234ms
+```
+
+### Performance Tips
+
+Based on signpost data, common bottlenecks include:
+
+1. **JavaScript Bridge Calls**: Generator creation and drawing generation involve JS calls. Use cached generators (automatic) and avoid creating new Options objects unnecessarily.
+
+2. **Scribble Fill**: High tightness values create many ray intersections. Use moderate tightness (10-30) for complex shapes.
+
+3. **Stroke-to-Fill Conversion**: Brush profiles with custom tips require path sampling. Use standard brush profiles when performance is critical.
+
+4. **Animation Frame Pre-computation**: Initial frame generation can take time for complex shapes. Consider showing a loading state for animations with many steps and complex drawings.
+
 ## Installation
 
 Add the following line to the dependencies in your `Package.swift` file
