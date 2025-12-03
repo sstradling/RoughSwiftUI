@@ -4,8 +4,11 @@
 //
 //  Created by khoa on 26/03/2022.
 //
+//  Modifications Copyright © 2025 Seth Stradling. All rights reserved.
+//
 import SwiftUI
 import UIKit
+import os.signpost
 
 /// Shared renderer instance to avoid allocations on every frame.
 private let sharedRenderer = SwiftUIRenderer()
@@ -39,47 +42,49 @@ public struct RoughView: View {
             let size = proxy.size
 
             Canvas { context, canvasSize in
-                let renderSize = canvasSize == .zero ? size : canvasSize
-                guard renderSize.width > 0, renderSize.height > 0 else { return }
+                measurePerformance(RenderingSignpost.canvasRender, log: RoughPerformanceLog.rendering, metadata: "drawables=\(drawables.count)") {
+                    let renderSize = canvasSize == .zero ? size : canvasSize
+                    guard renderSize.width > 0, renderSize.height > 0 else { return }
 
-                // Use cached generator (avoids JS bridge call if size unchanged)
-                let generator = Engine.shared.generator(size: renderSize)
+                    // Use cached generator (avoids JS bridge call if size unchanged)
+                    let generator = Engine.shared.generator(size: renderSize)
 
-                for drawable in drawables {
-                    // Check if we have a spacing pattern for gradient effects
-                    if let pattern = options.fillSpacingPattern, !pattern.isEmpty {
-                        // Render multiple passes with different spacing for gradient effect
-                        let baseSpacing = options.fillSpacing
-                        let weight = options.effectiveFillWeight
-                        
-                        for (index, multiplier) in pattern.enumerated() {
-                            var patternOptions = options
-                            patternOptions.fillSpacing = baseSpacing * multiplier
-                            // Offset each layer slightly to create the gradient effect
-                            // by adjusting the fill weight slightly for each pass
-                            let layerWeight = weight * (1.0 + Float(index) * 0.01)
-                            patternOptions.fillWeight = layerWeight
+                    for drawable in drawables {
+                        // Check if we have a spacing pattern for gradient effects
+                        if let pattern = options.fillSpacingPattern, !pattern.isEmpty {
+                            // Render multiple passes with different spacing for gradient effect
+                            let baseSpacing = options.fillSpacing
+                            let weight = options.effectiveFillWeight
                             
-                            // Drawing is cached by drawable + patternOptions
-                            if let drawing = generator.generate(drawable: drawable, options: patternOptions) {
+                            for (index, multiplier) in pattern.enumerated() {
+                                var patternOptions = options
+                                patternOptions.fillSpacing = baseSpacing * multiplier
+                                // Offset each layer slightly to create the gradient effect
+                                // by adjusting the fill weight slightly for each pass
+                                let layerWeight = weight * (1.0 + Float(index) * 0.01)
+                                patternOptions.fillWeight = layerWeight
+                                
+                                // Drawing is cached by drawable + patternOptions
+                                if let drawing = generator.generate(drawable: drawable, options: patternOptions) {
+                                    sharedRenderer.render(
+                                        drawing: drawing,
+                                        options: patternOptions,
+                                        in: &context,
+                                        size: renderSize
+                                    )
+                                }
+                            }
+                        } else {
+                            // Standard single-pass rendering
+                            // Drawing is cached by drawable + options
+                            if let drawing = generator.generate(drawable: drawable, options: options) {
                                 sharedRenderer.render(
                                     drawing: drawing,
-                                    options: patternOptions,
+                                    options: options,
                                     in: &context,
                                     size: renderSize
-                                )
+                                    )
                             }
-                        }
-                    } else {
-                        // Standard single-pass rendering
-                        // Drawing is cached by drawable + options
-                        if let drawing = generator.generate(drawable: drawable, options: options) {
-                            sharedRenderer.render(
-                                drawing: drawing,
-                                options: options,
-                                in: &context,
-                                size: renderSize
-                                )
                         }
                     }
                 }

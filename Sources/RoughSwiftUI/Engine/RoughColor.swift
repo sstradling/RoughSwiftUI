@@ -4,6 +4,8 @@
 //
 //  Internal color abstraction used by RoughSwiftUI.
 //
+//  Copyright © 2025 Seth Stradling. All rights reserved.
+//
 
 import UIKit
 import SwiftUI

@@ -9,6 +9,7 @@
 
 import SwiftUI
 import UIKit
+import os.signpost
 
 /// Internal alias to disambiguate SwiftUI's `Path` from the engine's `Path` drawable.
 private typealias SwiftPath = SwiftUI.Path
@@ -71,47 +72,51 @@ public struct SwiftUIRenderer {
     ///   - size: The available canvas size.
     /// - Returns: A collection of `RoughRenderCommand` describing how to render the drawing.
     public func commands(for drawing: Drawing, options: Options, in size: CGSize) -> [RoughRenderCommand] {
-        // SVG paths need scaling to fit the canvas since they have their own coordinate system
-        let isSVGPath = drawing.shape == "path"
-        
-        // For SVG paths, compute a single transform from the original SVG bounds
-        // so that stroke and fill align properly
-        var svgTransform: CGAffineTransform? = nil
-        var scaledSVGClipPath: SwiftPath? = nil
-        
-        if isSVGPath {
-            // Find the original SVG path from one of the sets
-            let svgPath = drawing.sets.compactMap { $0.path }.first
-            if let svg = svgPath {
-                svgTransform = computeSVGTransform(svg, in: size)
-                // Pre-compute the scaled SVG path for clipping (used for inside/outside stroke alignment)
-                let basePath = SwiftPath(UIBezierPath(svgPath: svg).cgPath)
-                if let transform = svgTransform {
-                    scaledSVGClipPath = basePath.applying(transform)
+        measurePerformance(RenderingSignpost.buildCommands, log: RoughPerformanceLog.rendering, metadata: "shape=\(drawing.shape)") {
+            // SVG paths need scaling to fit the canvas since they have their own coordinate system
+            let isSVGPath = drawing.shape == "path"
+            
+            // For SVG paths, compute a single transform from the original SVG bounds
+            // so that stroke and fill align properly
+            var svgTransform: CGAffineTransform? = nil
+            var scaledSVGClipPath: SwiftPath? = nil
+            
+            if isSVGPath {
+                svgTransform = measurePerformance(RenderingSignpost.svgTransform, log: RoughPerformanceLog.rendering) {
+                    // Find the original SVG path from one of the sets
+                    let svgPath = drawing.sets.compactMap { $0.path }.first
+                    if let svg = svgPath {
+                        let transform = computeSVGTransform(svg, in: size)
+                        // Pre-compute the scaled SVG path for clipping (used for inside/outside stroke alignment)
+                        let basePath = SwiftPath(UIBezierPath(svgPath: svg).cgPath)
+                        scaledSVGClipPath = basePath.applying(transform)
+                        return transform
+                    }
+                    return nil
                 }
             }
+            
+            var result: [RoughRenderCommand] = []
+            
+            // Check if scribble fill is requested - handle it with native generation
+            if options.fillStyle == .scribble {
+                let scribbleCommands = scribbleFillCommands(
+                    for: drawing,
+                    options: options,
+                    in: size,
+                    svgTransform: svgTransform,
+                    isSVGPath: isSVGPath
+                )
+                result.append(contentsOf: scribbleCommands)
+            }
+            
+            // Process standard operation sets
+            result.append(contentsOf: drawing.sets.flatMap { set in
+                commands(for: set, options: options, in: size, svgTransform: svgTransform, isSVGPath: isSVGPath, svgClipPath: scaledSVGClipPath)
+            })
+            
+            return result
         }
-        
-        var result: [RoughRenderCommand] = []
-        
-        // Check if scribble fill is requested - handle it with native generation
-        if options.fillStyle == .scribble {
-            let scribbleCommands = scribbleFillCommands(
-                for: drawing,
-                options: options,
-                in: size,
-                svgTransform: svgTransform,
-                isSVGPath: isSVGPath
-            )
-            result.append(contentsOf: scribbleCommands)
-        }
-        
-        // Process standard operation sets
-        result.append(contentsOf: drawing.sets.flatMap { set in
-            commands(for: set, options: options, in: size, svgTransform: svgTransform, isSVGPath: isSVGPath, svgClipPath: scaledSVGClipPath)
-        })
-        
-        return result
     }
 
     /// Render a `Drawing` directly into a SwiftUI `GraphicsContext`.
