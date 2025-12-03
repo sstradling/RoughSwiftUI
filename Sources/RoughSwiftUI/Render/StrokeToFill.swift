@@ -42,10 +42,16 @@ struct PathSample {
 struct StrokeToFillConverter {
     
     /// Minimum number of samples per path segment.
-    private static let minSamplesPerSegment = 8
+    private static let minSamplesPerSegment = 4
+    
+    /// Maximum number of samples per segment to prevent excessive computation.
+    private static let maxSamplesPerSegment = 64
     
     /// Maximum distance between samples (in points).
     private static let maxSampleSpacing: CGFloat = 4.0
+    
+    /// Base number of samples per unit of "curviness" for adaptive sampling.
+    private static let samplesPerCurvinessUnit: CGFloat = 4.0
     
     // MARK: - Public API
     
@@ -288,7 +294,8 @@ struct StrokeToFillConverter {
                     continue
                 }
                 
-                let numSamples = max(minSamplesPerSegment, Int(ceil(segmentLength / maxSampleSpacing)))
+                // Adaptive sampling based on curve complexity
+                let numSamples = adaptiveQuadSampleCount(from: currentPoint, to: to, control: control, length: segmentLength)
                 
                 for i in 1...numSamples {
                     let localT = CGFloat(i) / CGFloat(numSamples)
@@ -308,7 +315,8 @@ struct StrokeToFillConverter {
                     continue
                 }
                 
-                let numSamples = max(minSamplesPerSegment, Int(ceil(segmentLength / maxSampleSpacing)))
+                // Adaptive sampling based on curve complexity
+                let numSamples = adaptiveCubicSampleCount(from: currentPoint, to: to, control1: control1, control2: control2, length: segmentLength)
                 
                 for i in 1...numSamples {
                     let localT = CGFloat(i) / CGFloat(numSamples)
@@ -488,6 +496,83 @@ struct StrokeToFillConverter {
             path.addLine(to: CGPoint(x: to.x + offsetX, y: to.y + offsetY))
             path.addLine(to: to)
         }
+    }
+    
+    // MARK: - Adaptive Bezier Sampling
+    
+    /// Calculates the optimal number of samples for a quadratic bezier curve.
+    ///
+    /// Uses adaptive sampling based on:
+    /// - Curve length
+    /// - Curviness ratio (control polygon length / chord length)
+    ///
+    /// Nearly straight curves get fewer samples; highly curved ones get more.
+    @inline(__always)
+    private static func adaptiveQuadSampleCount(
+        from: CGPoint,
+        to: CGPoint,
+        control: CGPoint,
+        length: CGFloat
+    ) -> Int {
+        // Chord length: direct distance from start to end
+        let chordLength = distanceFast(from, to)
+        
+        // Control polygon length
+        let leg1 = distanceFast(from, control)
+        let leg2 = distanceFast(control, to)
+        let controlPolygonLength = leg1 + leg2
+        
+        // Curviness: ratio of control polygon to chord (1.0 = straight line)
+        let curviness = chordLength > 0.001 ? controlPolygonLength / chordLength : 1.0
+        
+        // Samples from curviness (more curved = more samples)
+        let curvinessContribution = (curviness - 1.0) * samplesPerCurvinessUnit
+        
+        // Samples from length (longer = more samples, but with diminishing returns)
+        let lengthContribution = ceil(length / maxSampleSpacing)
+        
+        let rawSamples = Int(curvinessContribution + lengthContribution)
+        
+        return max(minSamplesPerSegment, min(maxSamplesPerSegment, rawSamples))
+    }
+    
+    /// Calculates the optimal number of samples for a cubic bezier curve.
+    ///
+    /// Uses adaptive sampling based on:
+    /// - Curve length
+    /// - Curviness ratio (control polygon length / chord length)
+    ///
+    /// Cubic curves can have inflection points, so they get slightly more samples
+    /// for the same curviness compared to quadratic curves.
+    @inline(__always)
+    private static func adaptiveCubicSampleCount(
+        from: CGPoint,
+        to: CGPoint,
+        control1: CGPoint,
+        control2: CGPoint,
+        length: CGFloat
+    ) -> Int {
+        // Chord length: direct distance from start to end
+        let chordLength = distanceFast(from, to)
+        
+        // Control polygon length: through both control points
+        let leg1 = distanceFast(from, control1)
+        let leg2 = distanceFast(control1, control2)
+        let leg3 = distanceFast(control2, to)
+        let controlPolygonLength = leg1 + leg2 + leg3
+        
+        // Curviness: ratio of control polygon to chord
+        let curviness = chordLength > 0.001 ? controlPolygonLength / chordLength : 1.0
+        
+        // Cubic curves need slightly more samples due to potential inflection points
+        let curvinessContribution = (curviness - 1.0) * samplesPerCurvinessUnit * 1.2
+        
+        // Samples from length
+        let lengthContribution = ceil(length / maxSampleSpacing)
+        
+        let rawSamples = Int(curvinessContribution + lengthContribution)
+        
+        return max(minSamplesPerSegment, min(maxSamplesPerSegment, rawSamples))
     }
     
     // MARK: - Bezier Curve Math (Optimized)

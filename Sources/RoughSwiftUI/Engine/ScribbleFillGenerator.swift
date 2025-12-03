@@ -363,7 +363,106 @@ public struct ScribbleFillGenerator {
         )
     }
     
+    // MARK: - Adaptive Bezier Sampling
+    
+    /// Minimum segments for any curve (ensures accuracy for simple curves).
+    private static let minBezierSegments = 3
+    
+    /// Maximum segments to prevent excessive computation on very long/complex curves.
+    private static let maxBezierSegments = 32
+    
+    /// Base number of segments per unit of "curviness" factor.
+    private static let segmentsPerCurvinessUnit: CGFloat = 6.0
+    
+    /// Calculates the optimal number of segments for a quadratic bezier curve.
+    ///
+    /// Uses adaptive sampling based on:
+    /// - Chord length (direct distance from start to end)
+    /// - Control polygon length (distance through control point)
+    /// - Curviness ratio (how much the curve deviates from a straight line)
+    ///
+    /// - Parameters:
+    ///   - start: The starting point of the curve.
+    ///   - control: The control point.
+    ///   - end: The ending point of the curve.
+    /// - Returns: The optimal number of segments to use for approximation.
+    private static func adaptiveSegmentCount(
+        quadStart start: CGPoint,
+        control: CGPoint,
+        end: CGPoint
+    ) -> Int {
+        // Chord length: direct distance from start to end
+        let chordLength = hypot(end.x - start.x, end.y - start.y)
+        
+        // Control polygon length: distance through control point
+        let leg1 = hypot(control.x - start.x, control.y - start.y)
+        let leg2 = hypot(end.x - control.x, end.y - control.y)
+        let controlPolygonLength = leg1 + leg2
+        
+        // Curviness: ratio of control polygon to chord (1.0 = straight line)
+        // Higher values indicate more curved paths
+        let curviness = chordLength > 0.001 ? controlPolygonLength / chordLength : 1.0
+        
+        // Calculate segments based on curviness
+        // A straight line (curviness ≈ 1) needs fewer segments
+        // A highly curved path (curviness > 1.5) needs more
+        let curvinessContribution = (curviness - 1.0) * segmentsPerCurvinessUnit
+        
+        // Also factor in absolute length - longer curves need more segments
+        // Use sqrt to prevent excessive segments for very long curves
+        let lengthContribution = sqrt(controlPolygonLength) * 0.5
+        
+        let rawSegments = Int(ceil(curvinessContribution + lengthContribution))
+        
+        return max(minBezierSegments, min(maxBezierSegments, rawSegments))
+    }
+    
+    /// Calculates the optimal number of segments for a cubic bezier curve.
+    ///
+    /// Uses adaptive sampling based on:
+    /// - Chord length (direct distance from start to end)
+    /// - Control polygon length (distance through both control points)
+    /// - Curviness ratio (how much the curve deviates from a straight line)
+    ///
+    /// - Parameters:
+    ///   - start: The starting point of the curve.
+    ///   - control1: The first control point.
+    ///   - control2: The second control point.
+    ///   - end: The ending point of the curve.
+    /// - Returns: The optimal number of segments to use for approximation.
+    private static func adaptiveSegmentCount(
+        cubicStart start: CGPoint,
+        control1: CGPoint,
+        control2: CGPoint,
+        end: CGPoint
+    ) -> Int {
+        // Chord length: direct distance from start to end
+        let chordLength = hypot(end.x - start.x, end.y - start.y)
+        
+        // Control polygon length: distance through both control points
+        let leg1 = hypot(control1.x - start.x, control1.y - start.y)
+        let leg2 = hypot(control2.x - control1.x, control2.y - control1.y)
+        let leg3 = hypot(end.x - control2.x, end.y - control2.y)
+        let controlPolygonLength = leg1 + leg2 + leg3
+        
+        // Curviness: ratio of control polygon to chord (1.0 = straight line)
+        let curviness = chordLength > 0.001 ? controlPolygonLength / chordLength : 1.0
+        
+        // Cubic curves typically need more segments than quadratic for same curviness
+        // because they can have inflection points and more complex shapes
+        let curvinessContribution = (curviness - 1.0) * segmentsPerCurvinessUnit * 1.25
+        
+        // Length contribution with slightly higher factor for cubic curves
+        let lengthContribution = sqrt(controlPolygonLength) * 0.6
+        
+        let rawSegments = Int(ceil(curvinessContribution + lengthContribution))
+        
+        return max(minBezierSegments, min(maxBezierSegments, rawSegments))
+    }
+    
     /// Finds intersections between a ray and a quadratic bezier curve.
+    ///
+    /// Uses adaptive segment count based on curve complexity for optimal performance.
     private static func findQuadCurveIntersections(
         start: CGPoint,
         control: CGPoint,
@@ -372,7 +471,9 @@ public struct ScribbleFillGenerator {
         rayEnd: CGPoint
     ) -> [CGPoint] {
         var intersections: [CGPoint] = []
-        let segments = 10
+        
+        // Adaptive segment count based on curve complexity
+        let segments = adaptiveSegmentCount(quadStart: start, control: control, end: end)
         
         for i in 0..<segments {
             let t1 = CGFloat(i) / CGFloat(segments)
@@ -390,6 +491,8 @@ public struct ScribbleFillGenerator {
     }
     
     /// Finds intersections between a ray and a cubic bezier curve.
+    ///
+    /// Uses adaptive segment count based on curve complexity for optimal performance.
     private static func findCubicCurveIntersections(
         start: CGPoint,
         control1: CGPoint,
@@ -399,7 +502,9 @@ public struct ScribbleFillGenerator {
         rayEnd: CGPoint
     ) -> [CGPoint] {
         var intersections: [CGPoint] = []
-        let segments = 15
+        
+        // Adaptive segment count based on curve complexity
+        let segments = adaptiveSegmentCount(cubicStart: start, control1: control1, control2: control2, end: end)
         
         for i in 0..<segments {
             let t1 = CGFloat(i) / CGFloat(segments)
