@@ -1,18 +1,17 @@
-## Based entirely on https://github.com/onmyway133/RoughSwift, modified via Cursor
+# RoughSwiftUI
 
 ![](Screenshots/s.png)
-
-Checkout https://indiegoodies.com/
 
 ![](Screenshots/s1.png)
 
 ## Description
 
-RoughSwift allows us to easily make shapes in hand drawn, sketchy, comic style in SwiftUI.
+RoughSwiftUI allows you to easily create shapes in a hand-drawn, sketchy, comic style in SwiftUI. This library provides a native Swift implementation of rough.js-style rendering, optimized for iOS and tvOS.
 
 - [x] Support iOS, tvOS
-- [x] Support all shapes: line, rectangle, circle, ellipse, linear path, arc, curve, polygon, svg path
-- [x] Native SwiftUI rendering via `Canvas`, backed by `rough.js` in JavaScriptCore
+- [x] Support all shapes: line, rectangle, circle, ellipse, linear path, arc, curve, polygon, SVG path, text
+- [x] **Native Swift rendering engine** - no JavaScript bridge required
+- [x] Native SwiftUI rendering via `Canvas`
 - [x] Easy customizations with Options
 - [x] Easy composable APIs
 - [x] Convenient draw functions
@@ -21,14 +20,14 @@ RoughSwift allows us to easily make shapes in hand drawn, sketchy, comic style i
 - [x] Immutable and type safe data structure
 - [x] SVG path scaling and alignment
 - [x] Animated strokes and fills with configurable variations
+- [x] Custom brush profiles for calligraphic effects
+- [x] Text rendering with rough styling
+- [x] Scribble fill pattern for continuous zig-zag fills
 - [ ] SVG elliptical arc
-
-There are [Example](https://github.com/onmyway133/RoughSwift/tree/master/Example) project where you can explore further.
 
 ## Basic
 
-The easiest way to use RoughSwift is via `RoughView`, a SwiftUI `View` that renders
-hand‑drawn primitives using SwiftUI `Canvas` under the hood.
+The easiest way to use RoughSwiftUI is via `RoughView`, a SwiftUI `View` that renders hand-drawn primitives using SwiftUI `Canvas` under the hood.
 
 Here's how to draw a green rectangle:
 
@@ -38,32 +37,30 @@ Here's how to draw a green rectangle:
 RoughView()
     .fill(.yellow)
     .fillStyle(.hachure)
-    .hachureAngle(-41)
-    .hachureGap(-1)
-    .fillWeight(-1)
+    .fillAngle(45)
+    .fillSpacing(4)
+    .fillWeight(1)
     .stroke(.systemTeal)
     .strokeWidth(2)
     .curveTightness(0)
     .curveStepCount(9)
-    .dashOffset(-1)
-    .dashGap(-1)
-    .zigzagOffset(-9)
+    .rectangle()
 ```
 
-Because `RoughView` is a normal SwiftUI view, you can compose it with other SwiftUI
-views, apply transforms (scale, rotate, offset), and animate it using standard
-SwiftUI modifiers.
+Because `RoughView` is a normal SwiftUI view, you can compose it with other SwiftUI views, apply transforms (scale, rotate, offset), and animate it using standard SwiftUI modifiers.
 
 ## Options
 
-`Options` is used to custimize shape. It is immutable struct and apply to one shape at a time. The following properties are configurable
+`Options` is used to customize shape rendering. It is an immutable struct applied to one shape at a time. The following properties are configurable:
 
 - maxRandomnessOffset
-- toughness
+- roughness
 - bowing
 - fill
 - stroke
 - strokeWidth
+- strokeOpacity
+- fillOpacity
 - curveTightness
 - curveStepCount
 - fillStyle
@@ -83,9 +80,19 @@ For SVG paths, additional options are available to fine-tune rendering:
 - `svgFillWeight` - Override fill weight specifically for SVG paths
 - `svgFillStrokeAlignment` - Control how fill strokes align to the path
 
+### Scribble Fill Options
+
+For the scribble fill style, additional parameters control the continuous zig-zag pattern:
+
+- `scribbleOrigin` - Starting angle in degrees (0-360)
+- `scribbleTightness` - Number of zig-zags (1-100)
+- `scribbleCurvature` - Vertex curvature (0-50)
+- `scribbleUseBrushStroke` - Enable brush stroke rendering
+- `scribbleTightnessPattern` - Variable density pattern array
+
 ## Shapes
 
-RoughSwift supports all primitive shapes, including SVG path
+RoughSwiftUI supports all primitive shapes, including SVG paths and text:
 
 - line
 - rectangle
@@ -95,22 +102,24 @@ RoughSwift supports all primitive shapes, including SVG path
 - arc
 - curve
 - polygon
-- path
+- path (SVG)
+- text
 
-## Fill style
+## Fill Styles
 
 Most of the time, we use `fill` for solid fill color inside shape, `stroke` for shape border, and `fillStyle` for sketchy fill style.
 
-Available fill styles
+Available fill styles:
 
 - crossHatch
 - dashed
 - dots
-- hachure
+- hachure (default)
 - solid
 - starBurst
 - zigzag
 - zigzagLine
+- **scribble** (continuous zig-zag traversing the shape)
 
 ### Fill Angle
 
@@ -182,7 +191,43 @@ RoughView()
     .rectangle()
 ```
 
-Here's how to draw circles in different fill styles. The default fill style is hachure
+### Scribble Fill
+
+The scribble fill style creates a continuous zig-zag line that traverses from one edge of a shape to the opposite edge:
+
+```swift
+// Basic scribble fill
+RoughView()
+    .fill(.purple)
+    .fillStyle(.scribble)
+    .scribbleTightness(15)
+    .circle()
+
+// Curved scribble with brush strokes
+RoughView()
+    .fill(.blue)
+    .fillStyle(.scribble)
+    .scribble(
+        origin: 45,           // Start from 45° angle
+        tightness: 20,        // 20 zig-zags
+        curvature: 30,        // Curved vertices
+        useBrushStroke: true  // Variable-width strokes
+    )
+    .rectangle()
+
+// Variable density scribble
+RoughView()
+    .fill(.green)
+    .fillStyle(.scribble)
+    .scribble(
+        origin: 0,
+        tightnessPattern: [5, 15, 30, 15, 5],  // Sparse-dense-sparse
+        curvature: 10
+    )
+    .circle()
+```
+
+Here's how to draw circles in different fill styles. The default fill style is hachure:
 
 ![](Screenshots/circles.png)
 
@@ -237,9 +282,49 @@ struct StylesView: View {
                 .fillStyle(.zigzagLine)
                 .circle()
                 .frame(width: 100, height: 100)
+
+            RoughView()
+                .fill(.pink)
+                .fillStyle(.scribble)
+                .scribbleTightness(12)
+                .circle()
+                .frame(width: 100, height: 100)
         }
     }
 }
+```
+
+## Text Rendering
+
+RoughSwiftUI can render text with hand-drawn styling using CoreText glyph extraction:
+
+```swift
+// Basic text with system font
+RoughView()
+    .fill(.blue)
+    .fillStyle(.hachure)
+    .text("Hello", font: .systemFont(ofSize: 48, weight: .bold))
+    .frame(width: 200, height: 100)
+
+// Text with custom font
+RoughView()
+    .stroke(.black)
+    .fill(.yellow)
+    .fillStyle(.crossHatch)
+    .text("Rough", fontName: "Helvetica-Bold", fontSize: 64)
+    .frame(width: 300, height: 100)
+
+// Attributed string support
+let attributed = NSAttributedString(
+    string: "Styled",
+    attributes: [
+        .font: UIFont.systemFont(ofSize: 48, weight: .heavy),
+        .foregroundColor: UIColor.red
+    ]
+)
+RoughView()
+    .fill(.red)
+    .text(attributedString: attributed)
 ```
 
 ## SVG
@@ -313,9 +398,37 @@ RoughView()
     .draw(Path(d: svgPath))
 ```
 
+## Brush Profiles
+
+RoughSwiftUI supports custom brush profiles for calligraphic and artistic stroke effects:
+
+```swift
+// Calligraphic brush with flat tip
+RoughView()
+    .stroke(.black)
+    .strokeWidth(4)
+    .brushTip(roundness: 0.3, angle: .pi / 4, directionSensitive: true)
+    .draw(Line(from: Point(x: 10, y: 10), to: Point(x: 190, y: 190)))
+
+// Tapered stroke
+RoughView()
+    .stroke(.blue)
+    .thicknessProfile(.tapered)
+    .circle()
+
+// Custom thickness profile
+RoughView()
+    .stroke(.green)
+    .thicknessProfile(.custom { t in
+        // Bulge in the middle
+        1.0 - abs(t - 0.5) * 0.5
+    })
+    .rectangle()
+```
+
 ## Animation
 
-RoughSwift supports animated strokes and fills that introduce subtle variations on a loop, creating a "breathing" or "sketchy" animation effect that brings your hand-drawn graphics to life.
+RoughSwiftUI supports animated strokes and fills that introduce subtle variations on a loop, creating a "breathing" or "sketchy" animation effect that brings your hand-drawn graphics to life.
 
 ### Basic Animation
 
@@ -338,7 +451,7 @@ The animation can be customized with three parameters:
 |-----------|---------|-------------|
 | `steps` | 2+ (default: 4) | Number of variation steps before looping back to initial state |
 | `speed` | `.slow`, `.medium`, `.fast` | Transition speed: 600ms, 300ms, or 100ms between steps |
-| `variance` | `.low`, `.medium`, `.high` | Amount of variation: 1%, 5%, or 10% |
+| `variance` | `.veryLow`, `.low`, `.medium`, `.high` | Amount of variation: 0.5%, 1%, 5%, or 10% |
 
 ```swift
 // Custom animation settings
@@ -424,42 +537,23 @@ RoughView()
 2. **O(1) frame access**: During animation, frames are retrieved via direct array lookup with zero computation
 3. **Path extraction optimization**: Path elements are extracted once and reused to build all variation frames
 
-This means the expensive work (JavaScript bridge calls, path generation, variance calculation) only happens when:
+This means the expensive work (path generation, variance calculation) only happens when:
 - The view first appears
 - The canvas size changes
 - The animation configuration changes
 
 During the actual animation loop, the cost is essentially zero - just swapping between pre-computed paths.
 
-```
-┌─────────────────────────────────────────────────────┐
-│              INITIALIZATION (once)                   │
-├─────────────────────────────────────────────────────┤
-│ 1. Generate base commands (JS bridge)               │
-│ 2. Extract path elements from each command          │
-│ 3. Pre-compute varied paths for ALL animation steps │
-│ 4. Store in AnimationFrameCache                     │
-└─────────────────────────────────────────────────────┘
-                         ↓
-┌─────────────────────────────────────────────────────┐
-│              ANIMATION LOOP (fast)                   │
-├─────────────────────────────────────────────────────┤
-│ 1. Timer fires → increment currentStep              │
-│ 2. Get frame: cache[currentStep]  ← O(1) lookup     │
-│ 3. Render pre-computed commands  ← No manipulation  │
-└─────────────────────────────────────────────────────┘
-```
-
-## Creative shapes
+## Creative Shapes
 
 With all the primitive shapes, we can create more beautiful things. The only limit is your imagination.
 
-Here's how to create chart
+Here's how to create a chart:
 
 ![](Screenshots/chart.png)
 
 ```swift
-struct Chartview: View {
+struct ChartView: View {
     var heights: [CGFloat] {
         Array(0 ..< 10).map { _ in CGFloat.random(in: 0 ..< 150) }
     }
@@ -482,20 +576,13 @@ struct Chartview: View {
 }
 ```
 
+## Advanced Usage with Drawable, Generator and SwiftUIRenderer
 
-## Advance with Drawable, Generator and SwiftUIRenderer
+Behind the scenes, RoughSwiftUI uses a `NativeGenerator` (pure Swift implementation inspired by rough.js) and a SwiftUI renderer.
 
-Behind the scenes, RoughSwift composes a `Generator` (powered by `rough.js`) and a
-SwiftUI renderer.
+We can instantiate `Engine` or use a shared `Engine` for memory efficiency to create a `NativeGenerator`. Every time we instruct the generator to draw a shape, the engine figures out information about the sketchy shape in `Drawing`.
 
-We can instantiate `Engine` or use a shared `Engine` for memory efficiency to make
-`Generator`. Every time we instruct `Generator` to draw a shape, the engine works
-to figure out information about the sketchy shape in `Drawable`.
-
-The name of these concepts follow `rough.js` for better code reasoning.
-
-For SwiftUI, there is a `SwiftUIRenderer` that can handle `Drawable` data and
-transform it into SwiftUI `Path`/`Canvas` drawing commands.
+For SwiftUI, there is a `SwiftUIRenderer` that can handle `Drawing` data and transform it into SwiftUI `Path`/`Canvas` drawing commands.
 
 ```swift
 struct CustomCanvasView: View {
@@ -521,10 +608,10 @@ struct CustomCanvasView: View {
 
 ## Performance
 
-RoughSwift uses internal caching to optimize rendering performance:
+RoughSwiftUI uses a **native Swift generator engine** for optimal performance - no JavaScript bridge or JavaScriptCore required. The engine also employs internal caching to further optimize rendering:
 
-- **Generator caching**: Generators are cached by canvas size, avoiding repeated JavaScript context calls when the view size hasn't changed.
-- **Drawing caching**: Generated drawings are cached by drawable + options, avoiding repeated rough.js computations for the same shapes.
+- **Generator caching**: Generators are cached by canvas size, avoiding repeated allocations when the view size hasn't changed.
+- **Drawing caching**: Generated drawings are cached by drawable + options, avoiding repeated computations for the same shapes.
 
 The caches are automatically managed and evict old entries when capacity is reached.
 
@@ -595,7 +682,7 @@ The following operations are measured with signposts:
 | Category | Operations |
 |----------|------------|
 | `rendering` | Canvas Render, Build Commands, Command Execution, SVG Transform |
-| `generation` | Create Generator (JS bridge), Generate Drawing (rough.js) |
+| `generation` | Create Generator, Generate Drawing |
 | `pathOps` | Scribble Fill, Ray Intersection, Stroke to Fill, Duplicate Removal |
 | `animation` | Frame Render, Variance Compute, Precompute Variance |
 | `parsing` | SVG Parse |
@@ -633,35 +720,32 @@ Duration Measurements:
 
 Based on signpost data, common bottlenecks include:
 
-1. **JavaScript Bridge Calls**: Generator creation and drawing generation involve JS calls. Use cached generators (automatic) and avoid creating new Options objects unnecessarily.
+1. **Scribble Fill**: High tightness values create many ray intersections. Use moderate tightness (10-30) for complex shapes.
 
-2. **Scribble Fill**: High tightness values create many ray intersections. Use moderate tightness (10-30) for complex shapes.
+2. **Stroke-to-Fill Conversion**: Brush profiles with custom tips require path sampling. Use standard brush profiles when performance is critical.
 
-3. **Stroke-to-Fill Conversion**: Brush profiles with custom tips require path sampling. Use standard brush profiles when performance is critical.
-
-4. **Animation Frame Pre-computation**: Initial frame generation can take time for complex shapes. Consider showing a loading state for animations with many steps and complex drawings.
+3. **Animation Frame Pre-computation**: Initial frame generation can take time for complex shapes. Consider showing a loading state for animations with many steps and complex drawings.
 
 ## Installation
 
-Add the following line to the dependencies in your `Package.swift` file
+Add the following line to the dependencies in your `Package.swift` file:
 
 ```swift
-.package(url: "https://github.com/onmyway133/RoughSwift"),
+.package(url: "https://github.com/sstradling/RoughSwiftUI", from: "1.0.0"),
 ```
 
-Then add `RoughSwift` as a dependency of your app target. On iOS/tvOS, you can
-import the package and use `RoughView` directly inside SwiftUI:
+Then add `RoughSwiftUI` as a dependency of your target. On iOS/tvOS, you can import the package and use `RoughView` directly inside SwiftUI:
 
 ```swift
 import SwiftUI
-import RoughSwift
+import RoughSwiftUI
 
 struct ContentView: View {
     var body: some View {
         RoughView()
-            .rectangle()
             .fill(.yellow)
             .stroke(.systemTeal)
+            .rectangle()
             .frame(width: 200, height: 200)
     }
 }
@@ -669,16 +753,15 @@ struct ContentView: View {
 
 ## Author
 
-Khoa Pham, onmyway133@gmail.com
+**Seth Stradling** - [@sstradling](https://github.com/sstradling)
 
-## Credit
+## Credits
 
-- [rough](https://github.com/pshihn/rough) for the generator that powers RoughSwift. All the hard work is done via rough in JavascriptCore.
-- [SVGPath](https://github.com/timrwood/SVGPath) for constructing UIBezierPath from SVG path
+- [**RoughSwift**](https://github.com/onmyway133/RoughSwift) by [Khoa Pham](https://github.com/onmyway133) - The original Swift wrapper for rough.js that this project is based on. RoughSwiftUI builds upon Khoa's excellent foundation with a native Swift generator engine and SwiftUI-first API.
 
-## Contributing
+- [**rough.js**](https://github.com/pshihn/rough) by Prashant Sharma - The original JavaScript library that serves as the basis and inspiration for the native Swift generator engine powering RoughSwiftUI. The algorithms for creating hand-drawn, sketchy graphics are adapted from rough.js.
 
-We would love you to contribute to **RoughSwift**, check the [CONTRIBUTING](https://github.com/onmyway133/RoughSwift/blob/master/CONTRIBUTING.md) file for more info.
+- [**SVGPath**](https://github.com/timrwood/SVGPath) by Tim Wood - For the SVG path parsing implementation.
 
 ## License
 
