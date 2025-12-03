@@ -4,6 +4,8 @@
 //
 //  Created by khoa on 26/03/2022.
 //
+//  Modifications Copyright © 2025 Seth Stradling. All rights reserved.
+//
 
 import Foundation
 import UIKit

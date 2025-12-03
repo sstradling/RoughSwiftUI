@@ -3917,4 +3917,640 @@ final class RoughSwiftTests: XCTestCase {
             XCTAssertEqual(reconstructed.y, direct.y, accuracy: 0.001, "Reconstructed Y should match direct variance")
         }
     }
+    
+    // MARK: - Native Swift Port Tests
+    
+    // MARK: RoughMath Tests
+    
+    func testRoughMathRandOffsetRespectsRoughness() {
+        var options = Options()
+        
+        // With zero roughness, offset should be zero
+        options.roughness = 0
+        let zeroOffset = RoughMath.randOffset(10, options: options)
+        XCTAssertEqual(zeroOffset, 0, "Zero roughness should produce zero offset")
+        
+        // With non-zero roughness, offset should be within bounds
+        options.roughness = 1.0
+        var hasNonZero = false
+        for _ in 0..<100 {
+            let offset = RoughMath.randOffset(10, options: options)
+            XCTAssertLessThanOrEqual(abs(offset), 10, "Offset should be within bounds")
+            if offset != 0 { hasNonZero = true }
+        }
+        XCTAssertTrue(hasNonZero, "Should produce non-zero offsets with roughness > 0")
+    }
+    
+    func testRoughMathRandOffsetWithRange() {
+        var options = Options()
+        options.roughness = 1.0
+        
+        for _ in 0..<100 {
+            let offset = RoughMath.randOffsetWithRange(5, 15, options: options)
+            XCTAssertGreaterThanOrEqual(offset, 5, "Offset should be >= min")
+            XCTAssertLessThanOrEqual(offset, 15, "Offset should be <= max")
+        }
+    }
+    
+    func testRoughMathDoubleLineOpsProducesOperations() {
+        var options = Options()
+        options.roughness = 1.0
+        options.bowing = 1.0
+        
+        let ops = RoughMath.doubleLineOps(x1: 0, y1: 0, x2: 100, y2: 100, options: options)
+        
+        // Double line should produce operations for two passes
+        XCTAssertGreaterThan(ops.count, 0, "Should produce operations")
+        
+        // Should have Move and BezierCurveTo operations
+        let hasMoves = ops.contains { $0 is Move }
+        let hasCurves = ops.contains { $0 is BezierCurveTo }
+        XCTAssertTrue(hasMoves, "Should have Move operations")
+        XCTAssertTrue(hasCurves, "Should have BezierCurveTo operations")
+    }
+    
+    func testRoughMathLineOpsWithBowing() {
+        var options = Options()
+        options.roughness = 1.0
+        options.bowing = 2.0  // High bowing
+        
+        let ops = RoughMath.lineOps(x1: 0, y1: 0, x2: 100, y2: 0, options: options, move: true, overlay: false)
+        
+        XCTAssertGreaterThan(ops.count, 0, "Should produce operations")
+        
+        // With bowing, the bezier curve control points should not be on the straight line
+        if let curve = ops.first(where: { $0 is BezierCurveTo }) as? BezierCurveTo {
+            // Control points should have y offset due to bowing (line is horizontal)
+            let cp1y = curve.controlPoint1.y
+            let cp2y = curve.controlPoint2.y
+            // At least one control point should be offset from y=0 line
+            XCTAssertTrue(abs(cp1y) > 0 || abs(cp2y) > 0, "Bowing should offset control points")
+        }
+    }
+    
+    func testRoughMathEllipseOpsProducesClosedShape() {
+        var options = Options()
+        options.roughness = 1.0
+        options.curveStepCount = 9
+        
+        let ops = RoughMath.ellipseOps(cx: 50, cy: 50, rx: 40, ry: 30, options: options)
+        
+        XCTAssertGreaterThan(ops.count, 10, "Ellipse should produce many operations")
+        
+        // Should have moves and curves
+        let hasMoves = ops.contains { $0 is Move }
+        let hasCurves = ops.contains { $0 is BezierCurveTo }
+        XCTAssertTrue(hasMoves, "Should have Move operations")
+        XCTAssertTrue(hasCurves, "Should have BezierCurveTo operations")
+    }
+    
+    func testRoughMathRectangleOpsProducesFourSides() {
+        var options = Options()
+        options.roughness = 0.5
+        
+        let ops = RoughMath.rectangleOps(x: 10, y: 10, width: 80, height: 60, options: options)
+        
+        // Rectangle has 4 sides, each with double line = 16 or more operations
+        XCTAssertGreaterThanOrEqual(ops.count, 16, "Rectangle should produce operations for 4 sides")
+    }
+    
+    func testRoughMathPolygonOps() {
+        var options = Options()
+        options.roughness = 1.0
+        
+        // Triangle
+        let points: [[Float]] = [[0, 100], [50, 0], [100, 100]]
+        let ops = RoughMath.polygonOps(points: points, options: options)
+        
+        // 3 sides with double lines
+        XCTAssertGreaterThan(ops.count, 10, "Triangle should produce operations for 3 sides")
+    }
+    
+    func testRoughMathLinearPathOpsOpen() {
+        var options = Options()
+        options.roughness = 1.0
+        
+        let points: [[Float]] = [[0, 0], [50, 50], [100, 0]]
+        let ops = RoughMath.linearPathOps(points: points, close: false, options: options)
+        
+        // 2 segments (open path)
+        XCTAssertGreaterThan(ops.count, 4, "Open path should produce operations for segments")
+    }
+    
+    func testRoughMathLinearPathOpsClosed() {
+        var options = Options()
+        options.roughness = 1.0
+        
+        let points: [[Float]] = [[0, 0], [50, 50], [100, 0]]
+        let opsOpen = RoughMath.linearPathOps(points: points, close: false, options: options)
+        let opsClosed = RoughMath.linearPathOps(points: points, close: true, options: options)
+        
+        // Closed path should have more operations (extra closing segment)
+        XCTAssertGreaterThan(opsClosed.count, opsOpen.count, "Closed path should have more operations")
+    }
+    
+    func testRoughMathArcOps() {
+        var options = Options()
+        options.roughness = 1.0
+        options.curveStepCount = 9
+        
+        let ops = RoughMath.arcOps(
+            cx: 50, cy: 50, rx: 40, ry: 40,
+            start: 0, stop: Float.pi,
+            closed: false, roughClosure: true,
+            options: options
+        )
+        
+        XCTAssertGreaterThan(ops.count, 5, "Arc should produce operations")
+    }
+    
+    func testRoughMathCurveOps() {
+        var options = Options()
+        options.roughness = 1.0
+        options.curveTightness = 0
+        
+        let points: [[Float]] = [[0, 0], [25, 50], [50, 25], [75, 75], [100, 50]]
+        let ops = RoughMath.curveOps(points: points, options: options)
+        
+        XCTAssertGreaterThan(ops.count, 5, "Curve should produce operations")
+    }
+    
+    func testRoughMathPolygonCentroid() {
+        // Square centered at (50, 50)
+        let square: [[Float]] = [[0, 0], [100, 0], [100, 100], [0, 100]]
+        let centroid = RoughMath.polygonCentroid(square)
+        
+        XCTAssertEqual(centroid[0], 50, accuracy: 0.1, "Centroid X should be center")
+        XCTAssertEqual(centroid[1], 50, accuracy: 0.1, "Centroid Y should be center")
+    }
+    
+    func testRoughMathPolygonBounds() {
+        let triangle: [[Float]] = [[10, 20], [80, 30], [50, 90]]
+        let bounds = RoughMath.polygonBounds(triangle)
+        
+        XCTAssertEqual(bounds.minX, 10, "Min X should be 10")
+        XCTAssertEqual(bounds.maxX, 80, "Max X should be 80")
+        XCTAssertEqual(bounds.minY, 20, "Min Y should be 20")
+        XCTAssertEqual(bounds.maxY, 90, "Max Y should be 90")
+    }
+    
+    func testRoughMathLineLength() {
+        let segment: [[Float]] = [[0, 0], [3, 4]]
+        let length = RoughMath.lineLength(segment)
+        
+        XCTAssertEqual(length, 5, accuracy: 0.001, "3-4-5 triangle hypotenuse should be 5")
+    }
+    
+    // MARK: NativeGenerator Tests
+    
+    func testNativeGeneratorLine() {
+        let gen = NativeGenerator(size: CGSize(width: 200, height: 200))
+        let drawable = Line(from: Point(x: 10, y: 10), to: Point(x: 190, y: 190))
+        
+        let drawing = gen.generate(drawable: drawable)
+        
+        XCTAssertNotNil(drawing, "Should generate line drawing")
+        XCTAssertEqual(drawing?.shape, "line")
+        XCTAssertGreaterThan(drawing?.sets.count ?? 0, 0, "Should have at least one set")
+    }
+    
+    func testNativeGeneratorRectangle() {
+        let gen = NativeGenerator(size: CGSize(width: 200, height: 200))
+        let drawable = Rectangle(x: 10, y: 10, width: 100, height: 80)
+        
+        let drawing = gen.generate(drawable: drawable)
+        
+        XCTAssertNotNil(drawing, "Should generate rectangle drawing")
+        XCTAssertEqual(drawing?.shape, "rectangle")
+        XCTAssertEqual(drawing?.sets.count, 2, "Rectangle should have fill and stroke sets")
+    }
+    
+    func testNativeGeneratorEllipse() {
+        let gen = NativeGenerator(size: CGSize(width: 200, height: 200))
+        let drawable = Ellipse(x: 100, y: 100, width: 80, height: 60)
+        
+        let drawing = gen.generate(drawable: drawable)
+        
+        XCTAssertNotNil(drawing, "Should generate ellipse drawing")
+        XCTAssertEqual(drawing?.shape, "ellipse")
+        XCTAssertEqual(drawing?.sets.count, 2, "Ellipse should have fill and stroke sets")
+    }
+    
+    func testNativeGeneratorCircle() {
+        let gen = NativeGenerator(size: CGSize(width: 200, height: 200))
+        let drawable = Circle(x: 100, y: 100, diameter: 80)
+        
+        let drawing = gen.generate(drawable: drawable)
+        
+        XCTAssertNotNil(drawing, "Should generate circle drawing")
+        XCTAssertEqual(drawing?.shape, "circle")
+        XCTAssertEqual(drawing?.sets.count, 2, "Circle should have fill and stroke sets")
+    }
+    
+    func testNativeGeneratorPolygon() {
+        let gen = NativeGenerator(size: CGSize(width: 200, height: 200))
+        let points = [Point(x: 100, y: 10), Point(x: 190, y: 190), Point(x: 10, y: 190)]
+        let drawable = Polygon(points: points)
+        
+        let drawing = gen.generate(drawable: drawable)
+        
+        XCTAssertNotNil(drawing, "Should generate polygon drawing")
+        XCTAssertEqual(drawing?.shape, "polygon")
+    }
+    
+    func testNativeGeneratorArc() {
+        let gen = NativeGenerator(size: CGSize(width: 200, height: 200))
+        let drawable = Arc(x: 100, y: 100, width: 80, height: 80, start: 0, stop: Float.pi, closed: true)
+        
+        let drawing = gen.generate(drawable: drawable)
+        
+        XCTAssertNotNil(drawing, "Should generate arc drawing")
+        XCTAssertEqual(drawing?.shape, "arc")
+    }
+    
+    func testNativeGeneratorCurve() {
+        let gen = NativeGenerator(size: CGSize(width: 200, height: 200))
+        let points = [Point(x: 10, y: 100), Point(x: 50, y: 10), Point(x: 150, y: 190), Point(x: 190, y: 100)]
+        let drawable = Curve(points: points)
+        
+        let drawing = gen.generate(drawable: drawable)
+        
+        XCTAssertNotNil(drawing, "Should generate curve drawing")
+        XCTAssertEqual(drawing?.shape, "curve")
+    }
+    
+    func testNativeGeneratorLinearPath() {
+        let gen = NativeGenerator(size: CGSize(width: 200, height: 200))
+        let points = [Point(x: 10, y: 10), Point(x: 100, y: 50), Point(x: 190, y: 10)]
+        let drawable = LinearPath(points: points)
+        
+        let drawing = gen.generate(drawable: drawable)
+        
+        XCTAssertNotNil(drawing, "Should generate linear path drawing")
+        XCTAssertEqual(drawing?.shape, "linearPath")
+    }
+    
+    func testNativeGeneratorPath() {
+        let gen = NativeGenerator(size: CGSize(width: 200, height: 200))
+        let svgPath = "M 10 10 L 190 10 L 190 190 L 10 190 Z"
+        let drawable = Path(d: svgPath)
+        
+        let drawing = gen.generate(drawable: drawable)
+        
+        XCTAssertNotNil(drawing, "Should generate SVG path drawing")
+        XCTAssertEqual(drawing?.shape, "path")
+    }
+    
+    func testNativeGeneratorWithOptions() {
+        let gen = NativeGenerator(size: CGSize(width: 200, height: 200))
+        let drawable = Rectangle(x: 10, y: 10, width: 100, height: 80)
+        
+        var options = Options()
+        options.roughness = 2.0
+        options.strokeWidth = 3.0
+        options.fillStyle = .crossHatch
+        options.fill = .red
+        
+        let drawing = gen.generate(drawable: drawable, options: options)
+        
+        XCTAssertNotNil(drawing, "Should generate drawing with options")
+        XCTAssertEqual(drawing?.options.roughness, 2.0)
+        XCTAssertEqual(drawing?.options.strokeWidth, 3.0)
+        XCTAssertEqual(drawing?.options.fillStyle, .crossHatch)
+    }
+    
+    func testNativeGeneratorWithCache() {
+        let cache = DrawingCache()
+        let gen = NativeGenerator(size: CGSize(width: 200, height: 200), drawingCache: cache)
+        let drawable = Rectangle(x: 10, y: 10, width: 100, height: 80)
+        
+        // First call
+        let drawing1 = gen.generate(drawable: drawable)
+        XCTAssertNotNil(drawing1)
+        
+        // Second call should hit cache
+        let drawing2 = gen.generate(drawable: drawable)
+        XCTAssertNotNil(drawing2)
+        
+        // Cache should have recorded a hit
+        XCTAssertGreaterThan(cache.stats.hits, 0, "Should have cache hits")
+    }
+    
+    func testNativeGeneratorFullRectangle() {
+        let gen = NativeGenerator(size: CGSize(width: 100, height: 100))
+        let drawing = gen.generate(drawable: FullRectangle())
+        
+        XCTAssertNotNil(drawing, "Should generate full rectangle")
+        XCTAssertEqual(drawing?.shape, "rectangle")
+    }
+    
+    func testNativeGeneratorFullCircle() {
+        let gen = NativeGenerator(size: CGSize(width: 100, height: 100))
+        let drawing = gen.generate(drawable: FullCircle())
+        
+        XCTAssertNotNil(drawing, "Should generate full circle")
+        XCTAssertEqual(drawing?.shape, "circle")
+    }
+    
+    // MARK: Fill Pattern Tests
+    
+    func testHachureFillerPolygon() {
+        let filler = HachureFiller()
+        var options = Options()
+        options.fillAngle = 45
+        options.fillSpacing = 4
+        
+        let points: [[Float]] = [[0, 0], [100, 0], [100, 100], [0, 100]]
+        let fillSet = filler.fillPolygon(points: points, options: options)
+        
+        XCTAssertNotNil(fillSet, "Should produce fill set")
+        XCTAssertEqual(fillSet?.type, .fillSketch, "Should be fillSketch type")
+        XCTAssertGreaterThan(fillSet?.operations.count ?? 0, 10, "Should have fill operations")
+    }
+    
+    func testHachureFillerEllipse() {
+        let filler = HachureFiller()
+        var options = Options()
+        options.fillAngle = 45
+        options.fillSpacing = 4
+        
+        let fillSet = filler.fillEllipse(cx: 50, cy: 50, rx: 40, ry: 30, options: options)
+        
+        XCTAssertNotNil(fillSet, "Should produce fill set for ellipse")
+        XCTAssertGreaterThan(fillSet?.operations.count ?? 0, 5, "Should have fill operations")
+    }
+    
+    func testSolidFiller() {
+        let filler = SolidFiller()
+        let options = Options()
+        
+        let points: [[Float]] = [[0, 0], [100, 0], [100, 100], [0, 100]]
+        let fillSet = filler.fillPolygon(points: points, options: options)
+        
+        XCTAssertNotNil(fillSet, "Should produce fill set")
+        XCTAssertEqual(fillSet?.type, .fillPath, "Should be fillPath type")
+    }
+    
+    func testZigzagFiller() {
+        let filler = ZigzagFiller()
+        var options = Options()
+        options.fillAngle = 45
+        options.fillSpacing = 4
+        
+        let points: [[Float]] = [[0, 0], [100, 0], [100, 100], [0, 100]]
+        let fillSet = filler.fillPolygon(points: points, options: options)
+        
+        XCTAssertNotNil(fillSet, "Should produce zigzag fill set")
+        XCTAssertEqual(fillSet?.type, .fillSketch, "Should be fillSketch type")
+    }
+    
+    func testCrossHatchFiller() {
+        let filler = CrossHatchFiller()
+        var options = Options()
+        options.fillAngle = 45
+        options.fillSpacing = 4
+        
+        let points: [[Float]] = [[0, 0], [100, 0], [100, 100], [0, 100]]
+        let fillSet = filler.fillPolygon(points: points, options: options)
+        
+        XCTAssertNotNil(fillSet, "Should produce cross-hatch fill set")
+        // Cross-hatch should have more operations than single hachure
+        let singleHachure = HachureFiller().fillPolygon(points: points, options: options)
+        XCTAssertGreaterThan(
+            fillSet?.operations.count ?? 0,
+            singleHachure?.operations.count ?? 0,
+            "Cross-hatch should have more operations than single hachure"
+        )
+    }
+    
+    func testDotsFiller() {
+        let filler = DotsFiller()
+        var options = Options()
+        options.fillSpacing = 10
+        
+        let points: [[Float]] = [[0, 0], [100, 0], [100, 100], [0, 100]]
+        let fillSet = filler.fillPolygon(points: points, options: options)
+        
+        XCTAssertNotNil(fillSet, "Should produce dots fill set")
+        XCTAssertEqual(fillSet?.type, .fillSketch, "Should be fillSketch type")
+    }
+    
+    func testDashedFiller() {
+        let filler = DashedFiller()
+        var options = Options()
+        options.fillAngle = 45
+        options.fillSpacing = 4
+        options.dashOffset = 5
+        options.dashGap = 3
+        
+        let points: [[Float]] = [[0, 0], [100, 0], [100, 100], [0, 100]]
+        let fillSet = filler.fillPolygon(points: points, options: options)
+        
+        XCTAssertNotNil(fillSet, "Should produce dashed fill set")
+        XCTAssertEqual(fillSet?.type, .fillSketch, "Should be fillSketch type")
+    }
+    
+    func testStarburstFiller() {
+        let filler = StarburstFiller()
+        var options = Options()
+        options.fillSpacing = 8
+        
+        let points: [[Float]] = [[0, 0], [100, 0], [100, 100], [0, 100]]
+        let fillSet = filler.fillPolygon(points: points, options: options)
+        
+        XCTAssertNotNil(fillSet, "Should produce starburst fill set")
+        XCTAssertEqual(fillSet?.type, .fillSketch, "Should be fillSketch type")
+    }
+    
+    func testStarburstFillerEllipse() {
+        let filler = StarburstFiller()
+        var options = Options()
+        options.fillSpacing = 8
+        
+        let fillSet = filler.fillEllipse(cx: 50, cy: 50, rx: 40, ry: 30, options: options)
+        
+        XCTAssertNotNil(fillSet, "Should produce starburst fill for ellipse")
+    }
+    
+    func testFillPatternFactoryReturnsCorrectFillers() {
+        XCTAssertTrue(FillPatternFactory.filler(for: .hachure) is HachureFiller)
+        XCTAssertTrue(FillPatternFactory.filler(for: .solid) is SolidFiller)
+        XCTAssertTrue(FillPatternFactory.filler(for: .zigzag) is ZigzagFiller)
+        XCTAssertTrue(FillPatternFactory.filler(for: .crossHatch) is CrossHatchFiller)
+        XCTAssertTrue(FillPatternFactory.filler(for: .dots) is DotsFiller)
+        XCTAssertTrue(FillPatternFactory.filler(for: .dashed) is DashedFiller)
+        XCTAssertTrue(FillPatternFactory.filler(for: .sunBurst) is StarburstFiller)
+        XCTAssertTrue(FillPatternFactory.filler(for: .starBurst) is StarburstFiller)
+    }
+    
+    func testFillPatternFactoryCachesFillers() {
+        // Getting the same filler twice should return the same instance
+        let filler1 = FillPatternFactory.filler(for: .hachure)
+        let filler2 = FillPatternFactory.filler(for: .hachure)
+        
+        // Note: Protocol doesn't support identity comparison directly,
+        // but the implementation caches, so this is a design note
+        XCTAssertNotNil(filler1)
+        XCTAssertNotNil(filler2)
+    }
+    
+    // MARK: Line Helper Tests
+    
+    func testLineHelperIntersection() {
+        // Two perpendicular lines that should intersect at (50, 50)
+        let line1 = LineHelper.Line(p1: (0, 50), p2: (100, 50))
+        let line2 = LineHelper.Line(p1: (50, 0), p2: (50, 100))
+        
+        let intersection = LineHelper.intersection(line1, line2)
+        
+        XCTAssertNotNil(intersection, "Lines should intersect")
+        XCTAssertEqual(intersection?.x ?? 0, 50, accuracy: 0.1, "Intersection X should be 50")
+        XCTAssertEqual(intersection?.y ?? 0, 50, accuracy: 0.1, "Intersection Y should be 50")
+    }
+    
+    func testLineHelperNoIntersectionParallel() {
+        // Two parallel horizontal lines
+        let line1 = LineHelper.Line(p1: (0, 0), p2: (100, 0))
+        let line2 = LineHelper.Line(p1: (0, 50), p2: (100, 50))
+        
+        let intersection = LineHelper.intersection(line1, line2)
+        
+        XCTAssertNil(intersection, "Parallel lines should not intersect")
+    }
+    
+    func testLineHelperPolygonIntersections() {
+        // Horizontal line through a square
+        let square: [[Float]] = [[0, 0], [100, 0], [100, 100], [0, 100]]
+        let intersections = LineHelper.linePolygonIntersections(
+            line: (start: (-50, 50), end: (150, 50)),
+            polygon: square
+        )
+        
+        XCTAssertEqual(intersections.count, 2, "Should have 2 intersections")
+    }
+    
+    // MARK: SVGPathRenderer Tests
+    
+    func testSVGPathRendererSimplePath() {
+        var options = Options()
+        options.roughness = 0.5
+        
+        let svgPath = "M 10 10 L 100 10 L 100 100 L 10 100 Z"
+        let ops = SVGPathRenderer.pathOps(svgPath: svgPath, options: options)
+        
+        XCTAssertGreaterThan(ops.count, 8, "Should produce operations for all segments")
+    }
+    
+    func testSVGPathRendererCurvePath() {
+        var options = Options()
+        options.roughness = 0.5
+        
+        let svgPath = "M 10 10 C 40 10 60 40 100 100"
+        let ops = SVGPathRenderer.pathOps(svgPath: svgPath, options: options)
+        
+        XCTAssertGreaterThan(ops.count, 2, "Should produce operations for curve")
+    }
+    
+    func testSVGPathRendererQuadCurve() {
+        var options = Options()
+        options.roughness = 0.5
+        
+        let svgPath = "M 10 10 Q 50 100 100 10"
+        let ops = SVGPathRenderer.pathOps(svgPath: svgPath, options: options)
+        
+        XCTAssertGreaterThan(ops.count, 2, "Should produce operations for quad curve")
+    }
+    
+    // MARK: Additional Native Port Integration Tests
+    
+    func testEngineWithNativeGenerator() {
+        let engine = Engine()
+        let gen = engine.generator(size: CGSize(width: 200, height: 200))
+        
+        XCTAssertNotNil(gen, "Engine should return a generator")
+        
+        let drawing = gen.generate(drawable: Rectangle(x: 10, y: 10, width: 80, height: 80))
+        XCTAssertNotNil(drawing, "Generator should produce drawing")
+        XCTAssertEqual(drawing?.shape, "rectangle")
+    }
+    
+    func testEngineGenerateWithCache() {
+        let engine = Engine()
+        engine.clearCaches()
+        
+        let drawable = Rectangle(x: 10, y: 10, width: 80, height: 80)
+        let options = Options()
+        let size = CGSize(width: 200, height: 200)
+        
+        // First call
+        let drawing1 = engine.generate(drawable: drawable, options: options, size: size)
+        XCTAssertNotNil(drawing1)
+        
+        // Second call should use cache
+        let drawing2 = engine.generate(drawable: drawable, options: options, size: size)
+        XCTAssertNotNil(drawing2)
+        
+        // Stats should show cache activity
+        let stats = engine.cacheStats
+        XCTAssertGreaterThan(stats.hitRate, 0, "Should have cache hits")
+    }
+    
+    func testEngineClearCaches() {
+        let engine = Engine()
+        
+        _ = engine.generator(size: CGSize(width: 100, height: 100))
+        _ = engine.generate(
+            drawable: Rectangle(x: 0, y: 0, width: 50, height: 50),
+            options: Options(),
+            size: CGSize(width: 100, height: 100)
+        )
+        
+        engine.clearCaches()
+        
+        let stats = engine.cacheStats
+        XCTAssertEqual(stats.generators, 0, "Generator cache should be empty")
+        XCTAssertEqual(stats.drawings, 0, "Drawing cache should be empty")
+    }
+    
+    func testAllShapesGenerateSuccessfully() {
+        let engine = Engine()
+        let gen = engine.generator(size: CGSize(width: 300, height: 300))
+        
+        // Test all shape types
+        let shapes: [(Drawable, String)] = [
+            (Line(from: Point(x: 10, y: 10), to: Point(x: 100, y: 100)), "line"),
+            (Rectangle(x: 10, y: 10, width: 100, height: 80), "rectangle"),
+            (Ellipse(x: 100, y: 100, width: 80, height: 60), "ellipse"),
+            (Circle(x: 100, y: 100, diameter: 80), "circle"),
+            (Polygon(points: [Point(x: 100, y: 10), Point(x: 190, y: 100), Point(x: 10, y: 100)]), "polygon"),
+            (Arc(x: 100, y: 100, width: 80, height: 80, start: 0, stop: Float.pi), "arc"),
+            (Curve(points: [Point(x: 10, y: 50), Point(x: 50, y: 10), Point(x: 150, y: 90), Point(x: 190, y: 50)]), "curve"),
+            (LinearPath(points: [Point(x: 10, y: 10), Point(x: 100, y: 50), Point(x: 190, y: 10)]), "linearPath"),
+            (Path(d: "M 10 10 L 100 100 L 10 100 Z"), "path")
+        ]
+        
+        for (drawable, expectedShape) in shapes {
+            let drawing = gen.generate(drawable: drawable)
+            XCTAssertNotNil(drawing, "Should generate \(expectedShape)")
+            XCTAssertEqual(drawing?.shape, expectedShape, "Shape should be \(expectedShape)")
+        }
+    }
+    
+    func testAllFillStylesGenerateSuccessfully() {
+        let engine = Engine()
+        let gen = engine.generator(size: CGSize(width: 200, height: 200))
+        let drawable = Rectangle(x: 10, y: 10, width: 100, height: 80)
+        
+        let fillStyles: [RoughSwiftUI.FillStyle] = [.hachure, .solid, .zigzag, .crossHatch, .dots, .dashed, .sunBurst, .starBurst]
+        
+        for style in fillStyles {
+            var options = Options()
+            options.fillStyle = style
+            options.fill = .blue
+            
+            let drawing = gen.generate(drawable: drawable, options: options)
+            XCTAssertNotNil(drawing, "Should generate with fill style \(style)")
+            XCTAssertEqual(drawing?.sets.count, 2, "Should have fill and stroke sets for \(style)")
+        }
+    }
 }

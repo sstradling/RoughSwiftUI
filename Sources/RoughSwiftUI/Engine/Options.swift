@@ -5,6 +5,8 @@
 //  Created by khoa on 19/03/2019.
 //  Copyright © 2019 Khoa Pham. All rights reserved.
 //
+//  Modifications Copyright © 2025 Seth Stradling. All rights reserved.
+//
 
 import UIKit
 
@@ -169,6 +171,32 @@ public struct Options: Equatable, Hashable {
         let weight = effectiveFillWeight
         let clampedSpacing = max(0.5, min(100, fillSpacing))
         return weight * clampedSpacing
+    }
+    
+    /// Computes a hash value for caching purposes.
+    /// This hash covers all rendering-affecting properties.
+    public var cacheHash: Int {
+        var hasher = Hasher()
+        hasher.combine(maxRandomnessOffset)
+        hasher.combine(roughness)
+        hasher.combine(bowing)
+        hasher.combine(strokeWidth)
+        hasher.combine(curveTightness)
+        hasher.combine(curveStepCount)
+        hasher.combine(fillStyle)
+        hasher.combine(fillWeight)
+        hasher.combine(fillAngle)
+        hasher.combine(fillSpacing)
+        hasher.combine(fillSpacingPattern)
+        hasher.combine(dashOffset)
+        hasher.combine(dashGap)
+        hasher.combine(zigzagOffset)
+        hasher.combine(scribbleOrigin)
+        hasher.combine(scribbleTightness)
+        hasher.combine(scribbleCurvature)
+        hasher.combine(scribbleUseBrushStroke)
+        hasher.combine(scribbleTightnessPattern)
+        return hasher.finalize()
     }
     
     func toRoughDictionary() -> JSONDictionary {

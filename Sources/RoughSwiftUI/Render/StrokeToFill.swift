@@ -10,6 +10,7 @@
 
 import SwiftUI
 import CoreGraphics
+import os.signpost
 
 // MARK: - Path Sample
 
@@ -67,26 +68,28 @@ struct StrokeToFillConverter {
         baseWidth: CGFloat,
         profile: BrushProfile
     ) -> SwiftUI.Path {
-        // Extract path elements
-        let elements = extractElements(from: path)
-        guard !elements.isEmpty else { return path }
-        
-        // Convert elements to subpaths (each starting with a move)
-        let subpaths = splitIntoSubpaths(elements)
-        
-        // Convert each subpath
-        var resultPath = SwiftUI.Path()
-        for subpath in subpaths {
-            if let outlinePath = convertSubpath(
-                subpath,
-                baseWidth: baseWidth,
-                profile: profile
-            ) {
-                resultPath.addPath(outlinePath)
+        measurePerformance(PathOpsSignpost.strokeToFill, log: RoughPerformanceLog.pathOps, metadata: "width=\(Int(baseWidth))") {
+            // Extract path elements
+            let elements = extractElements(from: path)
+            guard !elements.isEmpty else { return path }
+            
+            // Convert elements to subpaths (each starting with a move)
+            let subpaths = splitIntoSubpaths(elements)
+            
+            // Convert each subpath
+            var resultPath = SwiftUI.Path()
+            for subpath in subpaths {
+                if let outlinePath = convertSubpath(
+                    subpath,
+                    baseWidth: baseWidth,
+                    profile: profile
+                ) {
+                    resultPath.addPath(outlinePath)
+                }
             }
+            
+            return resultPath
         }
-        
-        return resultPath
     }
     
     /// Converts operations from the engine into a filled outline path.
@@ -101,26 +104,28 @@ struct StrokeToFillConverter {
         baseWidth: CGFloat,
         profile: BrushProfile
     ) -> SwiftUI.Path {
-        // Convert operations to path elements
-        let elements = operationsToElements(operations)
-        guard !elements.isEmpty else { return SwiftUI.Path() }
-        
-        // Convert elements to subpaths
-        let subpaths = splitIntoSubpaths(elements)
-        
-        // Convert each subpath
-        var resultPath = SwiftUI.Path()
-        for subpath in subpaths {
-            if let outlinePath = convertSubpath(
-                subpath,
-                baseWidth: baseWidth,
-                profile: profile
-            ) {
-                resultPath.addPath(outlinePath)
+        measurePerformance(PathOpsSignpost.strokeToFill, log: RoughPerformanceLog.pathOps, metadata: "ops=\(operations.count)") {
+            // Convert operations to path elements
+            let elements = operationsToElements(operations)
+            guard !elements.isEmpty else { return SwiftUI.Path() }
+            
+            // Convert elements to subpaths
+            let subpaths = splitIntoSubpaths(elements)
+            
+            // Convert each subpath
+            var resultPath = SwiftUI.Path()
+            for subpath in subpaths {
+                if let outlinePath = convertSubpath(
+                    subpath,
+                    baseWidth: baseWidth,
+                    profile: profile
+                ) {
+                    resultPath.addPath(outlinePath)
+                }
             }
+            
+            return resultPath
         }
-        
-        return resultPath
     }
     
     // MARK: - Path Element Extraction

@@ -25,6 +25,7 @@
 
 import SwiftUI
 import Combine
+import os.signpost
 
 /// Shared renderer for animations to avoid per-frame allocations.
 private let animatedRenderer = SwiftUIRenderer()
@@ -289,21 +290,25 @@ public struct AnimatedRoughView: View {
         computationID = currentComputationID
         
         // Generate base commands on main thread (JS bridge requires main thread)
-        let baseCommands = generateBaseCommands(size: size)
+        let baseCommands = measurePerformance(AnimationSignpost.frameRender, log: RoughPerformanceLog.animation, metadata: "generate base") {
+            generateBaseCommands(size: size)
+        }
         let animConfig = config
         
         // Move variance computation to background queue
         varianceQueue.async {
-            // Create variance generator
-            let varGen = PathVarianceGenerator(config: animConfig)
-            
-            // Pre-compute all frames using optimized offset storage
-            // This extracts paths once, computes offsets, and rebuilds all frames
-            let cache = AnimationFrameCache.precompute(
-                baseCommands: baseCommands,
-                generator: varGen,
-                size: size
-            )
+            let cache = measurePerformance(AnimationSignpost.precompute, log: RoughPerformanceLog.animation, metadata: "steps=\(animConfig.steps)") {
+                // Create variance generator
+                let varGen = PathVarianceGenerator(config: animConfig)
+                
+                // Pre-compute all frames using optimized offset storage
+                // This extracts paths once, computes offsets, and rebuilds all frames
+                return AnimationFrameCache.precompute(
+                    baseCommands: baseCommands,
+                    generator: varGen,
+                    size: size
+                )
+            }
             
             // Update state on main thread
             DispatchQueue.main.async {

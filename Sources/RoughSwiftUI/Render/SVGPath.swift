@@ -1,4 +1,3 @@
-
 //
 //  SVGPath.swift
 //  SVGPath
@@ -6,16 +5,21 @@
 //  Created by Tim Wood on 1/21/15.
 //  Copyright (c) 2015 Tim Wood. All rights reserved.
 //
+//  Modifications Copyright © 2025 Seth Stradling. All rights reserved.
+//
 
 import UIKit
 import CoreGraphics
+import os.signpost
 
 // MARK: UIBezierPath
 
 public extension UIBezierPath {
     convenience init (svgPath: String) {
         self.init()
-        applyCommands(from: SVGPath(svgPath))
+        measurePerformance(ParsingSignpost.svgParse, log: RoughPerformanceLog.parsing, metadata: "len=\(svgPath.count)") {
+            applyCommands(from: SVGPath(svgPath))
+        }
     }
 }
 

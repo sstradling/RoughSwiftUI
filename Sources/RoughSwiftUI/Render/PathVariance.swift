@@ -23,6 +23,7 @@
 
 import SwiftUI
 import simd
+import os.signpost
 
 // MARK: - SIMD-Optimized Point Storage
 
@@ -238,28 +239,30 @@ struct PrecomputedVarianceOffsets: Sendable {
         generator: PathVarianceGenerator,
         originalPoints: ContiguousPointArray
     ) -> PrecomputedVarianceOffsets {
-        guard pointCount > 0, generator.variance > 0 else {
-            // No variance needed - return zero offsets
-            let zeroOffsets = ContiguousPointArray(capacity: pointCount)
-            return PrecomputedVarianceOffsets(offsets: Array(repeating: zeroOffsets, count: generator.stepCount))
-        }
-        
-        var allOffsets: [ContiguousPointArray] = []
-        allOffsets.reserveCapacity(generator.stepCount)
-        
-        for step in 0..<generator.stepCount {
-            var stepOffsets = ContiguousPointArray(capacity: pointCount)
-            
-            for pointIndex in 0..<pointCount {
-                let original = originalPoints.point(at: pointIndex)
-                let offset = generator.computeOffset(for: original, step: step, index: pointIndex)
-                stepOffsets.append(offset)
+        measurePerformance(AnimationSignpost.varianceCompute, log: RoughPerformanceLog.animation, metadata: "points=\(pointCount),steps=\(generator.stepCount)") {
+            guard pointCount > 0, generator.variance > 0 else {
+                // No variance needed - return zero offsets
+                let zeroOffsets = ContiguousPointArray(capacity: pointCount)
+                return PrecomputedVarianceOffsets(offsets: Array(repeating: zeroOffsets, count: generator.stepCount))
             }
             
-            allOffsets.append(stepOffsets)
+            var allOffsets: [ContiguousPointArray] = []
+            allOffsets.reserveCapacity(generator.stepCount)
+            
+            for step in 0..<generator.stepCount {
+                var stepOffsets = ContiguousPointArray(capacity: pointCount)
+                
+                for pointIndex in 0..<pointCount {
+                    let original = originalPoints.point(at: pointIndex)
+                    let offset = generator.computeOffset(for: original, step: step, index: pointIndex)
+                    stepOffsets.append(offset)
+                }
+                
+                allOffsets.append(stepOffsets)
+            }
+            
+            return PrecomputedVarianceOffsets(offsets: allOffsets)
         }
-        
-        return PrecomputedVarianceOffsets(offsets: allOffsets)
     }
 }
 
