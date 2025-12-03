@@ -60,9 +60,6 @@ jobs:
             xcodebuild -list || true
           fi
 
-      - name: Swift package build (if you're also using SwiftPM)
-        run: swift build -v
-
       - name: Run Tests (xcodebuild)
         run: |
           set -e
