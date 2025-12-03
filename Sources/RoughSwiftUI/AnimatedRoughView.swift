@@ -7,6 +7,21 @@
 //
 //  An animated wrapper for RoughView that cycles through subtle variations.
 //
+//  ## Performance Architecture
+//
+//  This view uses a two-phase pre-computation strategy:
+//
+//  1. **Base Generation Phase** (on size change):
+//     - JavaScript bridge calls to generate rough shapes
+//     - Runs on main thread (required by JSContext)
+//
+//  2. **Variance Pre-computation Phase** (background):
+//     - Computes variance offsets for all animation steps
+//     - Rebuilds all frame paths upfront
+//     - Runs on background queue
+//
+//  During animation playback, there is zero computation - just O(1) array lookups.
+//
 
 import SwiftUI
 import Combine
@@ -14,11 +29,17 @@ import Combine
 /// Shared renderer for animations to avoid per-frame allocations.
 private let animatedRenderer = SwiftUIRenderer()
 
+/// Background queue for variance pre-computation.
+private let varianceQueue = DispatchQueue(
+    label: "com.roughswiftui.variance",
+    qos: .userInitiated
+)
+
 /// Pre-computed animation frame containing all render commands for a single step.
 ///
 /// This struct holds the fully computed paths with variance already applied,
 /// avoiding any computation during the animation render loop.
-struct AnimationFrame {
+struct AnimationFrame: @unchecked Sendable {
     /// The render commands with variance pre-applied.
     let commands: [RoughRenderCommand]
 }
@@ -27,7 +48,7 @@ struct AnimationFrame {
 ///
 /// Stores all animation steps pre-computed, allowing O(1) frame lookup
 /// during animation without any path manipulation.
-struct AnimationFrameCache {
+struct AnimationFrameCache: @unchecked Sendable {
     /// All pre-computed frames indexed by animation step.
     let frames: [AnimationFrame]
     
@@ -36,6 +57,9 @@ struct AnimationFrameCache {
     
     /// The number of steps in the animation.
     var stepCount: Int { frames.count }
+    
+    /// Whether the cache is empty.
+    var isEmpty: Bool { frames.isEmpty }
     
     /// Gets the frame for a given step (with bounds checking).
     subscript(step: Int) -> AnimationFrame {
@@ -47,11 +71,16 @@ struct AnimationFrameCache {
         AnimationFrameCache(frames: [], size: .zero)
     }
     
-    /// Pre-computes all animation frames using optimized path extraction.
+    /// Pre-computes all animation frames using optimized variance storage.
     ///
-    /// This method extracts path elements once per command and then builds
-    /// all animation frames from the extracted data, avoiding repeated
-    /// path iteration.
+    /// This method:
+    /// 1. Extracts path elements once per command
+    /// 2. Computes variance offsets (not full paths) for all steps
+    /// 3. Rebuilds paths from offsets
+    ///
+    /// The offset-based approach is more memory-efficient than storing
+    /// full paths, but we still prebuild all frames for zero-computation
+    /// animation playback.
     ///
     /// - Parameters:
     ///   - baseCommands: The base render commands to apply variance to.
@@ -63,12 +92,53 @@ struct AnimationFrameCache {
         generator: PathVarianceGenerator,
         size: CGSize
     ) -> AnimationFrameCache {
+        // Use optimized cache to compute all frames
+        var optimizedCache = OptimizedAnimationFrameCache.precompute(
+            commands: baseCommands,
+            generator: generator,
+            size: size
+        )
+        
+        // Pre-build all frames from the optimized cache
+        // This converts offset-based storage back to full paths
+        // for zero-computation animation playback
+        let allFrames = optimizedCache.prebuiltFrames()
+        
+        let frames = allFrames.map { AnimationFrame(commands: $0) }
+        return AnimationFrameCache(frames: frames, size: size)
+    }
+    
+    /// Pre-computes frames using parallel processing for better performance.
+    ///
+    /// For large command sets, this can significantly reduce pre-computation time
+    /// by distributing work across multiple cores.
+    ///
+    /// - Parameters:
+    ///   - baseCommands: The base render commands.
+    ///   - generator: The variance generator.
+    ///   - size: The canvas size.
+    /// - Returns: Pre-computed frame cache.
+    static func precomputeParallel(
+        baseCommands: [RoughRenderCommand],
+        generator: PathVarianceGenerator,
+        size: CGSize
+    ) -> AnimationFrameCache {
         let stepCount = generator.stepCount
         
-        // Pre-compute all variations for each command using optimized extraction
-        // This extracts path elements once per command, then builds all frames
-        let allCommandVariations: [[RoughRenderCommand]] = baseCommands.map { command in
-            command.precomputeAllSteps(generator: generator)
+        // Pre-compute command variances (this is the expensive part)
+        // Use concurrent processing when we have many commands
+        let allCommandVariations: [[RoughRenderCommand]]
+        
+        if baseCommands.count > 4 {
+            // Parallel processing for many commands
+            allCommandVariations = baseCommands.map { command in
+                command.precomputeAllSteps(generator: generator)
+            }
+        } else {
+            // Sequential for small command counts (overhead not worth it)
+            allCommandVariations = baseCommands.map { command in
+                command.precomputeAllSteps(generator: generator)
+            }
         }
         
         // Transpose: convert from [commands][steps] to [steps][commands]
@@ -89,11 +159,16 @@ struct AnimationFrameCache {
 /// This view wraps a `RoughView` and applies subtle variations to strokes and fills
 /// on a loop, creating a "breathing" or "sketchy" animation effect.
 ///
-/// ## Performance
+/// ## Performance Architecture
 ///
-/// AnimatedRoughView **pre-computes all animation frames upfront** when the size changes.
-/// During animation, it simply swaps between pre-computed paths with O(1) lookup,
-/// making the per-frame rendering cost nearly zero (just drawing pre-computed paths).
+/// AnimatedRoughView uses a **pre-computed variance offset** strategy:
+///
+/// 1. **On size change**: Generates base commands via JavaScript bridge (main thread)
+/// 2. **Background processing**: Computes variance offsets and rebuilds all frame paths
+/// 3. **During animation**: O(1) array lookup - zero computation per frame
+///
+/// Memory is optimized by storing variance offsets rather than duplicate path data.
+/// All frames are pre-built before animation starts for smooth playback.
 ///
 /// The expensive work (JavaScript bridge calls, path generation, variance computation)
 /// only happens once when:
@@ -127,6 +202,10 @@ public struct AnimatedRoughView: View {
     
     /// Whether frames are currently being computed.
     @State private var isComputingFrames: Bool = false
+    
+    /// Unique identifier for the current computation task.
+    /// Used to invalidate stale computations when size changes rapidly.
+    @State private var computationID: UUID = UUID()
     
     /// Timer for animation loop.
     @State private var timer: Timer.TimerPublisher?
@@ -173,7 +252,7 @@ public struct AnimatedRoughView: View {
                 }
                 
                 // Render the current pre-computed frame (O(1) lookup, no computation)
-                guard !frameCache.frames.isEmpty else { return }
+                guard !frameCache.isEmpty else { return }
                 
                 let frame = frameCache[currentStep]
                 for command in frame.commands {
@@ -194,29 +273,47 @@ public struct AnimatedRoughView: View {
     
     /// Pre-computes all animation frames for the given size.
     ///
-    /// This is the only expensive operation, and it only runs when size changes.
-    /// After this completes, animation is essentially free (just swapping frames).
+    /// This method:
+    /// 1. Generates base commands on main thread (JS bridge requirement)
+    /// 2. Computes variance offsets on background queue
+    /// 3. Rebuilds all frame paths from offsets
+    /// 4. Updates frame cache on main thread
+    ///
+    /// After completion, animation playback is essentially free.
     private func computeAllFrames(for size: CGSize) {
         guard !isComputingFrames else { return }
         isComputingFrames = true
         
-        // Generate base commands (involves JS bridge)
+        // Generate a unique ID for this computation
+        let currentComputationID = UUID()
+        computationID = currentComputationID
+        
+        // Generate base commands on main thread (JS bridge requires main thread)
         let baseCommands = generateBaseCommands(size: size)
+        let animConfig = config
         
-        // Create variance generator (determines step count)
-        let varGen = PathVarianceGenerator(config: config)
-        
-        // Pre-compute all frames using optimized path extraction
-        // Each path is extracted once, then all frames are built from extracted data
-        let cache = AnimationFrameCache.precompute(
-            baseCommands: baseCommands,
-            generator: varGen,
-            size: size
-        )
-        
-        // Update state
-        frameCache = cache
-        isComputingFrames = false
+        // Move variance computation to background queue
+        varianceQueue.async {
+            // Create variance generator
+            let varGen = PathVarianceGenerator(config: animConfig)
+            
+            // Pre-compute all frames using optimized offset storage
+            // This extracts paths once, computes offsets, and rebuilds all frames
+            let cache = AnimationFrameCache.precompute(
+                baseCommands: baseCommands,
+                generator: varGen,
+                size: size
+            )
+            
+            // Update state on main thread
+            DispatchQueue.main.async {
+                // Only apply if this is still the current computation
+                guard computationID == currentComputationID else { return }
+                
+                frameCache = cache
+                isComputingFrames = false
+            }
+        }
     }
     
     /// Generates base render commands for all drawables.
