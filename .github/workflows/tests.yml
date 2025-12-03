@@ -9,74 +9,84 @@ on:
 jobs:
   test:
     name: Run Tests
-    runs-on: macos-14
-    timeout-minutes: 120
+    runs-on: macos-latest
+    # timeout-minutes: 120
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Show available Xcode installs + xcodebuild version
+      - name: Install dependencies
+        run: swift package resolve
+
+    #   - name: Show available Xcode installs + xcodebuild version
+    #     run: |
+    #       echo "Contents of /Applications (look for Xcode bundles):"
+    #       ls -1 /Applications || true
+    #       echo "--- xcodebuild -version ---"
+    #       xcodebuild -version || true
+
+    #   - name: Select latest Xcode in /Applications (if present)
+    #     run: |
+    #       set -e
+    #       # Find Xcode* apps in /Applications and pick the last (usually highest)
+    #       XCODE_APPS=$(ls -1 /Applications | grep -E '^Xcode' || true)
+    #       if [ -z "$XCODE_APPS" ]; then
+    #         echo "No Xcode* found in /Applications. Keeping system default."
+    #         xcodebuild -version || true
+    #       else
+    #         LATEST=$(echo "$XCODE_APPS" | tail -n1)
+    #         sudo xcode-select -s "/Applications/${LATEST}/Contents/Developer"
+    #         echo "Selected Xcode: /Applications/${LATEST}"
+    #         xcodebuild -version
+    #       fi
+
+    #   - name: Show Swift Version
+    #     run: swift --version
+
+    #   - name: Show available simulator runtimes
+    #     run: xcrun simctl list runtimes
+
+    #   - name: Detect workspace/project and list schemes (diagnostic)
+    #     run: |
+    #       set -e
+    #       WORKSPACE=$(ls *.xcworkspace 2>/dev/null | head -n1 || true)
+    #       PROJECT=$(ls *.xcodeproj 2>/dev/null | head -n1 || true)
+    #       echo "Detected workspace: $WORKSPACE"
+    #       echo "Detected project: $PROJECT"
+    #       if [ -n "$WORKSPACE" ]; then
+    #         xcodebuild -list -workspace "$WORKSPACE" || true
+    #       elif [ -n "$PROJECT" ]; then
+    #         xcodebuild -list -project "$PROJECT" || true
+    #       else
+    #         echo "No .xcworkspace or .xcodeproj detected in repo root. xcodebuild will try to use a scheme in the current directory."
+    #         xcodebuild -list || true
+    #       fi
+
+
+      - name: run tests on iPhone 15 Pro simulator with iOS 17.2
         run: |
-          echo "Contents of /Applications (look for Xcode bundles):"
-          ls -1 /Applications || true
-          echo "--- xcodebuild -version ---"
-          xcodebuild -version || true
+          xcodebuild test \
+          -scheme "RoughSwiftUI" \
+          -destination "platform=iOS Simulator,name=iPhone 15 Pro, OS=17.2"
 
-      - name: Select latest Xcode in /Applications (if present)
-        run: |
-          set -e
-          # Find Xcode* apps in /Applications and pick the last (usually highest)
-          XCODE_APPS=$(ls -1 /Applications | grep -E '^Xcode' || true)
-          if [ -z "$XCODE_APPS" ]; then
-            echo "No Xcode* found in /Applications. Keeping system default."
-            xcodebuild -version || true
-          else
-            LATEST=$(echo "$XCODE_APPS" | tail -n1)
-            sudo xcode-select -s "/Applications/${LATEST}/Contents/Developer"
-            echo "Selected Xcode: /Applications/${LATEST}"
-            xcodebuild -version
-          fi
+    #   - name: Run Tests (xcodebuild)
+    #     run: |
+    #       set -e
+    #       WORKSPACE=$(ls *.xcworkspace 2>/dev/null | head -n1 || true)
+    #       PROJECT=$(ls *.xcodeproj 2>/dev/null | head -n1 || true)
+    #       SCHEME="RoughSwiftUI"   # update if your scheme name differs
+    #       # avoid hard-coding OS so we don't fail on missing runtime. If you prefer, set OS=<installed version>.
+    #       DEST="platform=iOS Simulator,name=iPhone 15 Pro"
+    #       DERIVED_DATA="$PWD/DerivedData"
+    #       mkdir -p "$DERIVED_DATA"
 
-      - name: Show Swift Version
-        run: swift --version
+    #       echo "Running tests for scheme '$SCHEME' with destination '$DEST'"
 
-      - name: Show available simulator runtimes
-        run: xcrun simctl list runtimes
-
-      - name: Detect workspace/project and list schemes (diagnostic)
-        run: |
-          set -e
-          WORKSPACE=$(ls *.xcworkspace 2>/dev/null | head -n1 || true)
-          PROJECT=$(ls *.xcodeproj 2>/dev/null | head -n1 || true)
-          echo "Detected workspace: $WORKSPACE"
-          echo "Detected project: $PROJECT"
-          if [ -n "$WORKSPACE" ]; then
-            xcodebuild -list -workspace "$WORKSPACE" || true
-          elif [ -n "$PROJECT" ]; then
-            xcodebuild -list -project "$PROJECT" || true
-          else
-            echo "No .xcworkspace or .xcodeproj detected in repo root. xcodebuild will try to use a scheme in the current directory."
-            xcodebuild -list || true
-          fi
-
-      - name: Run Tests (xcodebuild)
-        run: |
-          set -e
-          WORKSPACE=$(ls *.xcworkspace 2>/dev/null | head -n1 || true)
-          PROJECT=$(ls *.xcodeproj 2>/dev/null | head -n1 || true)
-          SCHEME="RoughSwiftUI"   # update if your scheme name differs
-          # avoid hard-coding OS so we don't fail on missing runtime. If you prefer, set OS=<installed version>.
-          DEST="platform=iOS Simulator,name=iPhone 15 Pro"
-          DERIVED_DATA="$PWD/DerivedData"
-          mkdir -p "$DERIVED_DATA"
-
-          echo "Running tests for scheme '$SCHEME' with destination '$DEST'"
-
-          if [ -n "$WORKSPACE" ]; then
-            xcodebuild test -workspace "$WORKSPACE" -scheme "$SCHEME" -destination "$DEST" -derivedDataPath "$DERIVED_DATA" -parallel-testing-enabled YES
-          elif [ -n "$PROJECT" ]; then
-            xcodebuild test -project "$PROJECT" -scheme "$SCHEME" -destination "$DEST" -derivedDataPath "$DERIVED_DATA" -parallel-testing-enabled YES
-          else
-            xcodebuild test -scheme "$SCHEME" -destination "$DEST" -derivedDataPath "$DERIVED_DATA" -parallel-testing-enabled YES
-          fi
+    #       if [ -n "$WORKSPACE" ]; then
+    #         xcodebuild test -workspace "$WORKSPACE" -scheme "$SCHEME" -destination "$DEST" -derivedDataPath "$DERIVED_DATA" -parallel-testing-enabled YES
+    #       elif [ -n "$PROJECT" ]; then
+    #         xcodebuild test -project "$PROJECT" -scheme "$SCHEME" -destination "$DEST" -derivedDataPath "$DERIVED_DATA" -parallel-testing-enabled YES
+    #       else
+    #         xcodebuild test -scheme "$SCHEME" -destination "$DEST" -derivedDataPath "$DERIVED_DATA" -parallel-testing-enabled YES
+    #       fi
