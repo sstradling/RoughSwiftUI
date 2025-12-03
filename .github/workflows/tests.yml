@@ -70,7 +70,7 @@ jobs:
           PROJECT=$(ls *.xcodeproj 2>/dev/null | head -n1 || true)
           SCHEME="RoughSwiftUI"   # update if your scheme name differs
           # avoid hard-coding OS so we don't fail on missing runtime. If you prefer, set OS=<installed version>.
-          DEST="platform=iOS Simulator,OS=17.2,name=iPhone 15 Pro"
+          DEST="platform=iOS Simulator,OS=18.4,name=iPhone 16 Pro,id=3AC78E82-3179-4752-97E9-D370A04E2918"
           DERIVED_DATA="$PWD/DerivedData"
           mkdir -p "$DERIVED_DATA"
 
