@@ -7,92 +7,82 @@
 //
 
 import UIKit
-import JavaScriptCore
-import os.signpost
 
 public typealias JSONDictionary = [String: Any]
 public typealias JSONArray = [JSONDictionary]
 
-/// Main entry point for interacting with the underlying `rough.js` engine.
+/// Main entry point for creating rough.js-style drawings.
 ///
-/// This type is annotated with `@MainActor` to ensure all JavaScriptCore work
-/// happens on the main thread, which matches SwiftUI's rendering model.
+/// This type is annotated with `@MainActor` to ensure all drawing operations
+/// happen on the main thread, which matches SwiftUI's rendering model.
+///
+/// The engine now uses a native Swift implementation instead of JavaScriptCore,
+/// providing significantly improved performance.
 @MainActor
 public final class Engine {
-    private let context: JSContext
-    private let rough: JSValue
     
-    /// Cache for generators by size (avoids repeated JS calls).
-    private let generatorCache = GeneratorCache()
+    /// Cache for generators by size (avoids repeated allocations).
+    private var generatorCache: [CGSize: NativeGenerator] = [:]
     
-    /// Cache for generated drawings (avoids repeated JS generation).
-    private let drawingCache = DrawingCache()
+    /// Maximum number of cached generators.
+    private let maxCachedGenerators = 10
     
+    /// Cache for generated drawings.
+    public let drawingCache = DrawingCache()
+    
+    /// Shared singleton instance.
     public static let shared = Engine()
-
+    
     public init() {
-        guard let context = JSContext() else {
-            fatalError("RoughSwiftUI.Engine failed to create JSContext")
-        }
-        self.context = context
-
-        // Capture JavaScript exceptions emitted by rough.js
-        context.exceptionHandler = { _, exception in
-            if let message = exception?.toString() {
-                print("RoughSwiftUI.Engine JavaScript exception: \(message)")
-            }
-        }
-
-        let bundle = Bundle.module
-        guard let path = bundle.url(forResource: "rough", withExtension: "js") else {
-            fatalError("RoughSwiftUI.Engine could not locate rough.js in the module bundle")
-        }
-
-        do {
-            let content = try String(contentsOf: path)
-            context.evaluateScript(content)
-        } catch {
-            fatalError("RoughSwiftUI.Engine failed to load rough.js: \(error)")
-        }
-
-        guard let rough = context.objectForKeyedSubscript("rough") else {
-            fatalError("RoughSwiftUI.Engine could not find `rough` global after evaluating rough.js")
-        }
-
-        self.rough = rough
+        // Native engine requires no initialization
     }
-
-    /// Returns a cached `Generator` for the given canvas size.
+    
+    /// Returns a cached `NativeGenerator` for the given canvas size.
     ///
-    /// Generators are cached by size to avoid repeated JavaScript context calls.
+    /// Generators are cached by size to avoid repeated allocations.
     /// The cache automatically evicts old entries when it reaches capacity.
     ///
     /// - Parameter size: The drawing surface size.
     /// - Returns: A generator for the requested size.
-    public func generator(size: CGSize) -> Generator {
-        generatorCache.generator(for: size, using: self)
+    public func generator(size: CGSize) -> NativeGenerator {
+        // Round size to avoid floating point key issues
+        let roundedSize = CGSize(
+            width: round(size.width * 10) / 10,
+            height: round(size.height * 10) / 10
+        )
+        
+        if let cached = generatorCache[roundedSize] {
+            return cached
+        }
+        
+        // Evict if at capacity
+        if generatorCache.count >= maxCachedGenerators {
+            generatorCache.removeAll()
+        }
+        
+        let newGenerator = NativeGenerator(size: roundedSize, drawingCache: drawingCache)
+        generatorCache[roundedSize] = newGenerator
+        return newGenerator
     }
     
-    /// Creates a new `Generator` without caching.
+    /// Generates a drawing for the given drawable, using the cache.
     ///
-    /// This is used internally by the GeneratorCache. Most code should use
-    /// `generator(size:)` instead to benefit from caching.
+    /// This is a convenience method that combines generator creation and
+    /// drawing generation with caching.
     ///
-    /// - Parameter size: The drawing surface size.
-    /// - Returns: A new generator instance.
-    internal func createGenerator(size: CGSize) -> Generator {
-        measurePerformance(GenerationSignpost.createGenerator, log: RoughPerformanceLog.generation, metadata: "\(Int(size.width))x\(Int(size.height))") {
-            let drawingSurface: JSONDictionary = [
-                "width": size.width,
-                "height": size.height
-            ]
-
-            guard let value = rough.invokeMethod("generator", withArguments: [drawingSurface]) else {
-                fatalError("RoughSwiftUI.Engine failed to create rough.js generator")
-            }
-
-            return Generator(size: size, jsValue: value, drawingCache: drawingCache)
-        }
+    /// - Parameters:
+    ///   - drawable: The shape to generate.
+    ///   - options: Rendering options.
+    ///   - size: The canvas size.
+    /// - Returns: The generated drawing, or nil if generation failed.
+    public func generate(drawable: Drawable, options: Options, size: CGSize) -> Drawing? {
+        let gen = generator(size: size)
+        return drawingCache.getOrGenerate(
+            drawable: drawable,
+            options: options,
+            size: size,
+            generator: gen
+        )
     }
     
     /// Clears all cached generators and drawings.
@@ -100,7 +90,7 @@ public final class Engine {
     /// Call this when memory pressure is detected or when starting a new
     /// drawing session.
     public func clearCaches() {
-        generatorCache.clear()
+        generatorCache.removeAll()
         drawingCache.clear()
     }
     
@@ -108,5 +98,14 @@ public final class Engine {
     public var cacheStats: (generators: Int, drawings: Int, hitRate: Double) {
         let drawingStats = drawingCache.stats
         return (generatorCache.count, drawingStats.entries, drawingStats.hitRate)
+    }
+}
+
+// MARK: - Generator Cache Size Extension
+
+extension CGSize: Hashable {
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(width)
+        hasher.combine(height)
     }
 }
