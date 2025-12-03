@@ -416,6 +416,40 @@ RoughView()
     .frame(width: 300, height: 300)
 ```
 
+### Animation Performance
+
+`AnimatedRoughView` uses an optimized **pre-generated frames** architecture for smooth, efficient animations:
+
+1. **Pre-computation**: When the view size changes, all animation frames are computed upfront in a single batch
+2. **O(1) frame access**: During animation, frames are retrieved via direct array lookup with zero computation
+3. **Path extraction optimization**: Path elements are extracted once and reused to build all variation frames
+
+This means the expensive work (JavaScript bridge calls, path generation, variance calculation) only happens when:
+- The view first appears
+- The canvas size changes
+- The animation configuration changes
+
+During the actual animation loop, the cost is essentially zero - just swapping between pre-computed paths.
+
+```
+┌─────────────────────────────────────────────────────┐
+│              INITIALIZATION (once)                   │
+├─────────────────────────────────────────────────────┤
+│ 1. Generate base commands (JS bridge)               │
+│ 2. Extract path elements from each command          │
+│ 3. Pre-compute varied paths for ALL animation steps │
+│ 4. Store in AnimationFrameCache                     │
+└─────────────────────────────────────────────────────┘
+                         ↓
+┌─────────────────────────────────────────────────────┐
+│              ANIMATION LOOP (fast)                   │
+├─────────────────────────────────────────────────────┤
+│ 1. Timer fires → increment currentStep              │
+│ 2. Get frame: cache[currentStep]  ← O(1) lookup     │
+│ 3. Render pre-computed commands  ← No manipulation  │
+└─────────────────────────────────────────────────────┘
+```
+
 ## Creative shapes
 
 With all the primitive shapes, we can create more beautiful things. The only limit is your imagination.

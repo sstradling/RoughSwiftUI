@@ -8,7 +8,7 @@
 
 import Foundation
 
-public enum FillStyle: String {
+public enum FillStyle: String, Equatable, Hashable, Sendable {
     case hachure
     case solid
     case zigzag

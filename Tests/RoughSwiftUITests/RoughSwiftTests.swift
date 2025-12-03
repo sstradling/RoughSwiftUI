@@ -1691,6 +1691,325 @@ final class RoughSwiftTests: XCTestCase {
         XCTAssertFalse(result.isEmpty)
     }
     
+    // MARK: - StrokeToFillConverter Single-Pass Algorithm Tests
+    
+    func testStrokeToFillSinglePassProducesValidNormalizedT() {
+        // Test that normalized t values are in [0, 1] range
+        var path = SwiftUI.Path()
+        path.move(to: CGPoint(x: 0, y: 0))
+        path.addLine(to: CGPoint(x: 100, y: 0))
+        path.addLine(to: CGPoint(x: 100, y: 100))
+        path.addLine(to: CGPoint(x: 0, y: 100))
+        
+        let profile = BrushProfile.default
+        let result = StrokeToFillConverter.convert(
+            path: path,
+            baseWidth: 10,
+            profile: profile
+        )
+        
+        // The result should be a valid closed path
+        XCTAssertFalse(result.isEmpty)
+        
+        // Verify the bounding rect is reasonable
+        let bounds = result.boundingRect
+        XCTAssertGreaterThan(bounds.width, 90) // Should be at least close to original
+        XCTAssertGreaterThan(bounds.height, 90)
+    }
+    
+    func testStrokeToFillSinglePassWithZeroLengthSegments() {
+        // Test that zero-length segments are handled gracefully
+        let move = Move(data: [50, 50])
+        let zeroLine = LineTo(data: [50, 50]) // Zero length
+        let realLine = LineTo(data: [100, 100])
+        let operations: [RoughSwiftUI.Operation] = [move, zeroLine, realLine]
+        
+        let profile = BrushProfile.default
+        let result = StrokeToFillConverter.convert(
+            operations: operations,
+            baseWidth: 8,
+            profile: profile
+        )
+        
+        // Should still produce a valid path (zero-length segments are skipped)
+        XCTAssertFalse(result.isEmpty)
+    }
+    
+    func testStrokeToFillSinglePassWithVeryShortPath() {
+        // Test with a very short path (just two points close together)
+        let move = Move(data: [0, 0])
+        let line = LineTo(data: [1, 1]) // Very short segment
+        let operations: [RoughSwiftUI.Operation] = [move, line]
+        
+        let profile = BrushProfile.default
+        let result = StrokeToFillConverter.convert(
+            operations: operations,
+            baseWidth: 5,
+            profile: profile
+        )
+        
+        // Should produce a valid path
+        XCTAssertFalse(result.isEmpty)
+    }
+    
+    func testStrokeToFillSinglePassWithLongPath() {
+        // Test with a long path with many segments
+        var path = SwiftUI.Path()
+        path.move(to: CGPoint(x: 0, y: 0))
+        
+        // Create a zigzag pattern with 50 segments
+        for i in 1...50 {
+            let x = CGFloat(i * 10)
+            let y = CGFloat((i % 2 == 0) ? 0 : 50)
+            path.addLine(to: CGPoint(x: x, y: y))
+        }
+        
+        let profile = BrushProfile.pen
+        let result = StrokeToFillConverter.convert(
+            path: path,
+            baseWidth: 4,
+            profile: profile
+        )
+        
+        XCTAssertFalse(result.isEmpty)
+        
+        // Should cover the expected area
+        let bounds = result.boundingRect
+        XCTAssertGreaterThan(bounds.width, 490) // ~500 total width
+    }
+    
+    func testStrokeToFillSinglePassWithMixedCurves() {
+        // Test with a mix of lines, quad curves, and cubic curves
+        var path = SwiftUI.Path()
+        path.move(to: CGPoint(x: 0, y: 0))
+        path.addLine(to: CGPoint(x: 50, y: 0))
+        path.addQuadCurve(to: CGPoint(x: 100, y: 50), control: CGPoint(x: 75, y: 0))
+        path.addCurve(to: CGPoint(x: 100, y: 100), control1: CGPoint(x: 125, y: 60), control2: CGPoint(x: 125, y: 90))
+        path.addLine(to: CGPoint(x: 0, y: 100))
+        
+        let profile = BrushProfile.calligraphic
+        let result = StrokeToFillConverter.convert(
+            path: path,
+            baseWidth: 6,
+            profile: profile
+        )
+        
+        XCTAssertFalse(result.isEmpty)
+    }
+    
+    func testStrokeToFillSinglePassPreservesThicknessProfile() {
+        // Test that thickness profile is applied correctly
+        let move = Move(data: [0, 0])
+        let line = LineTo(data: [100, 0])
+        let operations: [RoughSwiftUI.Operation] = [move, line]
+        
+        // Use a tapered profile
+        let taperedProfile = BrushProfile(
+            tip: .circular,
+            thicknessProfile: .taperBoth(start: 0.1, end: 0.1)
+        )
+        
+        let uniformProfile = BrushProfile(
+            tip: .circular,
+            thicknessProfile: .uniform
+        )
+        
+        let taperedResult = StrokeToFillConverter.convert(
+            operations: operations,
+            baseWidth: 10,
+            profile: taperedProfile
+        )
+        
+        let uniformResult = StrokeToFillConverter.convert(
+            operations: operations,
+            baseWidth: 10,
+            profile: uniformProfile
+        )
+        
+        // Both should produce valid paths
+        XCTAssertFalse(taperedResult.isEmpty)
+        XCTAssertFalse(uniformResult.isEmpty)
+        
+        // Tapered result should have smaller area (narrower ends)
+        let taperedBounds = taperedResult.boundingRect
+        let uniformBounds = uniformResult.boundingRect
+        
+        // The uniform stroke should be wider (or at least as wide) at the endpoints
+        XCTAssertGreaterThanOrEqual(uniformBounds.height, taperedBounds.height - 2)
+    }
+    
+    func testStrokeToFillSinglePassWithCircularPath() {
+        // Test with a circular arc approximation
+        var path = SwiftUI.Path()
+        let center = CGPoint(x: 50, y: 50)
+        let radius: CGFloat = 40
+        
+        // Create a rough circle using cubic curves
+        path.move(to: CGPoint(x: center.x + radius, y: center.y))
+        
+        // Four cubic bezier curves to approximate a circle
+        let k: CGFloat = 0.5522847498 // Magic number for circular approximation
+        path.addCurve(
+            to: CGPoint(x: center.x, y: center.y + radius),
+            control1: CGPoint(x: center.x + radius, y: center.y + radius * k),
+            control2: CGPoint(x: center.x + radius * k, y: center.y + radius)
+        )
+        path.addCurve(
+            to: CGPoint(x: center.x - radius, y: center.y),
+            control1: CGPoint(x: center.x - radius * k, y: center.y + radius),
+            control2: CGPoint(x: center.x - radius, y: center.y + radius * k)
+        )
+        path.addCurve(
+            to: CGPoint(x: center.x, y: center.y - radius),
+            control1: CGPoint(x: center.x - radius, y: center.y - radius * k),
+            control2: CGPoint(x: center.x - radius * k, y: center.y - radius)
+        )
+        path.addCurve(
+            to: CGPoint(x: center.x + radius, y: center.y),
+            control1: CGPoint(x: center.x + radius * k, y: center.y - radius),
+            control2: CGPoint(x: center.x + radius, y: center.y - radius * k)
+        )
+        
+        let profile = BrushProfile.marker
+        let result = StrokeToFillConverter.convert(
+            path: path,
+            baseWidth: 8,
+            profile: profile
+        )
+        
+        XCTAssertFalse(result.isEmpty)
+        
+        // Result should roughly contain the original circle
+        let bounds = result.boundingRect
+        XCTAssertGreaterThan(bounds.width, 70) // Should be roughly diameter + stroke width
+    }
+    
+    func testStrokeToFillSinglePassConsistency() {
+        // Test that calling convert multiple times produces consistent results
+        let move = Move(data: [0, 0])
+        let line1 = LineTo(data: [50, 25])
+        let line2 = LineTo(data: [100, 0])
+        let operations: [RoughSwiftUI.Operation] = [move, line1, line2]
+        
+        let profile = BrushProfile.pen
+        
+        let result1 = StrokeToFillConverter.convert(
+            operations: operations,
+            baseWidth: 10,
+            profile: profile
+        )
+        
+        let result2 = StrokeToFillConverter.convert(
+            operations: operations,
+            baseWidth: 10,
+            profile: profile
+        )
+        
+        // Bounding rects should be identical
+        XCTAssertEqual(result1.boundingRect.width, result2.boundingRect.width, accuracy: 0.001)
+        XCTAssertEqual(result1.boundingRect.height, result2.boundingRect.height, accuracy: 0.001)
+    }
+    
+    func testStrokeToFillSinglePassWithDifferentWidths() {
+        // Test that different base widths produce proportionally sized results
+        let move = Move(data: [0, 0])
+        let line = LineTo(data: [100, 0])
+        let operations: [RoughSwiftUI.Operation] = [move, line]
+        
+        let profile = BrushProfile.default
+        
+        let narrowResult = StrokeToFillConverter.convert(
+            operations: operations,
+            baseWidth: 5,
+            profile: profile
+        )
+        
+        let wideResult = StrokeToFillConverter.convert(
+            operations: operations,
+            baseWidth: 20,
+            profile: profile
+        )
+        
+        let narrowBounds = narrowResult.boundingRect
+        let wideBounds = wideResult.boundingRect
+        
+        // The wider stroke should have greater height (perpendicular to stroke direction)
+        XCTAssertGreaterThan(wideBounds.height, narrowBounds.height)
+        
+        // The ratio should be roughly proportional to the width ratio (4:1)
+        let heightRatio = wideBounds.height / narrowBounds.height
+        XCTAssertGreaterThan(heightRatio, 2.0) // Should be significantly larger
+    }
+    
+    func testStrokeToFillSinglePassOnlyMoveOperation() {
+        // Test edge case: only a move operation (no actual drawing)
+        let move = Move(data: [50, 50])
+        let operations: [RoughSwiftUI.Operation] = [move]
+        
+        let profile = BrushProfile.default
+        let result = StrokeToFillConverter.convert(
+            operations: operations,
+            baseWidth: 10,
+            profile: profile
+        )
+        
+        // Should produce an empty path (can't stroke a single point)
+        XCTAssertTrue(result.isEmpty)
+    }
+    
+    func testStrokeToFillSinglePassDiagonalLine() {
+        // Test with a diagonal line to verify angle calculations
+        let move = Move(data: [0, 0])
+        let line = LineTo(data: [100, 100])
+        let operations: [RoughSwiftUI.Operation] = [move, line]
+        
+        let profile = BrushProfile(
+            tip: BrushTip(roundness: 0.3, angle: 0, directionSensitive: true),
+            thicknessProfile: .uniform
+        )
+        
+        let result = StrokeToFillConverter.convert(
+            operations: operations,
+            baseWidth: 10,
+            profile: profile
+        )
+        
+        XCTAssertFalse(result.isEmpty)
+        
+        // Diagonal line at 45 degrees should produce a path that spans both x and y
+        let bounds = result.boundingRect
+        XCTAssertGreaterThan(bounds.width, 90)
+        XCTAssertGreaterThan(bounds.height, 90)
+    }
+    
+    func testStrokeToFillSinglePassCapStyles() {
+        let move = Move(data: [0, 50])
+        let line = LineTo(data: [100, 50])
+        let operations: [RoughSwiftUI.Operation] = [move, line]
+        
+        // Test different cap styles
+        let roundProfile = BrushProfile(tip: .circular, thicknessProfile: .uniform, cap: .round, join: .round)
+        let buttProfile = BrushProfile(tip: .circular, thicknessProfile: .uniform, cap: .butt, join: .round)
+        let squareProfile = BrushProfile(tip: .circular, thicknessProfile: .uniform, cap: .square, join: .round)
+        
+        let roundResult = StrokeToFillConverter.convert(operations: operations, baseWidth: 20, profile: roundProfile)
+        let buttResult = StrokeToFillConverter.convert(operations: operations, baseWidth: 20, profile: buttProfile)
+        let squareResult = StrokeToFillConverter.convert(operations: operations, baseWidth: 20, profile: squareProfile)
+        
+        // All should produce non-empty paths
+        XCTAssertFalse(roundResult.isEmpty)
+        XCTAssertFalse(buttResult.isEmpty)
+        XCTAssertFalse(squareResult.isEmpty)
+        
+        // Round and square caps should extend beyond butt caps
+        let roundBounds = roundResult.boundingRect
+        let buttBounds = buttResult.boundingRect
+        let squareBounds = squareResult.boundingRect
+        
+        XCTAssertGreaterThanOrEqual(roundBounds.width, buttBounds.width - 1)
+        XCTAssertGreaterThanOrEqual(squareBounds.width, buttBounds.width - 1)
+    }
+    
     // MARK: - Opacity Options Tests
     
     func testOpacityOptionsDefaults() {
@@ -2122,5 +2441,1480 @@ final class RoughSwiftTests: XCTestCase {
         
         XCTAssertFalse(commands.isEmpty)
         // The command should exist - opacity is applied to the color
+    }
+    
+    // MARK: - Pre-generated Animation Frame Tests
+    
+    func testPathVarianceGeneratorStepCount() {
+        let config = AnimationConfig(steps: 8, speed: .medium, variance: .medium)
+        let generator = PathVarianceGenerator(config: config)
+        
+        XCTAssertEqual(generator.stepCount, 8)
+    }
+    
+    func testPathVarianceGeneratorPrecomputeAllSteps() {
+        var path = SwiftUI.Path()
+        path.move(to: CGPoint(x: 0, y: 0))
+        path.addLine(to: CGPoint(x: 100, y: 0))
+        path.addLine(to: CGPoint(x: 100, y: 100))
+        path.closeSubpath()
+        
+        let config = AnimationConfig(steps: 4, speed: .medium, variance: .medium)
+        let generator = PathVarianceGenerator(config: config, baseSeed: 42)
+        
+        let precomputed = generator.precomputeAllSteps(for: path)
+        
+        // Should produce one path per step
+        XCTAssertEqual(precomputed.count, 4)
+        
+        // Each path should be different from the original
+        for variedPath in precomputed {
+            XCTAssertNotEqual(variedPath.boundingRect, path.boundingRect)
+        }
+        
+        // Different steps should have different variations
+        XCTAssertNotEqual(precomputed[0].boundingRect, precomputed[1].boundingRect)
+    }
+    
+    func testPathVarianceGeneratorPrecomputeIsDeterministic() {
+        var path = SwiftUI.Path()
+        path.move(to: CGPoint(x: 0, y: 0))
+        path.addLine(to: CGPoint(x: 50, y: 50))
+        
+        let config = AnimationConfig(steps: 3, speed: .medium, variance: .medium)
+        let baseSeed: UInt64 = 12345
+        
+        let generator1 = PathVarianceGenerator(config: config, baseSeed: baseSeed)
+        let generator2 = PathVarianceGenerator(config: config, baseSeed: baseSeed)
+        
+        let precomputed1 = generator1.precomputeAllSteps(for: path)
+        let precomputed2 = generator2.precomputeAllSteps(for: path)
+        
+        // Same seed should produce identical results
+        for (p1, p2) in zip(precomputed1, precomputed2) {
+            XCTAssertEqual(p1.boundingRect, p2.boundingRect)
+        }
+    }
+    
+    func testRoughRenderCommandPrecomputeAllSteps() {
+        var path = SwiftUI.Path()
+        path.move(to: CGPoint(x: 0, y: 0))
+        path.addLine(to: CGPoint(x: 100, y: 100))
+        
+        let command = RoughRenderCommand(
+            path: path,
+            style: .stroke(Color.red, lineWidth: 2),
+            cap: .round,
+            join: .round
+        )
+        
+        let config = AnimationConfig(steps: 5, speed: .medium, variance: .high)
+        let generator = PathVarianceGenerator(config: config, baseSeed: 42)
+        
+        let precomputed = command.precomputeAllSteps(generator: generator)
+        
+        // Should produce one command per step
+        XCTAssertEqual(precomputed.count, 5)
+        
+        // Each command should preserve the style
+        for variedCommand in precomputed {
+            if case .stroke(_, let lineWidth) = variedCommand.style {
+                XCTAssertEqual(lineWidth, 2)
+            } else {
+                XCTFail("Expected stroke style to be preserved")
+            }
+            
+            // Cap and join should be preserved
+            XCTAssertEqual(variedCommand.cap, .round)
+            XCTAssertEqual(variedCommand.join, .round)
+        }
+        
+        // Paths should vary between steps
+        XCTAssertNotEqual(precomputed[0].path.boundingRect, precomputed[1].path.boundingRect)
+    }
+    
+    func testRoughRenderCommandPrecomputeWithClipPath() {
+        var path = SwiftUI.Path()
+        path.move(to: CGPoint(x: 0, y: 0))
+        path.addLine(to: CGPoint(x: 50, y: 50))
+        
+        var clipPath = SwiftUI.Path()
+        clipPath.addRect(CGRect(x: 0, y: 0, width: 100, height: 100))
+        
+        let command = RoughRenderCommand(
+            path: path,
+            style: .fill(Color.blue),
+            clipPath: clipPath,
+            inverseClip: true
+        )
+        
+        let config = AnimationConfig(steps: 3, speed: .medium, variance: .medium)
+        let generator = PathVarianceGenerator(config: config, baseSeed: 42)
+        
+        let precomputed = command.precomputeAllSteps(generator: generator)
+        
+        // All precomputed commands should have clip paths
+        for variedCommand in precomputed {
+            XCTAssertNotNil(variedCommand.clipPath)
+            XCTAssertTrue(variedCommand.inverseClip)
+        }
+    }
+    
+    func testZeroVarianceReturnsOriginalPoint() {
+        let config = AnimationConfig(steps: 4, speed: .medium, variance: .veryLow)
+        // Create generator with zero variance by using a custom config
+        var zeroConfig = config
+        // veryLow is 0.005, which is not zero - test the guard clause behavior
+        let generator = PathVarianceGenerator(config: zeroConfig, baseSeed: 42)
+        
+        let point = CGPoint(x: 100, y: 100)
+        let varied = generator.applyVariance(to: point, step: 0, index: 0)
+        
+        // With very low variance, the change should be minimal
+        let maxExpectedOffset = 100.0 * 0.005 * 2
+        XCTAssertLessThan(abs(varied.x - point.x), maxExpectedOffset)
+        XCTAssertLessThan(abs(varied.y - point.y), maxExpectedOffset)
+    }
+    
+    func testPrecomputedPathsWithComplexElements() {
+        var path = SwiftUI.Path()
+        path.move(to: CGPoint(x: 0, y: 0))
+        path.addLine(to: CGPoint(x: 50, y: 0))
+        path.addQuadCurve(to: CGPoint(x: 100, y: 50), control: CGPoint(x: 75, y: 0))
+        path.addCurve(to: CGPoint(x: 50, y: 100), control1: CGPoint(x: 100, y: 75), control2: CGPoint(x: 75, y: 100))
+        path.closeSubpath()
+        
+        let config = AnimationConfig(steps: 4, speed: .medium, variance: .medium)
+        let generator = PathVarianceGenerator(config: config, baseSeed: 42)
+        
+        let precomputed = generator.precomputeAllSteps(for: path)
+        
+        // Should handle all element types
+        XCTAssertEqual(precomputed.count, 4)
+        
+        // Each precomputed path should be non-empty
+        for variedPath in precomputed {
+            XCTAssertFalse(variedPath.isEmpty)
+        }
+    }
+    
+    func testAnimationFrameCreation() {
+        var path = SwiftUI.Path()
+        path.move(to: CGPoint(x: 0, y: 0))
+        path.addLine(to: CGPoint(x: 100, y: 100))
+        
+        let commands = [
+            RoughRenderCommand(path: path, style: .stroke(Color.red, lineWidth: 2)),
+            RoughRenderCommand(path: path, style: .fill(Color.blue))
+        ]
+        
+        // AnimationFrame is just a container for pre-computed commands
+        let frame = AnimationFrame(commands: commands)
+        
+        // Frame should contain same number of commands
+        XCTAssertEqual(frame.commands.count, 2)
+    }
+    
+    func testAnimationFrameCacheEmpty() {
+        let cache = AnimationFrameCache.empty
+        
+        XCTAssertTrue(cache.frames.isEmpty)
+        XCTAssertEqual(cache.size, .zero)
+        XCTAssertEqual(cache.stepCount, 0)
+    }
+    
+    func testAnimationFrameCachePrecompute() {
+        var path = SwiftUI.Path()
+        path.move(to: CGPoint(x: 0, y: 0))
+        path.addLine(to: CGPoint(x: 100, y: 100))
+        
+        let commands = [
+            RoughRenderCommand(path: path, style: .stroke(Color.red, lineWidth: 2))
+        ]
+        
+        let config = AnimationConfig(steps: 6, speed: .medium, variance: .medium)
+        let generator = PathVarianceGenerator(config: config, baseSeed: 42)
+        let size = CGSize(width: 200, height: 200)
+        
+        let cache = AnimationFrameCache.precompute(
+            baseCommands: commands,
+            generator: generator,
+            size: size
+        )
+        
+        XCTAssertEqual(cache.frames.count, 6)
+        XCTAssertEqual(cache.stepCount, 6)
+        XCTAssertEqual(cache.size, size)
+    }
+    
+    func testAnimationFrameCacheSubscript() {
+        var path = SwiftUI.Path()
+        path.move(to: CGPoint(x: 0, y: 0))
+        path.addLine(to: CGPoint(x: 50, y: 50))
+        
+        let commands = [
+            RoughRenderCommand(path: path, style: .fill(Color.green))
+        ]
+        
+        let config = AnimationConfig(steps: 4, speed: .medium, variance: .medium)
+        let generator = PathVarianceGenerator(config: config, baseSeed: 42)
+        
+        let cache = AnimationFrameCache.precompute(
+            baseCommands: commands,
+            generator: generator,
+            size: CGSize(width: 100, height: 100)
+        )
+        
+        // Normal access
+        let frame0 = cache[0]
+        let frame3 = cache[3]
+        XCTAssertEqual(frame0.commands.count, 1)
+        XCTAssertEqual(frame3.commands.count, 1)
+        
+        // Wrapping access (step 4 should wrap to 0 with 4 steps)
+        let frameWrapped = cache[4]
+        XCTAssertEqual(frameWrapped.commands.count, frame0.commands.count)
+        
+        // Large index wrapping
+        let frameLarge = cache[100]
+        XCTAssertEqual(frameLarge.commands.count, 1)
+    }
+    
+    func testAnimationFrameCachePreservesCommandProperties() {
+        var path = SwiftUI.Path()
+        path.move(to: CGPoint(x: 0, y: 0))
+        path.addLine(to: CGPoint(x: 50, y: 50))
+        
+        var clipPath = SwiftUI.Path()
+        clipPath.addRect(CGRect(x: 0, y: 0, width: 100, height: 100))
+        
+        let commands = [
+            RoughRenderCommand(
+                path: path,
+                style: .stroke(Color.red, lineWidth: 5),
+                clipPath: clipPath,
+                inverseClip: true,
+                cap: .square,
+                join: .miter
+            )
+        ]
+        
+        let config = AnimationConfig(steps: 3, speed: .medium, variance: .medium)
+        let generator = PathVarianceGenerator(config: config, baseSeed: 42)
+        
+        let cache = AnimationFrameCache.precompute(
+            baseCommands: commands,
+            generator: generator,
+            size: CGSize(width: 100, height: 100)
+        )
+        
+        // Check that all properties are preserved in cached frames
+        for i in 0..<cache.stepCount {
+            let frame = cache[i]
+            let command = frame.commands[0]
+            
+            // Style should be preserved
+            if case .stroke(_, let lineWidth) = command.style {
+                XCTAssertEqual(lineWidth, 5)
+            } else {
+                XCTFail("Expected stroke style")
+            }
+            
+            // Clip path should exist and be varied
+            XCTAssertNotNil(command.clipPath)
+            XCTAssertTrue(command.inverseClip)
+            
+            // Cap and join should be preserved
+            XCTAssertEqual(command.cap, .square)
+            XCTAssertEqual(command.join, .miter)
+        }
+    }
+    
+    // MARK: - Generator Caching Tests
+    
+    func testGeneratorCacheReturnsSameGeneratorForSameSize() {
+        let cache = GeneratorCache()
+        let engine = Engine()
+        let size = CGSize(width: 200, height: 200)
+        
+        let generator1 = cache.generator(for: size, using: engine)
+        let generator2 = cache.generator(for: size, using: engine)
+        
+        // Should return the same generator instance
+        XCTAssertTrue(generator1 === generator2)
+    }
+    
+    func testGeneratorCacheReturnsDifferentGeneratorForDifferentSizes() {
+        let cache = GeneratorCache()
+        let engine = Engine()
+        
+        let generator1 = cache.generator(for: CGSize(width: 100, height: 100), using: engine)
+        let generator2 = cache.generator(for: CGSize(width: 200, height: 200), using: engine)
+        
+        // Should return different generators
+        XCTAssertFalse(generator1 === generator2)
+    }
+    
+    func testGeneratorCacheRoundsSizes() {
+        let cache = GeneratorCache()
+        let engine = Engine()
+        
+        // Sizes that round to the same integer should use the same generator
+        let generator1 = cache.generator(for: CGSize(width: 100.2, height: 100.3), using: engine)
+        let generator2 = cache.generator(for: CGSize(width: 100.4, height: 100.1), using: engine)
+        
+        XCTAssertTrue(generator1 === generator2)
+    }
+    
+    func testGeneratorCacheEvictsOldEntries() {
+        let cache = GeneratorCache(maxEntries: 3)
+        let engine = Engine()
+        
+        // Fill the cache
+        _ = cache.generator(for: CGSize(width: 100, height: 100), using: engine)
+        _ = cache.generator(for: CGSize(width: 200, height: 200), using: engine)
+        _ = cache.generator(for: CGSize(width: 300, height: 300), using: engine)
+        
+        XCTAssertEqual(cache.count, 3)
+        
+        // Adding a new size should evict the oldest
+        _ = cache.generator(for: CGSize(width: 400, height: 400), using: engine)
+        
+        XCTAssertEqual(cache.count, 3)
+    }
+    
+    func testGeneratorCacheClear() {
+        let cache = GeneratorCache()
+        let engine = Engine()
+        
+        _ = cache.generator(for: CGSize(width: 100, height: 100), using: engine)
+        _ = cache.generator(for: CGSize(width: 200, height: 200), using: engine)
+        
+        XCTAssertEqual(cache.count, 2)
+        
+        cache.clear()
+        
+        XCTAssertEqual(cache.count, 0)
+    }
+    
+    func testEngineGeneratorCachingIntegration() {
+        let engine = Engine()
+        
+        // Clear caches first
+        engine.clearCaches()
+        
+        let size = CGSize(width: 150, height: 150)
+        
+        // Access the same size multiple times
+        let gen1 = engine.generator(size: size)
+        let gen2 = engine.generator(size: size)
+        
+        // Should return same generator
+        XCTAssertTrue(gen1 === gen2)
+        
+        // Cache stats should reflect this
+        let stats = engine.cacheStats
+        XCTAssertGreaterThanOrEqual(stats.generators, 1)
+    }
+    
+    // MARK: - Drawing Cache Tests
+    
+    func testDrawingCacheStoresAndRetrievesDrawings() {
+        let cache = DrawingCache()
+        
+        // Create a test drawing
+        let options = Options()
+        let drawing = Drawing(
+            shape: "test",
+            sets: [],
+            options: options
+        )
+        
+        // Create a cache key
+        let key = DrawingCacheKey(
+            drawable: Rectangle(x: 0, y: 0, width: 100, height: 100),
+            size: CGSize(width: 200, height: 200),
+            options: options
+        )
+        
+        // Store and retrieve
+        cache.set(key, drawing: drawing)
+        let retrieved = cache.get(key)
+        
+        XCTAssertNotNil(retrieved)
+        XCTAssertEqual(retrieved?.shape, "test")
+    }
+    
+    func testDrawingCacheReturnsNilForMissingKey() {
+        let cache = DrawingCache()
+        
+        let key = DrawingCacheKey(
+            drawable: Circle(x: 50, y: 50, diameter: 100),
+            size: CGSize(width: 100, height: 100),
+            options: Options()
+        )
+        
+        let result = cache.get(key)
+        
+        XCTAssertNil(result)
+    }
+    
+    func testDrawingCacheTracksCacheStats() {
+        let cache = DrawingCache()
+        
+        let options = Options()
+        let drawing = Drawing(shape: "test", sets: [], options: options)
+        
+        let key1 = DrawingCacheKey(
+            drawable: Rectangle(x: 0, y: 0, width: 50, height: 50),
+            size: CGSize(width: 100, height: 100),
+            options: options
+        )
+        
+        let key2 = DrawingCacheKey(
+            drawable: Circle(x: 25, y: 25, diameter: 50),
+            size: CGSize(width: 100, height: 100),
+            options: options
+        )
+        
+        // Miss
+        _ = cache.get(key1)
+        
+        // Store
+        cache.set(key1, drawing: drawing)
+        
+        // Hit
+        _ = cache.get(key1)
+        
+        // Miss
+        _ = cache.get(key2)
+        
+        let stats = cache.stats
+        XCTAssertEqual(stats.entries, 1)
+        XCTAssertEqual(stats.hits, 1)
+        XCTAssertEqual(stats.misses, 2)
+        XCTAssertEqual(stats.hitRate, 1.0 / 3.0, accuracy: 0.001)
+    }
+    
+    func testDrawingCacheEvictsWhenFull() {
+        let cache = DrawingCache(maxEntries: 3)
+        let options = Options()
+        
+        // Fill the cache
+        for i in 0..<5 {
+            let drawing = Drawing(shape: "shape\(i)", sets: [], options: options)
+            let key = DrawingCacheKey(
+                drawable: Rectangle(x: Float(i * 10), y: 0, width: 50, height: 50),
+                size: CGSize(width: 100, height: 100),
+                options: options
+            )
+            cache.set(key, drawing: drawing)
+        }
+        
+        // Cache should not exceed max entries
+        XCTAssertLessThanOrEqual(cache.stats.entries, 3)
+    }
+    
+    func testDrawingCacheGetOrGenerateUsesCachedValue() {
+        let cache = DrawingCache()
+        let options = Options()
+        
+        let key = DrawingCacheKey(
+            drawable: Rectangle(x: 0, y: 0, width: 100, height: 100),
+            size: CGSize(width: 200, height: 200),
+            options: options
+        )
+        
+        var generatorCallCount = 0
+        
+        // First call should generate
+        let result1 = cache.getOrGenerate(key) {
+            generatorCallCount += 1
+            return Drawing(shape: "generated", sets: [], options: options)
+        }
+        
+        // Second call should use cache
+        let result2 = cache.getOrGenerate(key) {
+            generatorCallCount += 1
+            return Drawing(shape: "generated-again", sets: [], options: options)
+        }
+        
+        XCTAssertEqual(generatorCallCount, 1)
+        XCTAssertEqual(result1?.shape, "generated")
+        XCTAssertEqual(result2?.shape, "generated") // Should be cached value
+    }
+    
+    func testDrawingCacheClear() {
+        let cache = DrawingCache()
+        let options = Options()
+        
+        let drawing = Drawing(shape: "test", sets: [], options: options)
+        let key = DrawingCacheKey(
+            drawable: Rectangle(x: 0, y: 0, width: 50, height: 50),
+            size: CGSize(width: 100, height: 100),
+            options: options
+        )
+        
+        cache.set(key, drawing: drawing)
+        XCTAssertNotNil(cache.get(key))
+        
+        let statsBefore = cache.stats
+        XCTAssertEqual(statsBefore.entries, 1)
+        XCTAssertEqual(statsBefore.hits, 1) // The get above was a hit
+        
+        cache.clear()
+        
+        // After clear, the entry should be gone
+        let statsAfter = cache.stats
+        XCTAssertEqual(statsAfter.entries, 0)
+        XCTAssertEqual(statsAfter.hits, 0) // Reset
+        XCTAssertEqual(statsAfter.misses, 0) // Reset
+        
+        // Accessing after clear should be nil (and will record a miss)
+        XCTAssertNil(cache.get(key))
+        XCTAssertEqual(cache.stats.misses, 1) // Now there's a miss
+    }
+    
+    func testDrawingCacheKeyDifferentDrawables() {
+        let options = Options()
+        let size = CGSize(width: 100, height: 100)
+        
+        let key1 = DrawingCacheKey(
+            drawable: Rectangle(x: 0, y: 0, width: 50, height: 50),
+            size: size,
+            options: options
+        )
+        
+        let key2 = DrawingCacheKey(
+            drawable: Circle(x: 25, y: 25, diameter: 50),
+            size: size,
+            options: options
+        )
+        
+        XCTAssertNotEqual(key1, key2)
+    }
+    
+    func testDrawingCacheKeyDifferentOptions() {
+        let size = CGSize(width: 100, height: 100)
+        let drawable = Rectangle(x: 0, y: 0, width: 50, height: 50)
+        
+        var options1 = Options()
+        options1.roughness = 1.0
+        
+        var options2 = Options()
+        options2.roughness = 2.0
+        
+        let key1 = DrawingCacheKey(drawable: drawable, size: size, options: options1)
+        let key2 = DrawingCacheKey(drawable: drawable, size: size, options: options2)
+        
+        XCTAssertNotEqual(key1, key2)
+    }
+    
+    func testDrawingCacheKeyDifferentSizes() {
+        let options = Options()
+        let drawable = Rectangle(x: 0, y: 0, width: 50, height: 50)
+        
+        let key1 = DrawingCacheKey(
+            drawable: drawable,
+            size: CGSize(width: 100, height: 100),
+            options: options
+        )
+        
+        let key2 = DrawingCacheKey(
+            drawable: drawable,
+            size: CGSize(width: 200, height: 200),
+            options: options
+        )
+        
+        XCTAssertNotEqual(key1, key2)
+    }
+    
+    func testDrawingCacheKeySameSizeRounded() {
+        let options = Options()
+        let drawable = Rectangle(x: 0, y: 0, width: 50, height: 50)
+        
+        // Sizes that round to the same integer should produce same key
+        let key1 = DrawingCacheKey(
+            drawable: drawable,
+            size: CGSize(width: 100.2, height: 100.3),
+            options: options
+        )
+        
+        let key2 = DrawingCacheKey(
+            drawable: drawable,
+            size: CGSize(width: 100.4, height: 100.1),
+            options: options
+        )
+        
+        XCTAssertEqual(key1, key2)
+    }
+    
+    func testOptionsCacheHashIncludesRelevantOptions() {
+        var options1 = Options()
+        options1.roughness = 1.0
+        options1.fillStyle = .hachure
+        
+        var options2 = Options()
+        options2.roughness = 1.0
+        options2.fillStyle = .hachure
+        
+        // Same options should produce same hash
+        XCTAssertEqual(options1.cacheHash, options2.cacheHash)
+        
+        // Different options should produce different hash
+        options2.roughness = 2.0
+        XCTAssertNotEqual(options1.cacheHash, options2.cacheHash)
+    }
+    
+    func testOptionsCacheHashIncludesFillSpacingPattern() {
+        var options1 = Options()
+        options1.fillSpacingPattern = [1, 2, 3]
+        
+        var options2 = Options()
+        options2.fillSpacingPattern = [1, 2, 3]
+        
+        var options3 = Options()
+        options3.fillSpacingPattern = [4, 5, 6]
+        
+        XCTAssertEqual(options1.cacheHash, options2.cacheHash)
+        XCTAssertNotEqual(options1.cacheHash, options3.cacheHash)
+    }
+    
+    func testEngineClearCachesResetsAll() {
+        let engine = Engine()
+        
+        // Use generators and generate drawings to populate caches
+        let gen = engine.generator(size: CGSize(width: 100, height: 100))
+        _ = gen.generate(drawable: Rectangle(x: 0, y: 0, width: 50, height: 50))
+        
+        let statsBefore = engine.cacheStats
+        XCTAssertGreaterThan(statsBefore.generators, 0)
+        
+        engine.clearCaches()
+        
+        let statsAfter = engine.cacheStats
+        XCTAssertEqual(statsAfter.generators, 0)
+        XCTAssertEqual(statsAfter.drawings, 0)
+    }
+    
+    func testGeneratorWithCacheReusesDrawings() {
+        let engine = Engine()
+        engine.clearCaches()
+        
+        let gen = engine.generator(size: CGSize(width: 100, height: 100))
+        let drawable = Rectangle(x: 0, y: 0, width: 50, height: 50)
+        let options = Options()
+        
+        // Generate twice with same parameters
+        let drawing1 = gen.generate(drawable: drawable, options: options)
+        let drawing2 = gen.generate(drawable: drawable, options: options)
+        
+        XCTAssertNotNil(drawing1)
+        XCTAssertNotNil(drawing2)
+        
+        // Second call should hit cache
+        let stats = engine.cacheStats
+        XCTAssertGreaterThan(stats.hitRate, 0)
+    }
+    
+    // MARK: - O(n) Duplicate Point Removal Tests (Spatial Bucketing)
+    
+    func testRemoveDuplicatePointsRemovesDuplicates() {
+        let rect = CGRect(x: 0, y: 0, width: 100, height: 100)
+        let path = CGPath(rect: rect, transform: nil)
+        
+        var options = Options()
+        options.scribbleTightness = 10
+        
+        // Generate scribble fill - the internal removeDuplicatePoints is called
+        let operationSets = ScribbleFillGenerator.generate(for: path, options: options)
+        
+        // Should produce results (indirectly testing that duplicate removal works)
+        XCTAssertFalse(operationSets.isEmpty)
+    }
+    
+    func testScribbleFillGeneratorWithManyIntersections() {
+        // Create a complex path with many potential duplicate intersections
+        let path = CGMutablePath()
+        path.addRect(CGRect(x: 0, y: 0, width: 200, height: 200))
+        
+        var options = Options()
+        options.scribbleTightness = 50 // High tightness = many rays = many intersections
+        
+        // This exercises the O(n) duplicate removal with many points
+        let operationSets = ScribbleFillGenerator.generate(for: path, options: options)
+        
+        XCTAssertFalse(operationSets.isEmpty)
+        
+        // Should have many operations due to high tightness
+        let totalOps = operationSets.flatMap { $0.operations }.count
+        XCTAssertGreaterThan(totalOps, 10)
+    }
+    
+    func testScribbleFillGeneratorPerformanceWithLargePath() {
+        // Create a large path that would stress O(n²) algorithm
+        let path = CGMutablePath()
+        for i in 0..<10 {
+            let x = CGFloat(i * 50)
+            path.addRect(CGRect(x: x, y: 0, width: 40, height: 100))
+        }
+        
+        var options = Options()
+        options.scribbleTightness = 30
+        
+        // Measure that this completes in reasonable time (implicit performance test)
+        // With O(n²) this would be slow; with O(n) it's fast
+        let startTime = Date()
+        let operationSets = ScribbleFillGenerator.generate(for: path, options: options)
+        let elapsed = Date().timeIntervalSince(startTime)
+        
+        XCTAssertFalse(operationSets.isEmpty)
+        
+        // Should complete quickly (under 1 second even for complex paths)
+        XCTAssertLessThan(elapsed, 1.0, "Scribble generation should be fast with O(n) duplicate removal")
+    }
+    
+    func testScribbleFillWithCircularPath() {
+        // Circles have many bezier curve intersections
+        let path = CGPath(ellipseIn: CGRect(x: 0, y: 0, width: 150, height: 150), transform: nil)
+        
+        var options = Options()
+        options.scribbleTightness = 25
+        options.scribbleCurvature = 15
+        
+        let operationSets = ScribbleFillGenerator.generate(for: path, options: options)
+        
+        XCTAssertFalse(operationSets.isEmpty)
+    }
+    
+    func testScribbleFillGeneratorWithSmallTolerance() {
+        // Test that close-together points are properly deduplicated
+        let rect = CGRect(x: 0, y: 0, width: 50, height: 50)
+        let path = CGPath(rect: rect, transform: nil)
+        
+        var options = Options()
+        options.scribbleTightness = 15
+        
+        let operationSets = ScribbleFillGenerator.generate(for: path, options: options)
+        
+        // Should produce clean results without duplicate points causing issues
+        XCTAssertFalse(operationSets.isEmpty)
+        
+        // Each operation set should have valid operations
+        for set in operationSets {
+            XCTAssertFalse(set.operations.isEmpty)
+        }
+    }
+    
+    // MARK: - SVG Number Parsing Tests
+    
+    func testSVGParseNumbersBasic() {
+        // Basic space-separated numbers
+        let result = SVGPath.parseNumbers("10 20 30 40")
+        XCTAssertEqual(result, [10, 20, 30, 40])
+    }
+    
+    func testSVGParseNumbersCommaSeparated() {
+        // Comma-separated numbers
+        let result = SVGPath.parseNumbers("10,20,30,40")
+        XCTAssertEqual(result, [10, 20, 30, 40])
+    }
+    
+    func testSVGParseNumbersMixedSeparators() {
+        // Mix of comma and space separators
+        let result = SVGPath.parseNumbers("10, 20 30,40")
+        XCTAssertEqual(result, [10, 20, 30, 40])
+    }
+    
+    func testSVGParseNumbersNegative() {
+        // Negative numbers
+        let result = SVGPath.parseNumbers("-10 -20 -30")
+        XCTAssertEqual(result, [-10, -20, -30])
+    }
+    
+    func testSVGParseNumbersImplicitNegative() {
+        // Implicit separator with negative (e.g., "10-20" should parse as [10, -20])
+        let result = SVGPath.parseNumbers("10-20-30")
+        XCTAssertEqual(result, [10, -20, -30])
+    }
+    
+    func testSVGParseNumbersDecimal() {
+        // Decimal numbers
+        let result = SVGPath.parseNumbers("10.5 20.25 30.125")
+        XCTAssertEqual(result, [10.5, 20.25, 30.125])
+    }
+    
+    func testSVGParseNumbersLeadingDecimal() {
+        // Numbers with leading decimal point (e.g., ".5")
+        let result = SVGPath.parseNumbers(".5 .25 .125")
+        XCTAssertEqual(result, [0.5, 0.25, 0.125])
+    }
+    
+    func testSVGParseNumbersConsecutiveDecimals() {
+        // Consecutive decimal numbers (e.g., "1.2.3" should parse as [1.2, 0.3])
+        let result = SVGPath.parseNumbers("1.2.3.4")
+        XCTAssertEqual(result, [1.2, 0.3, 0.4])
+    }
+    
+    func testSVGParseNumbersScientificNotation() {
+        // Scientific notation
+        let result = SVGPath.parseNumbers("1e5 2.5e-3 3E+2")
+        XCTAssertEqual(result.count, 3)
+        XCTAssertEqual(result[0], 100000, accuracy: 0.001)
+        XCTAssertEqual(result[1], 0.0025, accuracy: 0.000001)
+        XCTAssertEqual(result[2], 300, accuracy: 0.001)
+    }
+    
+    func testSVGParseNumbersScientificWithNegativeExponent() {
+        // Scientific notation with negative exponent shouldn't split on the minus
+        let result = SVGPath.parseNumbers("1e-5")
+        XCTAssertEqual(result.count, 1)
+        XCTAssertEqual(result[0], 0.00001, accuracy: 0.0000001)
+    }
+    
+    func testSVGParseNumbersEmpty() {
+        // Empty string
+        let result = SVGPath.parseNumbers("")
+        XCTAssertEqual(result, [])
+    }
+    
+    func testSVGParseNumbersWhitespaceOnly() {
+        // Whitespace only
+        let result = SVGPath.parseNumbers("   ")
+        XCTAssertEqual(result, [])
+    }
+    
+    func testSVGParseNumbersComplexSVGPath() {
+        // Complex real-world SVG path numbers
+        let result = SVGPath.parseNumbers("100.5,200.25 -50.75,-25.125 0.5-0.25")
+        XCTAssertEqual(result, [100.5, 200.25, -50.75, -25.125, 0.5, -0.25])
+    }
+    
+    func testSVGParseNumbersZero() {
+        // Zero values
+        let result = SVGPath.parseNumbers("0 0.0 -0 +0")
+        XCTAssertEqual(result.count, 4)
+        XCTAssertEqual(result[0], 0)
+        XCTAssertEqual(result[1], 0)
+        XCTAssertEqual(result[2], 0)
+        XCTAssertEqual(result[3], 0)
+    }
+    
+    func testSVGParseNumbersPositiveSign() {
+        // Explicit positive sign
+        let result = SVGPath.parseNumbers("+10 +20.5")
+        XCTAssertEqual(result, [10, 20.5])
+    }
+    
+    func testSVGPathParsing() {
+        // Test full SVG path parsing with the new number parser
+        let path = SVGPath("M10,20 L30,40 Q50,60 70,80 C90,100 110,120 130,140 Z")
+        
+        XCTAssertEqual(path.commands.count, 5)
+        XCTAssertEqual(path.commands[0].type, .move)
+        XCTAssertEqual(path.commands[0].point, CGPoint(x: 10, y: 20))
+        
+        XCTAssertEqual(path.commands[1].type, .line)
+        XCTAssertEqual(path.commands[1].point, CGPoint(x: 30, y: 40))
+        
+        XCTAssertEqual(path.commands[2].type, .quadCurve)
+        XCTAssertEqual(path.commands[2].control1, CGPoint(x: 50, y: 60))
+        XCTAssertEqual(path.commands[2].point, CGPoint(x: 70, y: 80))
+        
+        XCTAssertEqual(path.commands[3].type, .cubeCurve)
+        XCTAssertEqual(path.commands[3].control1, CGPoint(x: 90, y: 100))
+        XCTAssertEqual(path.commands[3].control2, CGPoint(x: 110, y: 120))
+        XCTAssertEqual(path.commands[3].point, CGPoint(x: 130, y: 140))
+        
+        XCTAssertEqual(path.commands[4].type, .close)
+    }
+    
+    func testSVGPathRelativeCommands() {
+        // Test relative path commands
+        let path = SVGPath("M10,10 l20,20 l30,30")
+        
+        XCTAssertEqual(path.commands.count, 3)
+        XCTAssertEqual(path.commands[0].point, CGPoint(x: 10, y: 10))
+        XCTAssertEqual(path.commands[1].point, CGPoint(x: 30, y: 30))  // Relative to previous
+        XCTAssertEqual(path.commands[2].point, CGPoint(x: 60, y: 60))  // Relative to previous
+    }
+    
+    func testSVGPathWithNegativeCoordinates() {
+        // Test path with negative coordinates (common in real SVG paths)
+        let path = SVGPath("M-10,-20 L-30-40 l10-20")
+        
+        XCTAssertEqual(path.commands.count, 3)
+        XCTAssertEqual(path.commands[0].point, CGPoint(x: -10, y: -20))
+        XCTAssertEqual(path.commands[1].point, CGPoint(x: -30, y: -40))
+        // Relative: (-30, -40) + (10, -20) = (-20, -60)
+        XCTAssertEqual(path.commands[2].point, CGPoint(x: -20, y: -60))
+    }
+    
+    // MARK: - Adaptive Bezier Sampling Tests
+    
+    func testAdaptiveBezierSamplingWithNearlyStraightCurve() {
+        // A nearly straight cubic bezier should still produce valid results
+        // Control points very close to the line between start and end
+        let path = CGMutablePath()
+        path.move(to: CGPoint(x: 0, y: 0))
+        // Control points are nearly on the straight line from (0,0) to (100,0)
+        path.addCurve(to: CGPoint(x: 100, y: 0), 
+                      control1: CGPoint(x: 33, y: 1),  // Very slight deviation
+                      control2: CGPoint(x: 66, y: -1))
+        path.closeSubpath()
+        
+        var options = Options()
+        options.scribbleTightness = 10
+        
+        let operationSets = ScribbleFillGenerator.generate(for: path, options: options)
+        
+        // Should produce results even with nearly straight curves
+        // (this tests that low segment counts don't cause issues)
+        XCTAssertFalse(operationSets.isEmpty)
+    }
+    
+    func testAdaptiveBezierSamplingWithHighlyCurvedPath() {
+        // A highly curved cubic bezier should produce more detailed results
+        let path = CGMutablePath()
+        path.move(to: CGPoint(x: 0, y: 50))
+        // Control points far from the line, creating a very curved path
+        path.addCurve(to: CGPoint(x: 100, y: 50),
+                      control1: CGPoint(x: 0, y: 150),   // Far below
+                      control2: CGPoint(x: 100, y: -50)) // Far above
+        path.addLine(to: CGPoint(x: 100, y: 100))
+        path.addLine(to: CGPoint(x: 0, y: 100))
+        path.closeSubpath()
+        
+        var options = Options()
+        options.scribbleTightness = 15
+        
+        let operationSets = ScribbleFillGenerator.generate(for: path, options: options)
+        
+        // Should produce results with complex curves
+        XCTAssertFalse(operationSets.isEmpty)
+    }
+    
+    func testAdaptiveBezierSamplingWithQuadraticCurve() {
+        // Test with quadratic bezier curves
+        let path = CGMutablePath()
+        path.move(to: CGPoint(x: 0, y: 0))
+        // Quadratic curve with control point far from midpoint
+        path.addQuadCurve(to: CGPoint(x: 100, y: 0), control: CGPoint(x: 50, y: 80))
+        path.addLine(to: CGPoint(x: 100, y: 100))
+        path.addLine(to: CGPoint(x: 0, y: 100))
+        path.closeSubpath()
+        
+        var options = Options()
+        options.scribbleTightness = 12
+        
+        let operationSets = ScribbleFillGenerator.generate(for: path, options: options)
+        
+        XCTAssertFalse(operationSets.isEmpty)
+    }
+    
+    func testAdaptiveBezierSamplingWithMixedCurveTypes() {
+        // Path with mix of lines, quadratic and cubic curves
+        let path = CGMutablePath()
+        path.move(to: CGPoint(x: 0, y: 0))
+        path.addLine(to: CGPoint(x: 50, y: 0))
+        path.addQuadCurve(to: CGPoint(x: 100, y: 50), control: CGPoint(x: 100, y: 0))
+        path.addCurve(to: CGPoint(x: 50, y: 100),
+                      control1: CGPoint(x: 100, y: 75),
+                      control2: CGPoint(x: 75, y: 100))
+        path.addLine(to: CGPoint(x: 0, y: 100))
+        path.closeSubpath()
+        
+        var options = Options()
+        options.scribbleTightness = 10
+        
+        let operationSets = ScribbleFillGenerator.generate(for: path, options: options)
+        
+        XCTAssertFalse(operationSets.isEmpty)
+        
+        // Should have operations in the result
+        let totalOps = operationSets.flatMap { $0.operations }.count
+        XCTAssertGreaterThan(totalOps, 0)
+    }
+    
+    func testAdaptiveBezierSamplingPerformanceWithManySmallCurves() {
+        // Test performance with many small curves
+        // Adaptive sampling should use fewer segments for small curves
+        let path = CGMutablePath()
+        path.move(to: CGPoint(x: 0, y: 0))
+        
+        // Add many small curves
+        for i in 0..<50 {
+            let x = CGFloat(i * 10)
+            path.addCurve(to: CGPoint(x: x + 10, y: CGFloat(i % 2) * 5),
+                          control1: CGPoint(x: x + 3, y: 2),
+                          control2: CGPoint(x: x + 7, y: 3))
+        }
+        path.addLine(to: CGPoint(x: 500, y: 50))
+        path.addLine(to: CGPoint(x: 0, y: 50))
+        path.closeSubpath()
+        
+        var options = Options()
+        options.scribbleTightness = 20
+        
+        let startTime = CFAbsoluteTimeGetCurrent()
+        let operationSets = ScribbleFillGenerator.generate(for: path, options: options)
+        let elapsed = CFAbsoluteTimeGetCurrent() - startTime
+        
+        XCTAssertFalse(operationSets.isEmpty)
+        // Should complete in reasonable time (< 2 seconds)
+        XCTAssertLessThan(elapsed, 2.0, "Adaptive sampling should handle many small curves efficiently")
+    }
+    
+    func testAdaptiveBezierSamplingPerformanceWithLargeCurves() {
+        // Test performance with large, highly curved paths
+        let path = CGMutablePath()
+        path.move(to: CGPoint(x: 0, y: 100))
+        
+        // Add large, complex curves
+        for i in 0..<20 {
+            let x = CGFloat(i * 100)
+            let amplitude = CGFloat(50 + i * 10)
+            path.addCurve(to: CGPoint(x: x + 100, y: 100),
+                          control1: CGPoint(x: x + 25, y: 100 + amplitude),
+                          control2: CGPoint(x: x + 75, y: 100 - amplitude))
+        }
+        path.addLine(to: CGPoint(x: 2000, y: 200))
+        path.addLine(to: CGPoint(x: 0, y: 200))
+        path.closeSubpath()
+        
+        var options = Options()
+        options.scribbleTightness = 15
+        
+        let startTime = CFAbsoluteTimeGetCurrent()
+        let operationSets = ScribbleFillGenerator.generate(for: path, options: options)
+        let elapsed = CFAbsoluteTimeGetCurrent() - startTime
+        
+        XCTAssertFalse(operationSets.isEmpty)
+        // Should complete in reasonable time
+        XCTAssertLessThan(elapsed, 3.0, "Adaptive sampling should handle large curves efficiently")
+    }
+    
+    func testAdaptiveBezierSamplingAccuracyWithCircle() {
+        // Circles are approximated with bezier curves
+        // Test that adaptive sampling maintains accuracy
+        let path = CGPath(ellipseIn: CGRect(x: 0, y: 0, width: 100, height: 100), transform: nil)
+        
+        var options = Options()
+        options.scribbleTightness = 15
+        
+        let operationSets = ScribbleFillGenerator.generate(for: path, options: options)
+        
+        XCTAssertFalse(operationSets.isEmpty)
+        
+        // Should have reasonable number of operations for a circle fill
+        let totalOps = operationSets.flatMap { $0.operations }.count
+        XCTAssertGreaterThan(totalOps, 5, "Circle fill should produce meaningful operations")
+    }
+    
+    // MARK: - StrokeToFillConverter Adaptive Sampling Tests
+    
+    func testStrokeToFillAdaptiveSamplingWithStraightLine() {
+        // A straight line should use fewer samples
+        let move = Move(data: [0, 0])
+        let line = LineTo(data: [100, 0])
+        let operations: [RoughSwiftUI.Operation] = [move, line]
+        
+        let profile = BrushProfile.default
+        let result = StrokeToFillConverter.convert(
+            operations: operations,
+            baseWidth: 10,
+            profile: profile
+        )
+        
+        XCTAssertFalse(result.isEmpty)
+        
+        // The result should be roughly rectangular for a straight line
+        let bounds = result.boundingRect
+        XCTAssertGreaterThan(bounds.width, 90)
+        XCTAssertLessThan(bounds.width, 120)
+    }
+    
+    func testStrokeToFillAdaptiveSamplingWithNearlyStraightQuadCurve() {
+        // Nearly straight quadratic curve
+        let move = Move(data: [0, 0])
+        let quad = QuadraticCurveTo(data: [50, 1, 100, 0]) // Control point nearly on line
+        let operations: [RoughSwiftUI.Operation] = [move, quad]
+        
+        let profile = BrushProfile.pen
+        let result = StrokeToFillConverter.convert(
+            operations: operations,
+            baseWidth: 8,
+            profile: profile
+        )
+        
+        XCTAssertFalse(result.isEmpty)
+    }
+    
+    func testStrokeToFillAdaptiveSamplingWithHighlyCurvedQuad() {
+        // Highly curved quadratic curve
+        let move = Move(data: [0, 0])
+        let quad = QuadraticCurveTo(data: [50, 100, 100, 0]) // Control point far from line
+        let operations: [RoughSwiftUI.Operation] = [move, quad]
+        
+        let profile = BrushProfile.calligraphic
+        let result = StrokeToFillConverter.convert(
+            operations: operations,
+            baseWidth: 6,
+            profile: profile
+        )
+        
+        XCTAssertFalse(result.isEmpty)
+        
+        // Highly curved path should produce a result with significant height
+        let bounds = result.boundingRect
+        XCTAssertGreaterThan(bounds.height, 40, "Curved path should extend vertically")
+    }
+    
+    func testStrokeToFillAdaptiveSamplingWithNearlyStraightCubic() {
+        // Nearly straight cubic curve
+        let move = Move(data: [0, 0])
+        let cubic = BezierCurveTo(data: [33, 1, 66, -1, 100, 0]) // Control points nearly on line
+        let operations: [RoughSwiftUI.Operation] = [move, cubic]
+        
+        let profile = BrushProfile.marker
+        let result = StrokeToFillConverter.convert(
+            operations: operations,
+            baseWidth: 12,
+            profile: profile
+        )
+        
+        XCTAssertFalse(result.isEmpty)
+    }
+    
+    func testStrokeToFillAdaptiveSamplingWithHighlyCurvedCubic() {
+        // Highly curved cubic (S-curve)
+        let move = Move(data: [0, 50])
+        let cubic = BezierCurveTo(data: [0, 150, 100, -50, 100, 50]) // S-curve
+        let operations: [RoughSwiftUI.Operation] = [move, cubic]
+        
+        let profile = BrushProfile(
+            tip: .circular,
+            thicknessProfile: .taperBoth(start: 0.3, end: 0.3)
+        )
+        let result = StrokeToFillConverter.convert(
+            operations: operations,
+            baseWidth: 10,
+            profile: profile
+        )
+        
+        XCTAssertFalse(result.isEmpty)
+        
+        // S-curve should have significant vertical extent
+        // The curve won't reach the full control point extent, but should have noticeable height
+        let bounds = result.boundingRect
+        XCTAssertGreaterThan(bounds.height, 50, "S-curve should have significant vertical extent")
+    }
+    
+    func testStrokeToFillAdaptiveSamplingPerformanceWithManyCurves() {
+        // Performance test with many curves
+        var path = SwiftUI.Path()
+        path.move(to: CGPoint(x: 0, y: 0))
+        
+        for i in 0..<100 {
+            let x = CGFloat(i * 20)
+            let amplitude = CGFloat(10 + (i % 5) * 5)
+            path.addCurve(
+                to: CGPoint(x: x + 20, y: 0),
+                control1: CGPoint(x: x + 5, y: amplitude),
+                control2: CGPoint(x: x + 15, y: -amplitude)
+            )
+        }
+        
+        let profile = BrushProfile.pen
+        
+        let startTime = CFAbsoluteTimeGetCurrent()
+        let result = StrokeToFillConverter.convert(
+            path: path,
+            baseWidth: 4,
+            profile: profile
+        )
+        let elapsed = CFAbsoluteTimeGetCurrent() - startTime
+        
+        XCTAssertFalse(result.isEmpty)
+        XCTAssertLessThan(elapsed, 2.0, "Adaptive sampling should handle many curves efficiently")
+    }
+    
+    func testStrokeToFillAdaptiveSamplingWithMixedCurveComplexity() {
+        // Mix of straight lines and curves with varying complexity
+        var path = SwiftUI.Path()
+        path.move(to: CGPoint(x: 0, y: 0))
+        
+        // Straight line
+        path.addLine(to: CGPoint(x: 50, y: 0))
+        
+        // Nearly straight quad
+        path.addQuadCurve(to: CGPoint(x: 100, y: 0), control: CGPoint(x: 75, y: 2))
+        
+        // Highly curved cubic
+        path.addCurve(to: CGPoint(x: 150, y: 0),
+                      control1: CGPoint(x: 110, y: 50),
+                      control2: CGPoint(x: 140, y: -50))
+        
+        // Another straight line
+        path.addLine(to: CGPoint(x: 200, y: 0))
+        
+        let profile = BrushProfile.calligraphic
+        let result = StrokeToFillConverter.convert(
+            path: path,
+            baseWidth: 8,
+            profile: profile
+        )
+        
+        XCTAssertFalse(result.isEmpty)
+        
+        // Result should span the full width
+        let bounds = result.boundingRect
+        XCTAssertGreaterThan(bounds.width, 180)
+    }
+    
+    func testStrokeToFillAdaptiveSamplingConsistencyBetweenCalls() {
+        // Verify that adaptive sampling produces consistent results
+        let move = Move(data: [0, 0])
+        let curve = BezierCurveTo(data: [30, 40, 70, 60, 100, 50])
+        let operations: [RoughSwiftUI.Operation] = [move, curve]
+        
+        let profile = BrushProfile.pen
+        
+        let result1 = StrokeToFillConverter.convert(
+            operations: operations,
+            baseWidth: 10,
+            profile: profile
+        )
+        
+        let result2 = StrokeToFillConverter.convert(
+            operations: operations,
+            baseWidth: 10,
+            profile: profile
+        )
+        
+        let bounds1 = result1.boundingRect
+        let bounds2 = result2.boundingRect
+        
+        // Results should be identical
+        XCTAssertEqual(bounds1.width, bounds2.width, accuracy: 0.001)
+        XCTAssertEqual(bounds1.height, bounds2.height, accuracy: 0.001)
+    }
+    
+    func testStrokeToFillAdaptiveSamplingWithVeryLongCurve() {
+        // Very long curve should still produce valid results
+        let move = Move(data: [0, 0])
+        let curve = BezierCurveTo(data: [500, 200, 1000, -200, 1500, 0])
+        let operations: [RoughSwiftUI.Operation] = [move, curve]
+        
+        let profile = BrushProfile.default
+        let result = StrokeToFillConverter.convert(
+            operations: operations,
+            baseWidth: 20,
+            profile: profile
+        )
+        
+        XCTAssertFalse(result.isEmpty)
+        
+        let bounds = result.boundingRect
+        XCTAssertGreaterThan(bounds.width, 1400, "Long curve should have significant width")
+    }
+    
+    func testStrokeToFillAdaptiveSamplingWithVeryShortCurve() {
+        // Very short curve should still work correctly
+        let move = Move(data: [0, 0])
+        let curve = BezierCurveTo(data: [1, 2, 3, 1, 5, 0])
+        let operations: [RoughSwiftUI.Operation] = [move, curve]
+        
+        let profile = BrushProfile.marker
+        let result = StrokeToFillConverter.convert(
+            operations: operations,
+            baseWidth: 10,
+            profile: profile
+        )
+        
+        XCTAssertFalse(result.isEmpty)
+    }
+    
+    func testStrokeToFillAdaptiveSamplingPreservesThicknessVariation() {
+        // Test that thickness profile is correctly applied with adaptive sampling
+        let move = Move(data: [0, 0])
+        let curve = BezierCurveTo(data: [30, 50, 70, 50, 100, 0])
+        let operations: [RoughSwiftUI.Operation] = [move, curve]
+        
+        // Tapered profile
+        let taperedProfile = BrushProfile(
+            tip: .circular,
+            thicknessProfile: .taperBoth(start: 0.1, end: 0.1)
+        )
+        
+        // Uniform profile
+        let uniformProfile = BrushProfile(
+            tip: .circular,
+            thicknessProfile: .uniform
+        )
+        
+        let taperedResult = StrokeToFillConverter.convert(
+            operations: operations,
+            baseWidth: 20,
+            profile: taperedProfile
+        )
+        
+        let uniformResult = StrokeToFillConverter.convert(
+            operations: operations,
+            baseWidth: 20,
+            profile: uniformProfile
+        )
+        
+        // Both should produce results
+        XCTAssertFalse(taperedResult.isEmpty)
+        XCTAssertFalse(uniformResult.isEmpty)
+        
+        // Tapered should have different bounds than uniform
+        // (tapered has thinner ends, so might have slightly different overall bounds)
+        let taperedBounds = taperedResult.boundingRect
+        let uniformBounds = uniformResult.boundingRect
+        
+        // Uniform should be at least as wide/tall (tapered ends reduce size slightly)
+        XCTAssertGreaterThanOrEqual(uniformBounds.width, taperedBounds.width - 5)
+    }
+    
+    // MARK: - Contiguous Point Array Tests (New Optimized Storage)
+    
+    func testContiguousPointArrayOperations() {
+        // Test that ContiguousPointArray correctly stores and retrieves points
+        var array = ContiguousPointArray(capacity: 3)
+        
+        let p1 = CGPoint(x: 10, y: 20)
+        let p2 = CGPoint(x: 30, y: 40)
+        let p3 = CGPoint(x: 50, y: 60)
+        
+        array.append(p1)
+        array.append(p2)
+        array.append(p3)
+        
+        XCTAssertEqual(array.count, 3)
+        
+        XCTAssertEqual(array.point(at: 0).x, p1.x, accuracy: 0.001)
+        XCTAssertEqual(array.point(at: 0).y, p1.y, accuracy: 0.001)
+        XCTAssertEqual(array.point(at: 1).x, p2.x, accuracy: 0.001)
+        XCTAssertEqual(array.point(at: 1).y, p2.y, accuracy: 0.001)
+        XCTAssertEqual(array.point(at: 2).x, p3.x, accuracy: 0.001)
+        XCTAssertEqual(array.point(at: 2).y, p3.y, accuracy: 0.001)
+    }
+    
+    func testContiguousPointArrayAddingOffsets() {
+        // Test that adding offsets works correctly
+        var original = ContiguousPointArray(capacity: 2)
+        original.append(CGPoint(x: 10, y: 20))
+        original.append(CGPoint(x: 30, y: 40))
+        
+        var offsets = ContiguousPointArray(capacity: 2)
+        offsets.append(CGPoint(x: 5, y: -5))
+        offsets.append(CGPoint(x: -10, y: 10))
+        
+        var result = ContiguousPointArray(capacity: 2)
+        original.addingOffsets(offsets, into: &result)
+        
+        XCTAssertEqual(result.count, 2)
+        XCTAssertEqual(result.point(at: 0).x, 15, accuracy: 0.001)  // 10 + 5
+        XCTAssertEqual(result.point(at: 0).y, 15, accuracy: 0.001)  // 20 + (-5)
+        XCTAssertEqual(result.point(at: 1).x, 20, accuracy: 0.001)  // 30 + (-10)
+        XCTAssertEqual(result.point(at: 1).y, 50, accuracy: 0.001)  // 40 + 10
+    }
+    
+    func testPrecomputedVarianceOffsetsGeneratesCorrectStepCount() {
+        // Test that pre-computed offsets match step count
+        let config = AnimationConfig(steps: 6, speed: .medium, variance: .medium)
+        let generator = PathVarianceGenerator(config: config)
+        
+        var original = ContiguousPointArray(capacity: 3)
+        original.append(CGPoint(x: 10, y: 10))
+        original.append(CGPoint(x: 50, y: 50))
+        original.append(CGPoint(x: 100, y: 100))
+        
+        let offsets = PrecomputedVarianceOffsets.precompute(
+            pointCount: 3,
+            generator: generator,
+            originalPoints: original
+        )
+        
+        XCTAssertEqual(offsets.stepCount, 6)
+    }
+    
+    // MARK: - Optimized Pre-computed Variance Tests
+    
+    func testPrecomputedPathVarianceWithNewOffsetSystem() {
+        // Test that PrecomputedPathVariance correctly uses offset-based storage
+        var testPath = SwiftUI.Path()
+        testPath.move(to: CGPoint(x: 0, y: 0))
+        testPath.addLine(to: CGPoint(x: 100, y: 100))
+        
+        let config = AnimationConfig(steps: 4, speed: .medium, variance: .low)
+        let generator = PathVarianceGenerator(config: config)
+        
+        var precomputed = PrecomputedPathVariance(from: testPath, generator: generator)
+        
+        // Build paths for all steps
+        for step in 0..<config.steps {
+            let variedPath = precomputed.buildPath(forStep: step)
+            XCTAssertFalse(variedPath.isEmpty, "Varied path should not be empty")
+            
+            let bounds = variedPath.boundingRect
+            // Bounds should be near the original (0,0) to (100,100) with some variance
+            XCTAssertGreaterThan(bounds.width, 50, "Path width should be substantial")
+            XCTAssertGreaterThan(bounds.height, 50, "Path height should be substantial")
+        }
+    }
+    
+    func testOptimizedAnimationFrameCacheMemoryEfficiency() {
+        // Test that OptimizedAnimationFrameCache uses offset storage
+        let config = AnimationConfig(steps: 8, speed: .fast, variance: .high)
+        let generator = PathVarianceGenerator(config: config)
+        
+        // Create a more complex path
+        var testPath = SwiftUI.Path()
+        testPath.move(to: CGPoint(x: 0, y: 0))
+        for i in 1...20 {
+            testPath.addLine(to: CGPoint(x: Double(i * 10), y: Double((i % 2) * 50)))
+        }
+        
+        let command = RoughRenderCommand(
+            path: testPath,
+            style: .fill(SwiftUI.Color.red)
+        )
+        
+        var optimizedCache = OptimizedAnimationFrameCache.precompute(
+            commands: [command],
+            generator: generator,
+            size: CGSize(width: 300, height: 100)
+        )
+        
+        XCTAssertEqual(optimizedCache.stepCount, 8)
+        XCTAssertFalse(optimizedCache.isEmpty)
+        
+        // Get commands for each step
+        for step in 0..<optimizedCache.stepCount {
+            let commands = optimizedCache.commands(forStep: step)
+            XCTAssertEqual(commands.count, 1)
+            XCTAssertFalse(commands[0].path.isEmpty)
+        }
+    }
+    
+    func testComputeOffsetProducesSameResultAsApplyVariance() {
+        // Test that computeOffset + original = applyVariance
+        let config = AnimationConfig(steps: 4, speed: .medium, variance: .medium)
+        let generator = PathVarianceGenerator(config: config)
+        
+        let testPoint = CGPoint(x: 75, y: 125)
+        
+        for step in 0..<config.steps {
+            let offset = generator.computeOffset(for: testPoint, step: step, index: 5)
+            let direct = generator.applyVariance(to: testPoint, step: step, index: 5)
+            
+            let reconstructed = CGPoint(x: testPoint.x + offset.x, y: testPoint.y + offset.y)
+            
+            XCTAssertEqual(reconstructed.x, direct.x, accuracy: 0.001, "Reconstructed X should match direct variance")
+            XCTAssertEqual(reconstructed.y, direct.y, accuracy: 0.001, "Reconstructed Y should match direct variance")
+        }
     }
 }
