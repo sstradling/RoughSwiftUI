@@ -232,92 +232,90 @@ struct StrokeToFillConverter {
     
     // MARK: - Path Sampling
     
-    /// Samples a subpath at regular intervals.
+    /// Intermediate sample with unnormalized accumulated length.
+    /// Used during single-pass sampling before normalization.
+    private struct RawSample {
+        let point: CGPoint
+        let tangentAngle: CGFloat
+        let accumulatedLength: CGFloat
+    }
+    
+    /// Samples a subpath at regular intervals using a single-pass algorithm.
+    ///
+    /// Performance optimization: Instead of two passes (one for total length, one for sampling),
+    /// this collects samples with accumulated length in one pass, then normalizes t values.
     private static func sampleSubpath(_ elements: [PathElement]) -> [PathSample] {
-        var samples: [PathSample] = []
+        // Reserve capacity based on estimated sample count to reduce allocations
+        var rawSamples: [RawSample] = []
+        rawSamples.reserveCapacity(elements.count * minSamplesPerSegment)
+        
         var currentPoint = CGPoint.zero
-        var totalLength: CGFloat = 0
-        
-        // First pass: calculate total length
-        var lengths: [(element: PathElement, length: CGFloat)] = []
-        for element in elements {
-            switch element {
-            case .move(let to):
-                currentPoint = to
-            case .line(let to):
-                let len = distance(currentPoint, to)
-                lengths.append((element, len))
-                totalLength += len
-                currentPoint = to
-            case .quadCurve(let to, let control):
-                let len = quadCurveLength(from: currentPoint, to: to, control: control)
-                lengths.append((element, len))
-                totalLength += len
-                currentPoint = to
-            case .curve(let to, let control1, let control2):
-                let len = cubicCurveLength(from: currentPoint, to: to, control1: control1, control2: control2)
-                lengths.append((element, len))
-                totalLength += len
-                currentPoint = to
-            case .closeSubpath:
-                break
-            }
-        }
-        
-        guard totalLength > 0 else { return [] }
-        
-        // Second pass: sample points
-        currentPoint = CGPoint.zero
         var accumulatedLength: CGFloat = 0
         
-        for element in elements {
+        // Single pass: collect samples with accumulated length
+        for (index, element) in elements.enumerated() {
             switch element {
             case .move(let to):
                 currentPoint = to
-                // Add starting point
-                let tangent = computeInitialTangent(elements: elements)
-                samples.append(PathSample(point: to, tangentAngle: tangent, t: 0))
+                // Add starting point with initial tangent computed lazily
+                let tangent = computeInitialTangentFast(elements: elements, startIndex: index)
+                rawSamples.append(RawSample(point: to, tangentAngle: tangent, accumulatedLength: 0))
                 
             case .line(let to):
-                let segmentLength = distance(currentPoint, to)
+                let segmentLength = distanceFast(currentPoint, to)
+                guard segmentLength > 0 else {
+                    currentPoint = to
+                    continue
+                }
+                
                 let numSamples = max(2, Int(ceil(segmentLength / maxSampleSpacing)))
+                let tangent = atan2(to.y - currentPoint.y, to.x - currentPoint.x)
                 
                 for i in 1...numSamples {
                     let localT = CGFloat(i) / CGFloat(numSamples)
-                    let point = lerp(currentPoint, to, t: localT)
-                    let tangent = atan2(to.y - currentPoint.y, to.x - currentPoint.x)
-                    let globalT = (accumulatedLength + segmentLength * localT) / totalLength
-                    samples.append(PathSample(point: point, tangentAngle: tangent, t: globalT))
+                    let point = lerpFast(currentPoint, to, t: localT)
+                    let sampleAccLength = accumulatedLength + segmentLength * localT
+                    rawSamples.append(RawSample(point: point, tangentAngle: tangent, accumulatedLength: sampleAccLength))
                 }
                 
                 accumulatedLength += segmentLength
                 currentPoint = to
                 
             case .quadCurve(let to, let control):
-                let segmentLength = quadCurveLength(from: currentPoint, to: to, control: control)
+                let segmentLength = quadCurveLengthFast(from: currentPoint, to: to, control: control)
+                guard segmentLength > 0 else {
+                    currentPoint = to
+                    continue
+                }
+                
                 let numSamples = max(minSamplesPerSegment, Int(ceil(segmentLength / maxSampleSpacing)))
                 
                 for i in 1...numSamples {
                     let localT = CGFloat(i) / CGFloat(numSamples)
                     let point = quadraticBezierPoint(from: currentPoint, to: to, control: control, t: localT)
                     let tangent = quadraticBezierTangent(from: currentPoint, to: to, control: control, t: localT)
-                    let globalT = (accumulatedLength + segmentLength * localT) / totalLength
-                    samples.append(PathSample(point: point, tangentAngle: tangent, t: globalT))
+                    let sampleAccLength = accumulatedLength + segmentLength * localT
+                    rawSamples.append(RawSample(point: point, tangentAngle: tangent, accumulatedLength: sampleAccLength))
                 }
                 
                 accumulatedLength += segmentLength
                 currentPoint = to
                 
             case .curve(let to, let control1, let control2):
-                let segmentLength = cubicCurveLength(from: currentPoint, to: to, control1: control1, control2: control2)
+                let segmentLength = cubicCurveLengthFast(from: currentPoint, to: to, control1: control1, control2: control2)
+                guard segmentLength > 0 else {
+                    currentPoint = to
+                    continue
+                }
+                
                 let numSamples = max(minSamplesPerSegment, Int(ceil(segmentLength / maxSampleSpacing)))
                 
                 for i in 1...numSamples {
                     let localT = CGFloat(i) / CGFloat(numSamples)
                     let point = cubicBezierPoint(from: currentPoint, to: to, control1: control1, control2: control2, t: localT)
                     let tangent = cubicBezierTangent(from: currentPoint, to: to, control1: control1, control2: control2, t: localT)
-                    let globalT = (accumulatedLength + segmentLength * localT) / totalLength
-                    samples.append(PathSample(point: point, tangentAngle: tangent, t: globalT))
+                    let sampleAccLength = accumulatedLength + segmentLength * localT
+                    rawSamples.append(RawSample(point: point, tangentAngle: tangent, accumulatedLength: sampleAccLength))
                 }
                 
                 accumulatedLength += segmentLength
@@ -328,30 +326,48 @@ struct StrokeToFillConverter {
             }
         }
         
-        return samples
+        // Total length is now known from the accumulated length
+        let totalLength = accumulatedLength
+        guard totalLength > 0, !rawSamples.isEmpty else { return [] }
+        
+        // Normalize t values in a single allocation
+        let inverseTotalLength = 1.0 / totalLength
+        return rawSamples.map { raw in
+            PathSample(
+                point: raw.point,
+                tangentAngle: raw.tangentAngle,
+                t: raw.accumulatedLength * inverseTotalLength
+            )
+        }
     }
     
-    /// Computes the initial tangent direction for a subpath.
-    private static func computeInitialTangent(elements: [PathElement]) -> CGFloat {
-        guard let firstMove = elements.first, case .move(let from) = firstMove else {
+    /// Computes the initial tangent direction starting from a specific index.
+    /// Optimized version that doesn't need to search from the beginning.
+    private static func computeInitialTangentFast(elements: [PathElement], startIndex: Int) -> CGFloat {
+        guard startIndex < elements.count,
+              case .move(let from) = elements[startIndex] else {
             return 0
         }
         
-        for element in elements.dropFirst() {
-            switch element {
+        for i in (startIndex + 1)..<elements.count {
+            switch elements[i] {
             case .line(let to):
                 return atan2(to.y - from.y, to.x - from.x)
             case .quadCurve(_, let control):
                 return atan2(control.y - from.y, control.x - from.x)
             case .curve(_, let control1, _):
                 return atan2(control1.y - from.y, control1.x - from.x)
-            default:
+            case .move:
+                // Hit another move before finding a drawing command
+                return 0
+            case .closeSubpath:
                 continue
             }
         }
         
         return 0
     }
+    
     
     // MARK: - Outline Generation
     
@@ -474,19 +490,33 @@ struct StrokeToFillConverter {
         }
     }
     
-    // MARK: - Bezier Curve Math
+    // MARK: - Bezier Curve Math (Optimized)
     
-    /// Linear interpolation between two points.
-    private static func lerp(_ a: CGPoint, _ b: CGPoint, t: CGFloat) -> CGPoint {
+    /// Linear interpolation between two points (inlined for performance).
+    @inline(__always)
+    private static func lerpFast(_ a: CGPoint, _ b: CGPoint, t: CGFloat) -> CGPoint {
         CGPoint(
             x: a.x + (b.x - a.x) * t,
             y: a.y + (b.y - a.y) * t
         )
     }
     
+    /// Distance between two points (optimized, avoids pow()).
+    @inline(__always)
+    private static func distanceFast(_ a: CGPoint, _ b: CGPoint) -> CGFloat {
+        let dx = b.x - a.x
+        let dy = b.y - a.y
+        return sqrt(dx * dx + dy * dy)
+    }
+    
+    /// Linear interpolation between two points.
+    private static func lerp(_ a: CGPoint, _ b: CGPoint, t: CGFloat) -> CGPoint {
+        lerpFast(a, b, t: t)
+    }
+    
     /// Distance between two points.
     private static func distance(_ a: CGPoint, _ b: CGPoint) -> CGFloat {
-        sqrt(pow(b.x - a.x, 2) + pow(b.y - a.y, 2))
+        distanceFast(a, b)
     }
     
     /// Point on a quadratic Bezier curve at parameter t.
@@ -516,25 +546,49 @@ struct StrokeToFillConverter {
         return atan2(dy, dx)
     }
     
+    /// Approximate length of a quadratic Bezier curve (optimized).
+    /// Uses fewer samples and inlined distance calculation.
+    @inline(__always)
+    private static func quadCurveLengthFast(
+        from: CGPoint,
+        to: CGPoint,
+        control: CGPoint
+    ) -> CGFloat {
+        // Use 8 samples instead of 10 - good balance of accuracy vs speed
+        var length: CGFloat = 0
+        var prevX = from.x
+        var prevY = from.y
+        
+        // Unrolled loop with precomputed t values for better performance
+        let tValues: [CGFloat] = [0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1.0]
+        
+        for t in tValues {
+            let oneMinusT = 1 - t
+            let oneMinusT2 = oneMinusT * oneMinusT
+            let t2 = t * t
+            let twoOneMinusTT = 2 * oneMinusT * t
+            
+            let x = oneMinusT2 * from.x + twoOneMinusTT * control.x + t2 * to.x
+            let y = oneMinusT2 * from.y + twoOneMinusTT * control.y + t2 * to.y
+            
+            let dx = x - prevX
+            let dy = y - prevY
+            length += sqrt(dx * dx + dy * dy)
+            
+            prevX = x
+            prevY = y
+        }
+        
+        return length
+    }
+    
     /// Approximate length of a quadratic Bezier curve.
     private static func quadCurveLength(
         from: CGPoint,
         to: CGPoint,
         control: CGPoint
     ) -> CGFloat {
-        // Approximate by sampling
-        var length: CGFloat = 0
-        var prev = from
-        let steps = 10
-        
-        for i in 1...steps {
-            let t = CGFloat(i) / CGFloat(steps)
-            let point = quadraticBezierPoint(from: from, to: to, control: control, t: t)
-            length += distance(prev, point)
-            prev = point
-        }
-        
-        return length
+        quadCurveLengthFast(from: from, to: to, control: control)
     }
     
     /// Point on a cubic Bezier curve at parameter t.
@@ -579,6 +633,46 @@ struct StrokeToFillConverter {
         return atan2(dy, dx)
     }
     
+    /// Approximate length of a cubic Bezier curve (optimized).
+    /// Uses fewer samples and inlined calculations.
+    @inline(__always)
+    private static func cubicCurveLengthFast(
+        from: CGPoint,
+        to: CGPoint,
+        control1: CGPoint,
+        control2: CGPoint
+    ) -> CGFloat {
+        // Use 8 samples - good balance of accuracy vs speed
+        var length: CGFloat = 0
+        var prevX = from.x
+        var prevY = from.y
+        
+        // Precomputed t values
+        let tValues: [CGFloat] = [0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1.0]
+        
+        for t in tValues {
+            let oneMinusT = 1 - t
+            let oneMinusT2 = oneMinusT * oneMinusT
+            let oneMinusT3 = oneMinusT2 * oneMinusT
+            let t2 = t * t
+            let t3 = t2 * t
+            let threeOneMinusT2T = 3 * oneMinusT2 * t
+            let threeOneMinusTT2 = 3 * oneMinusT * t2
+            
+            let x = oneMinusT3 * from.x + threeOneMinusT2T * control1.x + threeOneMinusTT2 * control2.x + t3 * to.x
+            let y = oneMinusT3 * from.y + threeOneMinusT2T * control1.y + threeOneMinusTT2 * control2.y + t3 * to.y
+            
+            let dx = x - prevX
+            let dy = y - prevY
+            length += sqrt(dx * dx + dy * dy)
+            
+            prevX = x
+            prevY = y
+        }
+        
+        return length
+    }
+    
     /// Approximate length of a cubic Bezier curve.
     private static func cubicCurveLength(
         from: CGPoint,
@@ -586,19 +680,7 @@ struct StrokeToFillConverter {
         control1: CGPoint,
         control2: CGPoint
     ) -> CGFloat {
-        // Approximate by sampling
-        var length: CGFloat = 0
-        var prev = from
-        let steps = 10
-        
-        for i in 1...steps {
-            let t = CGFloat(i) / CGFloat(steps)
-            let point = cubicBezierPoint(from: from, to: to, control1: control1, control2: control2, t: t)
-            length += distance(prev, point)
-            prev = point
-        }
-        
-        return length
+        cubicCurveLengthFast(from: from, to: to, control1: control1, control2: control2)
     }
 }
 
