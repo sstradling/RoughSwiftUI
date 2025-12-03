@@ -12,8 +12,8 @@
 //  This view uses a two-phase pre-computation strategy:
 //
 //  1. **Base Generation Phase** (on size change):
-//     - JavaScript bridge calls to generate rough shapes
-//     - Runs on main thread (required by JSContext)
+//     - Native Swift generator calls to create rough shapes
+//     - Runs on main thread (required by @MainActor)
 //
 //  2. **Variance Pre-computation Phase** (background):
 //     - Computes variance offsets for all animation steps

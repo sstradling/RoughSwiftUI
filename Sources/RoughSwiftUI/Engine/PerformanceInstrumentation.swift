@@ -53,7 +53,7 @@ public enum RoughPerformanceLog {
         category: "rendering"
     )
     
-    /// Log for drawing generation (JavaScript bridge, rough.js calls).
+    /// Log for drawing generation (native Swift generator calls).
     public static let generation = OSLog(
         subsystem: "com.roughswiftui",
         category: "generation"
