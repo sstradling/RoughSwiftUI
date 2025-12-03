@@ -43,7 +43,7 @@ public struct StarburstFiller: FillGenerator {
         var intersectionPoints: [(x: Float, y: Float)] = []
         
         for i in 0..<rayCount {
-            let angle = Float(i) * Float.pi / Float(rayCount)
+            let angle = Float(i) * 2 * Float.pi / Float(rayCount)
             let ray = (
                 start: (centroid[0], centroid[1]),
                 end: (centroid[0] + maxRadius * cos(angle), centroid[1] + maxRadius * sin(angle))
