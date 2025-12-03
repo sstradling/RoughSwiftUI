@@ -18,7 +18,7 @@ import CoreGraphics
 /// The brush tip determines how stroke width varies based on stroke direction.
 /// A circular tip (roundness = 1.0) produces uniform width regardless of direction,
 /// while a flat ellipse creates calligraphic-style strokes.
-public struct BrushTip: Equatable, Sendable {
+public struct BrushTip: Equatable, Hashable, Sendable {
     /// Aspect ratio of the ellipse (1.0 = circle, approaching 0 = flat ellipse).
     /// Valid range: 0.01 to 1.0. Default is 1.0 (circular).
     public var roundness: CGFloat
@@ -98,7 +98,7 @@ public struct BrushTip: Equatable, Sendable {
 ///
 /// Thickness profiles allow for effects like tapered ends, pressure simulation,
 /// or custom artistic variations.
-public enum ThicknessProfile: Equatable, Sendable {
+public enum ThicknessProfile: Equatable, Hashable, Sendable {
     /// Uniform thickness along the entire stroke.
     case uniform
     
@@ -194,7 +194,7 @@ public enum ThicknessProfile: Equatable, Sendable {
 // MARK: - Stroke Cap
 
 /// Style for the ends of strokes.
-public enum BrushCap: Equatable, Sendable {
+public enum BrushCap: Equatable, Hashable, Sendable {
     /// Square end exactly at the endpoint.
     case butt
     /// Rounded end extending past the endpoint by half the stroke width.
@@ -215,7 +215,7 @@ public enum BrushCap: Equatable, Sendable {
 // MARK: - Stroke Join
 
 /// Style for corners/vertices in strokes.
-public enum BrushJoin: Equatable, Sendable {
+public enum BrushJoin: Equatable, Hashable, Sendable {
     /// Sharp corner with miter limit.
     case miter
     /// Rounded corner.
@@ -238,7 +238,7 @@ public enum BrushJoin: Equatable, Sendable {
 /// Complete brush profile combining tip, thickness, and stroke style.
 ///
 /// Use this to configure the full appearance of strokes in RoughSwiftUI.
-public struct BrushProfile: Equatable, Sendable {
+public struct BrushProfile: Equatable, Hashable, Sendable {
     /// The brush tip configuration.
     public var tip: BrushTip
     

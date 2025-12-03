@@ -9,7 +9,7 @@
 import UIKit
 
 /// Controls how the SVG fill stroke is aligned relative to the path.
-public enum SVGFillStrokeAlignment {
+public enum SVGFillStrokeAlignment: Equatable, Hashable, Sendable {
     /// Stroke is centered on the path (default behavior).
     case center
     /// Stroke is applied to the inside/inner edge of the path.
@@ -18,7 +18,7 @@ public enum SVGFillStrokeAlignment {
     case outside
 }
 
-public struct Options {
+public struct Options: Equatable, Hashable {
     public var maxRandomnessOffset: Float = 2
     public var roughness: Float = 1
     public var bowing: Float = 1

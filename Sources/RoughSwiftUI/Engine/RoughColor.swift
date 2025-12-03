@@ -12,7 +12,7 @@ import SwiftUI
 ///
 /// This type centralizes conversions between `UIColor`, `SwiftUI.Color`,
 /// and the hex strings expected by `rough.js`.
-struct RoughColor: Equatable {
+struct RoughColor: Equatable, Hashable {
     /// Backing UIKit color. UIKit is the canonical representation since the
     /// JavaScript bridge already works in terms of `UIColor` + hex.
     private let uiColor: UIColor
