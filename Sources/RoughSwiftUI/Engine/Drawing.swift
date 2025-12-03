@@ -7,9 +7,8 @@
 //
 
 import Foundation
-import JavaScriptCore
 
-/// Information from Generator about the drawble to render
+/// Information from Generator about the drawable to render
 public struct Drawing {
     public let shape: String
     public let sets: [OperationSet]
@@ -31,15 +30,5 @@ public extension Drawing {
             sets: sets.compactMap({ OperationSet.from(dictionary: $0) }),
             options: Options(dictionary: options)
         )
-    }
-
-    init?(roughDrawing: JSValue?) {
-        guard
-            let roughDrawing = roughDrawing,
-            let dictionary = roughDrawing.toDictionary() as? JSONDictionary else {
-            return nil
-        }
-
-        self.init(dictionary: dictionary)
     }
 }
