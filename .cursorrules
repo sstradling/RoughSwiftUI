@@ -1,5 +1,96 @@
 # RoughSwiftUI Cursor Rules
 
+## Documentation Requirements
+
+**IMPORTANT:** When adding new features, modifying existing APIs, or changing behavior that affects usage, you MUST update:
+
+1. **`DOCUMENTATION.md`** - API reference documentation
+   - Add/update type signatures and parameter tables
+   - Include code examples for new features
+   - Update the Table of Contents if adding new sections
+   - Document default values and valid ranges
+
+2. **`README.md`** - User-facing documentation
+   - Add usage examples for significant new features
+   - Update the feature list if capabilities change
+   - Keep code examples current with API changes
+
+### What Requires Documentation Updates
+
+- New drawable types or shapes
+- New modifiers on `RoughView`
+- New enums or configuration options
+- Changes to default values
+- New fill styles or brush profiles
+- Animation API changes
+- Breaking changes to existing APIs
+- New public types or protocols
+
+### Documentation Style
+
+- Use tables for parameter references
+- Include minimal working code examples
+- Document all default values
+- Add entries to troubleshooting for common pitfalls
+- Keep examples concise and copy-pasteable
+
+---
+
+## Unit Test Requirements
+
+**IMPORTANT:** When making changes to the codebase, you MUST:
+
+1. **Check existing tests** - Review tests related to modified code for necessary updates
+2. **Update broken tests** - Fix any tests that fail due to intentional changes
+3. **Add new tests** - Write tests for new functionality
+4. **Run relevant tests** - Execute tests to verify changes don't break existing functionality
+
+### What Requires Test Updates
+
+- New public types, structs, enums, or protocols
+- New methods or modifiers on existing types
+- Changes to existing method signatures or behavior
+- Bug fixes (add regression tests)
+- New drawable types or fill styles
+- Changes to rendering logic or calculations
+- New animation features or configuration options
+
+### Test Organization
+
+Tests are organized in `Tests/RoughSwiftUITests/` by category:
+
+| Directory | Purpose |
+|-----------|---------|
+| `Animation/` | Animation frame, variance, and path tests |
+| `Core/` | Drawing, options, and opacity tests |
+| `Generator/` | Generator, cache, and math tests |
+| `Performance/` | Performance-related tests |
+| `Rendering/` | Brush, stroke, and rendering tests |
+| `Shapes/` | Fill patterns, SVG, and shape tests |
+| `Text/` | Text rendering and path conversion tests |
+
+### Test Naming Conventions
+
+- Test files: `*Tests.swift`
+- Test methods: `test<Feature><Scenario>()` (e.g., `testFullTextCentersHorizontally`)
+- Use `@MainActor` for tests involving `Engine` or `Generator`
+
+### Running Tests After Changes
+
+After making code changes, run relevant tests using:
+
+```swift
+mcp_XcodeBuildMCP_test_sim({
+  workspacePath: ".swiftpm/xcode/package.xcworkspace",
+  scheme: "RoughSwiftUI",
+  simulatorId: "034A5CD0-4A30-4742-9327-11C12F6CF75D"
+})
+```
+
+Or run specific test files by adding a filter parameter.
+
+---
+
 ## Running Unit Tests
 
 ### iOS Simulator Tests
