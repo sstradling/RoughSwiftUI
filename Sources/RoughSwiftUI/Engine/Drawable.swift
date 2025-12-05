@@ -410,46 +410,39 @@ struct FullText: Drawable, Fulfillable {
         // Small inset to prevent clipping at edges
         let inset: CGFloat = 4
         
-        // Calculate target X position based on horizontal alignment
-        let targetX: CGFloat
+        // Calculate target center position based on alignment
+        // We position the text by its center point, then transform accordingly
+        let targetCenterX: CGFloat
         switch horizontalAlignment {
         case .leading:
-            targetX = inset - bounds.minX
+            targetCenterX = inset + textWidth / 2
         case .center:
-            targetX = (canvasWidth - textWidth) / 2 - bounds.minX
+            targetCenterX = canvasWidth / 2
         case .trailing:
-            targetX = canvasWidth - textWidth - inset - bounds.minX
+            targetCenterX = canvasWidth - inset - textWidth / 2
         }
         
-        // Calculate target Y position based on vertical alignment
-        // Note: After Y-flip, positive Y is down, so we calculate accordingly
-        let targetY: CGFloat
+        let targetCenterY: CGFloat
         switch verticalAlignment {
         case .top:
-            targetY = inset
+            targetCenterY = inset + textHeight / 2
         case .center:
-            targetY = (canvasHeight - textHeight) / 2
+            targetCenterY = canvasHeight / 2
         case .bottom:
-            targetY = canvasHeight - textHeight - inset
+            targetCenterY = canvasHeight - inset - textHeight / 2
         }
         
-        // Build the transform:
-        // 1. Translate to move bounds origin to (0, 0)
+        // Apply user offsets (offsets are relative to the center)
+        let finalCenterX = targetCenterX + offsetX
+        let finalCenterY = targetCenterY + offsetY
+        
+        // Build the transform to position text center at finalCenterX/finalCenterY:
+        // Transform operations are applied in reverse order:
+        // 1. Translate bounds center to origin (using midX/midY)
         // 2. Flip Y axis (CoreText uses bottom-up, SVG uses top-down)
-        // 3. Translate to target position
-        // 4. Apply user offset
+        // 3. Translate to target center position
         var transform = CGAffineTransform.identity
-        
-        // Final position with offset
-        let finalX = targetX + offsetX
-        let finalY = targetY + offsetY
-        
-        // Combined transform: translate to target, flip Y, then translate from bounds
-        // Applied in reverse order:
-        // - First: translate bounds.minX/minY to origin
-        // - Second: flip Y around the text center
-        // - Third: translate to final position
-        transform = transform.translatedBy(x: finalX + textWidth / 2, y: finalY + textHeight / 2)
+        transform = transform.translatedBy(x: finalCenterX, y: finalCenterY)
         transform = transform.scaledBy(x: 1, y: -1)
         transform = transform.translatedBy(x: -bounds.midX, y: -bounds.midY)
         
