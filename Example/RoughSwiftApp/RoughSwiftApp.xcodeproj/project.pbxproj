@@ -9,7 +9,6 @@
 /* Begin PBXBuildFile section */
 		BACB84922EDE7B8D00878DDE /* Inject in Frameworks */ = {isa = PBXBuildFile; productRef = BACB84912EDE7B8D00878DDE /* Inject */; };
 		BAEF0FA72EDE5CD800C46DE6 /* RoughSwiftUI in Frameworks */ = {isa = PBXBuildFile; productRef = BAEF0FA62EDE5CD800C46DE6 /* RoughSwiftUI */; };
-		BAEF0FA92EDE5CF200C46DE6 /* RoughSwiftUI in Frameworks */ = {isa = PBXBuildFile; productRef = BAEF0FA82EDE5CF200C46DE6 /* RoughSwiftUI */; };
 		D2C5CBF127EF63D200BBE97D /* RoughSwiftAppApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2C5CBF027EF63D200BBE97D /* RoughSwiftAppApp.swift */; };
 		D2C5CBF327EF63D300BBE97D /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2C5CBF227EF63D200BBE97D /* ContentView.swift */; };
 		D2C5CBF527EF63D500BBE97D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D2C5CBF427EF63D500BBE97D /* Assets.xcassets */; };
@@ -31,7 +30,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				BAEF0FA92EDE5CF200C46DE6 /* RoughSwiftUI in Frameworks */,
 				BAEF0FA72EDE5CD800C46DE6 /* RoughSwiftUI in Frameworks */,
 				BACB84922EDE7B8D00878DDE /* Inject in Frameworks */,
 			);
@@ -110,7 +108,6 @@
 			name = RoughSwiftApp;
 			packageProductDependencies = (
 				BAEF0FA62EDE5CD800C46DE6 /* RoughSwiftUI */,
-				BAEF0FA82EDE5CF200C46DE6 /* RoughSwiftUI */,
 				BACB84912EDE7B8D00878DDE /* Inject */,
 			);
 			productName = RoughSwiftApp;
@@ -302,7 +299,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"RoughSwiftApp/Preview Content\"";
-				DEVELOPMENT_TEAM = T78DK947F2;
+				DEVELOPMENT_TEAM = 949D6SDPYY;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -316,7 +313,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.onmyway133.RoughSwiftApp;
+				PRODUCT_BUNDLE_IDENTIFIER = com.slapduckgames.RoughSwiftApp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -332,7 +329,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"RoughSwiftApp/Preview Content\"";
-				DEVELOPMENT_TEAM = T78DK947F2;
+				DEVELOPMENT_TEAM = 949D6SDPYY;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -346,7 +343,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.onmyway133.RoughSwiftApp;
+				PRODUCT_BUNDLE_IDENTIFIER = com.slapduckgames.RoughSwiftApp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -402,10 +399,6 @@
 			productName = Inject;
 		};
 		BAEF0FA62EDE5CD800C46DE6 /* RoughSwiftUI */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = RoughSwiftUI;
-		};
-		BAEF0FA82EDE5CF200C46DE6 /* RoughSwiftUI */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = RoughSwiftUI;
 		};

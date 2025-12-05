@@ -1,0 +1,56 @@
+# RoughSwiftUI Cursor Rules
+
+## Running Unit Tests
+
+### iOS Simulator Tests
+
+To run unit tests for the RoughSwiftUI package on iOS:
+
+1. **List available simulators:**
+   ```
+   xcrun simctl list devices available
+   ```
+   Or use the MCP tool: `mcp_XcodeBuildMCP_list_sims`
+
+2. **Run tests using the Swift Package workspace:**
+   ```bash
+   xcodebuild test \
+     -workspace .swiftpm/xcode/package.xcworkspace \
+     -scheme RoughSwiftUI \
+     -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=latest' \
+     -only-testing:RoughSwiftUITests
+   ```
+
+3. **Using MCP tools (recommended):**
+   - Discover projects: `mcp_XcodeBuildMCP_discover_projs`
+   - List schemes: `mcp_XcodeBuildMCP_list_schemes` with workspacePath `.swiftpm/xcode/package.xcworkspace`
+   - Run tests: `mcp_XcodeBuildMCP_test_sim` with:
+     - `workspacePath`: `.swiftpm/xcode/package.xcworkspace`
+     - `scheme`: `RoughSwiftUI`
+     - `simulatorId`: UUID of an available iOS simulator
+
+### Example Test Run Command
+
+```bash
+# Using xcodebuild directly:
+xcodebuild test \
+  -workspace .swiftpm/xcode/package.xcworkspace \
+  -scheme RoughSwiftUI \
+  -destination 'platform=iOS Simulator,id=034A5CD0-4A30-4742-9327-11C12F6CF75D' \
+  -only-testing:RoughSwiftUITests
+
+# Or using MCP tool:
+mcp_XcodeBuildMCP_test_sim({
+  workspacePath: ".swiftpm/xcode/package.xcworkspace",
+  scheme: "RoughSwiftUI",
+  simulatorId: "034A5CD0-4A30-4742-9327-11C12F6CF75D"
+})
+```
+
+### Notes
+
+- The package is iOS-only (iOS 17+), so tests must run on an iOS simulator
+- The Swift Package workspace is located at `.swiftpm/xcode/package.xcworkspace`
+- The test scheme is `RoughSwiftUI`
+- All 316 tests should pass when run correctly
+

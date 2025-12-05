@@ -50,6 +50,11 @@ struct ContentView: View {
                 .tabItem {
                     Label("Scribble", systemImage: "scribble.variable")
                 }
+            
+            ShapesView()
+                .tabItem {
+                    Label("Shapes", systemImage: "oval")
+                }
         }
     }
 }
@@ -1684,6 +1689,395 @@ struct ScribbleFillView: View {
     }
 }
 
+struct ShapesView: View {
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 32) {
+                // MARK: - Header
+                VStack(spacing: 8) {
+                    SwiftUI.Text("Shape Gallery")
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                    
+                    SwiftUI.Text("Rounded rectangles, eggs, and more")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.top)
+                
+                // MARK: - Rounded Rectangles
+                VStack(spacing: 16) {
+                    SwiftUI.Text("Rounded Rectangles")
+                        .font(.headline)
+                    
+                    SwiftUI.Text("Rectangles with hand-drawn rounded corners")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    
+                    // Corner radius comparison
+                    HStack(spacing: 16) {
+                        VStack(spacing: 8) {
+                            RoughView()
+                                .stroke(Color.blue)
+                                .fill(Color.blue.opacity(0.3))
+                                .fillStyle(.hachure)
+                                .roundedRectangle(cornerRadius: 8)
+                                .frame(width: 80, height: 80)
+                            
+                            SwiftUI.Text("r: 8")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        
+                        VStack(spacing: 8) {
+                            RoughView()
+                                .stroke(Color.green)
+                                .fill(Color.green.opacity(0.3))
+                                .fillStyle(.crossHatch)
+                                .roundedRectangle(cornerRadius: 16)
+                                .frame(width: 80, height: 80)
+                            
+                            SwiftUI.Text("r: 16")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        
+                        VStack(spacing: 8) {
+                            RoughView()
+                                .stroke(Color.purple)
+                                .fill(Color.purple.opacity(0.3))
+                                .fillStyle(.dots)
+                                .roundedRectangle(cornerRadius: 24)
+                                .frame(width: 80, height: 80)
+                            
+                            SwiftUI.Text("r: 24")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        
+                        VStack(spacing: 8) {
+                            RoughView()
+                                .stroke(Color.orange)
+                                .fill(Color.orange.opacity(0.3))
+                                .fillStyle(.solid)
+                                .roundedRectangle(cornerRadius: 40)
+                                .frame(width: 80, height: 80)
+                            
+                            SwiftUI.Text("r: 40")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    
+                    // Larger rounded rectangle examples
+                    HStack(spacing: 20) {
+                        RoughView()
+                            .stroke(Color.indigo)
+                            .fill(Color.indigo)
+                            .fillStyle(.zigzag)
+                            .roundedRectangle(cornerRadius: 20)
+                            .frame(width: 140, height: 80)
+                        
+                        RoughView()
+                            .stroke(Color.teal)
+                            .fill(Color.teal)
+                            .fillStyle(.starBurst)
+                            .roundedRectangle(cornerRadius: 30)
+                            .frame(width: 100, height: 120)
+                    }
+                }
+                
+                Divider()
+                    .padding(.horizontal)
+                
+                // MARK: - Egg Shapes
+                VStack(spacing: 16) {
+                    SwiftUI.Text("Egg Shapes")
+                        .font(.headline)
+                    
+                    SwiftUI.Text("Asymmetric ovoids with adjustable tilt")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    
+                    // Tilt comparison
+                    HStack(spacing: 16) {
+                        VStack(spacing: 8) {
+                            RoughView()
+                                .stroke(Color.orange)
+                                .fill(Color.orange.opacity(0.3))
+                                .fillStyle(.hachure)
+                                .egg(tilt: -0.3)
+                                .frame(width: 70, height: 90)
+                            
+                            SwiftUI.Text("tilt: -0.3")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            SwiftUI.Text("inverted")
+                                .font(.caption2)
+                                .foregroundStyle(.tertiary)
+                        }
+                        
+                        VStack(spacing: 8) {
+                            RoughView()
+                                .stroke(Color.brown)
+                                .fill(Color.brown.opacity(0.3))
+                                .fillStyle(.crossHatch)
+                                .egg(tilt: 0)
+                                .frame(width: 70, height: 90)
+                            
+                            SwiftUI.Text("tilt: 0")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            SwiftUI.Text("symmetric")
+                                .font(.caption2)
+                                .foregroundStyle(.tertiary)
+                        }
+                        
+                        VStack(spacing: 8) {
+                            RoughView()
+                                .stroke(Color.cyan)
+                                .fill(Color.cyan.opacity(0.3))
+                                .fillStyle(.dots)
+                                .egg(tilt: 0.3)
+                                .frame(width: 70, height: 90)
+                            
+                            SwiftUI.Text("tilt: 0.3")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            SwiftUI.Text("natural")
+                                .font(.caption2)
+                                .foregroundStyle(.tertiary)
+                        }
+                        
+                        VStack(spacing: 8) {
+                            RoughView()
+                                .stroke(Color.pink)
+                                .fill(Color.pink.opacity(0.3))
+                                .fillStyle(.zigzag)
+                                .egg(tilt: 0.5)
+                                .frame(width: 70, height: 90)
+                            
+                            SwiftUI.Text("tilt: 0.5")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            SwiftUI.Text("extreme")
+                                .font(.caption2)
+                                .foregroundStyle(.tertiary)
+                        }
+                    }
+                    
+                    // Larger egg examples with different fills
+                    HStack(spacing: 20) {
+                        VStack(spacing: 8) {
+                            RoughView()
+                                .stroke(Color.red)
+                                .fill(Color.red)
+                                .fillStyle(.solid)
+                                .egg(tilt: 0.35)
+                                .frame(width: 80, height: 110)
+                            
+                            SwiftUI.Text("Solid")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        
+                        VStack(spacing: 8) {
+                            RoughView()
+                                .stroke(Color.mint)
+                                .fill(Color.mint)
+                                .fillStyle(.scribble)
+                                .scribbleTightness(15)
+                                .egg(tilt: 0.25)
+                                .frame(width: 80, height: 110)
+                            
+                            SwiftUI.Text("Scribble")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        
+                        VStack(spacing: 8) {
+                            RoughView()
+                                .stroke(Color.purple)
+                                .fill(Color.purple)
+                                .fillStyle(.dashed)
+                                .egg(tilt: 0.4)
+                                .frame(width: 80, height: 110)
+                            
+                            SwiftUI.Text("Dashed")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                
+                Divider()
+                    .padding(.horizontal)
+                
+                // MARK: - Animated Shapes
+                VStack(spacing: 16) {
+                    SwiftUI.Text("Animated Shapes")
+                        .font(.headline)
+                    
+                    SwiftUI.Text("With wobble animation effects")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    
+                    HStack(spacing: 20) {
+                        VStack(spacing: 8) {
+                            RoughView()
+                                .stroke(Color.blue)
+                                .fill(Color.blue.opacity(0.2))
+                                .fillStyle(.hachure)
+                                .roundedRectangle(cornerRadius: 12)
+                                .animated(steps: 6, speed: .slow, variance: .medium)
+                                .frame(width: 90, height: 90)
+                            
+                            SwiftUI.Text("Rounded Rect")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        
+                        VStack(spacing: 8) {
+                            RoughView()
+                                .stroke(Color.orange)
+                                .fill(Color.orange.opacity(0.2))
+                                .fillStyle(.crossHatch)
+                                .egg(tilt: 0.3)
+                                .animated(steps: 5, speed: .medium, variance: .low)
+                                .frame(width: 75, height: 100)
+                            
+                            SwiftUI.Text("Egg")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        
+                        VStack(spacing: 8) {
+                            RoughView()
+                                .stroke(Color.green)
+                                .fill(Color.green.opacity(0.2))
+                                .fillStyle(.dots)
+                                .roundedRectangle(cornerRadius: 20)
+                                .animated(steps: 8, speed: .fast, variance: .high)
+                                .frame(width: 90, height: 90)
+                            
+                            SwiftUI.Text("Fast Wobble")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                
+                Divider()
+                    .padding(.horizontal)
+                
+                // MARK: - Custom Positioned Shapes
+                VStack(spacing: 16) {
+                    SwiftUI.Text("Custom Positioned")
+                        .font(.headline)
+                    
+                    SwiftUI.Text("Using explicit coordinates with draw()")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    
+                    HStack(spacing: 20) {
+                        // Custom rounded rectangle
+                        VStack(spacing: 8) {
+                            RoughView()
+                                .stroke(Color.indigo)
+                                .fill(Color.indigo.opacity(0.3))
+                                .fillStyle(.zigzagLine)
+                                .draw(RoundedRectangle(x: 10, y: 10, width: 80, height: 60, cornerRadius: 12))
+                                .frame(width: 100, height: 80)
+                            
+                            SwiftUI.Text("RoundedRectangle")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        
+                        // Custom egg
+                        VStack(spacing: 8) {
+                            RoughView()
+                                .stroke(Color.teal)
+                                .fill(Color.teal.opacity(0.3))
+                                .fillStyle(.sunBurst)
+                                .draw(EggShape(x: 50, y: 55, width: 70, height: 90, tilt: 0.35))
+                                .frame(width: 100, height: 110)
+                            
+                            SwiftUI.Text("EggShape")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                
+                Divider()
+                    .padding(.horizontal)
+                
+                // MARK: - Brush Strokes on Shapes
+                VStack(spacing: 16) {
+                    SwiftUI.Text("With Brush Profiles")
+                        .font(.headline)
+                    
+                    SwiftUI.Text("Variable-width strokes on new shapes")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    
+                    HStack(spacing: 20) {
+                        VStack(spacing: 8) {
+                            RoughView()
+                                .stroke(Color.black)
+                                .strokeWidth(3)
+                                .brushProfile(.calligraphic)
+                                .fill(Color.yellow.opacity(0.2))
+                                .fillStyle(.hachure)
+                                .roundedRectangle(cornerRadius: 15)
+                                .frame(width: 90, height: 90)
+                            
+                            SwiftUI.Text("Calligraphic")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        
+                        VStack(spacing: 8) {
+                            RoughView()
+                                .stroke(Color.brown)
+                                .strokeWidth(4)
+                                .brushProfile(.marker)
+                                .fill(Color.white)
+                                .fillStyle(.solid)
+                                .egg(tilt: 0.3)
+                                .frame(width: 75, height: 100)
+                            
+                            SwiftUI.Text("Marker")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        
+                        VStack(spacing: 8) {
+                            RoughView()
+                                .stroke(Color.purple)
+                                .strokeWidth(3)
+                                .thicknessProfile(.penPressure)
+                                .fill(Color.purple.opacity(0.15))
+                                .fillStyle(.crossHatch)
+                                .roundedRectangle(cornerRadius: 25)
+                                .frame(width: 90, height: 90)
+                            
+                            SwiftUI.Text("Pressure")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                
+                Spacer()
+                    .frame(height: 40)
+            }
+            .padding()
+        }
+    }
+}
+
 struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
         ContentView()
@@ -1720,4 +2114,8 @@ struct ContentView_Previews: PreviewProvider {
 
 #Preview("Scribble Fill View") {
     ScribbleFillView()
+}
+
+#Preview("Shapes View") {
+    ShapesView()
 }

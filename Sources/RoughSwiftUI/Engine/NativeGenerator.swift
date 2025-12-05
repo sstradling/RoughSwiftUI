@@ -81,6 +81,10 @@ public final class NativeGenerator {
             return generateCurve(arguments: arguments, options: options)
         case "path":
             return generatePath(arguments: arguments, options: options)
+        case "roundedRectangle":
+            return generateRoundedRectangle(arguments: arguments, options: options)
+        case "egg":
+            return generateEgg(arguments: arguments, options: options)
         default:
             return nil
         }
@@ -253,6 +257,57 @@ public final class NativeGenerator {
         return Drawing(shape: "curve", sets: [pathSet], options: options)
     }
     
+    /// Generates a rough rounded rectangle drawing.
+    private func generateRoundedRectangle(arguments: [Any], options: Options) -> Drawing? {
+        guard arguments.count >= 5,
+              let x = (arguments[0] as? NSNumber)?.floatValue,
+              let y = (arguments[1] as? NSNumber)?.floatValue,
+              let width = (arguments[2] as? NSNumber)?.floatValue,
+              let height = (arguments[3] as? NSNumber)?.floatValue,
+              let cornerRadius = (arguments[4] as? NSNumber)?.floatValue else {
+            return nil
+        }
+        
+        var sets: [OperationSet] = []
+        
+        // Generate fill if needed
+        if let fillSet = generateRoundedRectangleFill(x: x, y: y, width: width, height: height, cornerRadius: cornerRadius, options: options) {
+            sets.append(fillSet)
+        }
+        
+        // Generate stroke
+        let ops = RoughMath.roundedRectangleOps(x: x, y: y, width: width, height: height, cornerRadius: cornerRadius, options: options)
+        sets.append(OperationSet(type: .path, operations: ops, path: nil, size: nil))
+        
+        return Drawing(shape: "roundedRectangle", sets: sets, options: options)
+    }
+    
+    /// Generates a rough egg shape drawing.
+    private func generateEgg(arguments: [Any], options: Options) -> Drawing? {
+        guard arguments.count >= 4,
+              let cx = (arguments[0] as? NSNumber)?.floatValue,
+              let cy = (arguments[1] as? NSNumber)?.floatValue,
+              let width = (arguments[2] as? NSNumber)?.floatValue,
+              let height = (arguments[3] as? NSNumber)?.floatValue else {
+            return nil
+        }
+        
+        let tilt = arguments.count >= 5 ? (arguments[4] as? NSNumber)?.floatValue ?? 0.3 : 0.3
+        
+        var sets: [OperationSet] = []
+        
+        // Generate fill if needed
+        if let fillSet = generateEggFill(cx: cx, cy: cy, width: width, height: height, tilt: tilt, options: options) {
+            sets.append(fillSet)
+        }
+        
+        // Generate stroke
+        let ops = RoughMath.eggOps(cx: cx, cy: cy, width: width, height: height, tilt: tilt, options: options)
+        sets.append(OperationSet(type: .path, operations: ops, path: nil, size: nil))
+        
+        return Drawing(shape: "egg", sets: sets, options: options)
+    }
+    
     /// Generates a rough SVG path drawing.
     private func generatePath(arguments: [Any], options: Options) -> Drawing? {
         guard arguments.count >= 1,
@@ -309,6 +364,22 @@ public final class NativeGenerator {
     private func generateArcFill(cx: Float, cy: Float, rx: Float, ry: Float, start: Float, stop: Float, options: Options) -> OperationSet? {
         let filler = FillPatternFactory.filler(for: options.fillStyle)
         return filler.fillArc(cx: cx, cy: cy, rx: rx, ry: ry, start: start, stop: stop, options: options)
+    }
+    
+    /// Generates fill for a rounded rectangle.
+    /// Note: Fill is always generated (matching rough.js behavior), even if color is clear.
+    private func generateRoundedRectangleFill(x: Float, y: Float, width: Float, height: Float, cornerRadius: Float, options: Options) -> OperationSet? {
+        // Approximate the rounded rectangle as a polygon for fill purposes
+        let points = RoughMath.roundedRectanglePolygonPoints(x: x, y: y, width: width, height: height, cornerRadius: cornerRadius)
+        return generatePolygonFill(points: points, options: options)
+    }
+    
+    /// Generates fill for an egg shape.
+    /// Note: Fill is always generated (matching rough.js behavior), even if color is clear.
+    private func generateEggFill(cx: Float, cy: Float, width: Float, height: Float, tilt: Float, options: Options) -> OperationSet? {
+        // Approximate the egg as a polygon for fill purposes
+        let points = RoughMath.eggPolygonPoints(cx: cx, cy: cy, width: width, height: height, tilt: tilt, stepCount: options.curveStepCount)
+        return generatePolygonFill(points: points, options: options)
     }
     
     /// Generates fill for an SVG path.
