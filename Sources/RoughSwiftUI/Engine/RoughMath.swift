@@ -469,6 +469,47 @@ public struct RoughMath {
         return ops
     }
     
+    /// Generates a single closed ellipse path suitable for solid fills.
+    /// Unlike `ellipseOps` which generates two overlapping strokes, this creates
+    /// one closed path that can be filled properly.
+    /// - Parameters:
+    ///   - cx: Center x coordinate
+    ///   - cy: Center y coordinate
+    ///   - rx: Horizontal radius
+    ///   - ry: Vertical radius
+    ///   - options: Rendering options
+    /// - Returns: Array of operations representing a closed fillable ellipse
+    public static func solidEllipseOps(
+        cx: Float, cy: Float,
+        rx: Float, ry: Float,
+        options: Options
+    ) -> [Operation] {
+        let increment = (2 * Float.pi) / options.curveStepCount
+        var rxMod = rx
+        var ryMod = ry
+        
+        // Add slight randomness to radii to maintain hand-drawn aesthetic
+        rxMod += randOffset(rx * 0.05, options: options)
+        ryMod += randOffset(ry * 0.05, options: options)
+        
+        // Generate a single closed ellipse suitable for filling
+        var ops = ellipseWithParams(
+            increment: increment,
+            cx: cx,
+            cy: cy,
+            rx: rxMod,
+            ry: ryMod,
+            offset: 1,
+            overlap: increment * randOffsetWithRange(0.1, randOffsetWithRange(0.4, 1, options: options), options: options),
+            options: options
+        )
+        
+        // Explicitly close the path for proper filling
+        ops.append(Close())
+        
+        return ops
+    }
+    
     // MARK: - Rectangle Operations
     
     /// Generates operations for a rough rectangle.
