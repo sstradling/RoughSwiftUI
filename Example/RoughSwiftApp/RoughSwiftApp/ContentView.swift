@@ -292,9 +292,9 @@ struct TextView: View {
                             .font(.system(size: 48, weight: .bold))
                         
                         RoughText("Hello!", font: .systemFont(ofSize: 48, weight: .bold))
-                            .fill(Color.red)
+//                            .fill(Color.red)
                             .stroke(Color.black)
-                            .fillStyle(.hachure)
+//                            .fillStyle(.hachure)
                             .brushTip(.calligraphic)
                             .bowing(0.1)
                             .roughness(0.1)

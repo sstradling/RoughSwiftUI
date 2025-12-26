@@ -74,3 +74,9 @@ public class QuadraticCurveTo: Operation {
         self.point = Point(x: data[2], y: data[3])
     }
 }
+
+public class Close: Operation {
+    override init() {
+        super.init()
+    }
+}

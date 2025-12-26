@@ -461,174 +461,123 @@ struct SVGPathRenderer {
     }
     
     /// Generates rough operations for an SVG path string.
+    /// Uses a two-pass approach: first renders all contours with one offset,
+    /// then renders all contours again with a different offset for the sketchy effect.
     static func pathOps(svgPath: String, options: Options) -> [Operation] {
         let svgParser = SVGPath(svgPath)
         let commands = svgParser.commands
         
+        // Split commands into contours (each starting with a Move)
+        var contours: [[SVGCommand]] = []
+        var currentContour: [SVGCommand] = []
+        
+        for cmd in commands {
+            if cmd.type == .move && !currentContour.isEmpty {
+                contours.append(currentContour)
+                currentContour = []
+            }
+            currentContour.append(cmd)
+        }
+        if !currentContour.isEmpty {
+            contours.append(currentContour)
+        }
+        
+        var ops: [Operation] = []
+        let maxOff: Float = 1 * (1 + 0.2 * options.roughness)
+        let maxOff2: Float = 1.5 * (1 + 0.22 * options.roughness)
+        
+        // First pass: render all contours with first offset
+        for contour in contours {
+            ops.append(contentsOf: renderContour(contour, options: options, offsetScale: maxOff))
+        }
+        
+        // Second pass: render all contours with second offset
+        for contour in contours {
+            ops.append(contentsOf: renderContour(contour, options: options, offsetScale: maxOff2))
+        }
+        
+        return ops
+    }
+    
+    /// Renders a single contour (starting from Move, ending at Close or end of commands)
+    /// as a continuous path with the given offset scale.
+    private static func renderContour(
+        _ commands: [SVGCommand],
+        options: Options,
+        offsetScale: Float
+    ) -> [Operation] {
         var ops: [Operation] = []
         let state = PathState()
         
         for i in 0..<commands.count {
             let cmd = commands[i]
-            let prevCmd = i > 0 ? commands[i - 1] : nil
-            ops.append(contentsOf: processCommand(cmd, previous: prevCmd, state: state, options: options))
+            ops.append(contentsOf: processCommandContinuous(
+                cmd,
+                state: state,
+                options: options,
+                offsetScale: offsetScale,
+                isFirst: i == 0
+            ))
         }
         
         return ops
     }
     
-    /// Processes a single SVG command and returns rough operations.
-    private static func processCommand(
+    /// Processes a single SVG command for continuous path rendering.
+    /// Only emits Move for the first command in a contour.
+    private static func processCommandContinuous(
         _ cmd: SVGCommand,
-        previous: SVGCommand?,
         state: PathState,
-        options: Options
+        options: Options,
+        offsetScale: Float,
+        isFirst: Bool
     ) -> [Operation] {
         var ops: [Operation] = []
         
         switch cmd.type {
         case .move:
-            let maxOff = options.maxRandomnessOffset
-            let x = Float(cmd.point.x) + RoughMath.randOffset(maxOff, options: options)
-            let y = Float(cmd.point.y) + RoughMath.randOffset(maxOff, options: options)
+            let x = Float(cmd.point.x) + RoughMath.randOffset(offsetScale, options: options)
+            let y = Float(cmd.point.y) + RoughMath.randOffset(offsetScale, options: options)
             state.setPosition(x, y)
+            // Always emit Move for the start of a contour
             ops.append(Move(data: [x, y]))
             
         case .line:
-            let x = Float(cmd.point.x)
-            let y = Float(cmd.point.y)
-            ops.append(contentsOf: RoughMath.doubleLineOps(
-                x1: state.position.x, y1: state.position.y,
-                x2: x, y2: y,
-                options: options
-            ))
+            let x = Float(cmd.point.x) + RoughMath.randOffset(offsetScale, options: options)
+            let y = Float(cmd.point.y) + RoughMath.randOffset(offsetScale, options: options)
+            ops.append(LineTo(data: [x, y]))
             state.setPosition(x, y)
             
         case .cubeCurve:
-            let cp1x = Float(cmd.control1.x)
-            let cp1y = Float(cmd.control1.y)
-            let cp2x = Float(cmd.control2.x)
-            let cp2y = Float(cmd.control2.y)
-            let x = Float(cmd.point.x)
-            let y = Float(cmd.point.y)
+            let cp1x = Float(cmd.control1.x) + RoughMath.randOffset(offsetScale, options: options)
+            let cp1y = Float(cmd.control1.y) + RoughMath.randOffset(offsetScale, options: options)
+            let cp2x = Float(cmd.control2.x) + RoughMath.randOffset(offsetScale, options: options)
+            let cp2y = Float(cmd.control2.y) + RoughMath.randOffset(offsetScale, options: options)
+            let x = Float(cmd.point.x) + RoughMath.randOffset(offsetScale, options: options)
+            let y = Float(cmd.point.y) + RoughMath.randOffset(offsetScale, options: options)
             
-            ops.append(contentsOf: cubicCurveOps(
-                x1: state.position.x, y1: state.position.y,
-                cp1x: cp1x, cp1y: cp1y,
-                cp2x: cp2x, cp2y: cp2y,
-                x2: x, y2: y,
-                state: state,
-                options: options
-            ))
+            ops.append(BezierCurveTo(data: [cp1x, cp1y, cp2x, cp2y, x, y]))
             
             state.bezierReflection = (x + (x - cp2x), y + (y - cp2y))
             state.setPosition(x, y)
             
         case .quadCurve:
-            let cpx = Float(cmd.control1.x)
-            let cpy = Float(cmd.control1.y)
-            let x = Float(cmd.point.x)
-            let y = Float(cmd.point.y)
+            let cpx = Float(cmd.control1.x) + RoughMath.randOffset(offsetScale, options: options)
+            let cpy = Float(cmd.control1.y) + RoughMath.randOffset(offsetScale, options: options)
+            let x = Float(cmd.point.x) + RoughMath.randOffset(offsetScale, options: options)
+            let y = Float(cmd.point.y) + RoughMath.randOffset(offsetScale, options: options)
             
-            ops.append(contentsOf: quadCurveOps(
-                x1: state.position.x, y1: state.position.y,
-                cpx: cpx, cpy: cpy,
-                x2: x, y2: y,
-                options: options
-            ))
+            ops.append(QuadraticCurveTo(data: [cpx, cpy, x, y]))
             
             state.quadReflection = (x + (x - cpx), y + (y - cpy))
             state.setPosition(x, y)
             
         case .close:
-            if let first = state.first {
-                ops.append(contentsOf: RoughMath.doubleLineOps(
-                    x1: state.position.x, y1: state.position.y,
-                    x2: first.x, y2: first.y,
-                    options: options
-                ))
-                state.setPosition(first.x, first.y)
-            }
+            // Close the subpath - this draws a line back to the start point
+            // and marks the path as closed for proper fill rendering
+            ops.append(Close())
             state.first = nil
         }
-        
-        return ops
-    }
-    
-    /// Generates rough cubic Bezier curve operations.
-    private static func cubicCurveOps(
-        x1: Float, y1: Float,
-        cp1x: Float, cp1y: Float,
-        cp2x: Float, cp2y: Float,
-        x2: Float, y2: Float,
-        state: PathState,
-        options: Options
-    ) -> [Operation] {
-        var ops: [Operation] = []
-        let maxOff: Float = 1 * (1 + 0.2 * options.roughness)
-        let maxOff2: Float = 1.5 * (1 + 0.22 * options.roughness)
-        
-        // First pass
-        ops.append(Move(data: [x1 + RoughMath.randOffset(maxOff, options: options),
-                               y1 + RoughMath.randOffset(maxOff, options: options)]))
-        let end1 = [x2 + RoughMath.randOffset(maxOff, options: options),
-                    y2 + RoughMath.randOffset(maxOff, options: options)]
-        ops.append(BezierCurveTo(data: [
-            cp1x + RoughMath.randOffset(maxOff, options: options),
-            cp1y + RoughMath.randOffset(maxOff, options: options),
-            cp2x + RoughMath.randOffset(maxOff, options: options),
-            cp2y + RoughMath.randOffset(maxOff, options: options),
-            end1[0], end1[1]
-        ]))
-        
-        // Second pass
-        ops.append(Move(data: [x1 + RoughMath.randOffset(maxOff2, options: options),
-                               y1 + RoughMath.randOffset(maxOff2, options: options)]))
-        let end2 = [x2 + RoughMath.randOffset(maxOff2, options: options),
-                    y2 + RoughMath.randOffset(maxOff2, options: options)]
-        ops.append(BezierCurveTo(data: [
-            cp1x + RoughMath.randOffset(maxOff2, options: options),
-            cp1y + RoughMath.randOffset(maxOff2, options: options),
-            cp2x + RoughMath.randOffset(maxOff2, options: options),
-            cp2y + RoughMath.randOffset(maxOff2, options: options),
-            end2[0], end2[1]
-        ]))
-        
-        return ops
-    }
-    
-    /// Generates rough quadratic Bezier curve operations.
-    private static func quadCurveOps(
-        x1: Float, y1: Float,
-        cpx: Float, cpy: Float,
-        x2: Float, y2: Float,
-        options: Options
-    ) -> [Operation] {
-        var ops: [Operation] = []
-        let maxOff: Float = 1 * (1 + 0.2 * options.roughness)
-        let maxOff2: Float = 1.5 * (1 + 0.22 * options.roughness)
-        
-        // First pass
-        ops.append(Move(data: [x1 + RoughMath.randOffset(maxOff, options: options),
-                               y1 + RoughMath.randOffset(maxOff, options: options)]))
-        let end1 = [x2 + RoughMath.randOffset(maxOff, options: options),
-                    y2 + RoughMath.randOffset(maxOff, options: options)]
-        ops.append(QuadraticCurveTo(data: [
-            cpx + RoughMath.randOffset(maxOff, options: options),
-            cpy + RoughMath.randOffset(maxOff, options: options),
-            end1[0], end1[1]
-        ]))
-        
-        // Second pass
-        ops.append(Move(data: [x1 + RoughMath.randOffset(maxOff2, options: options),
-                               y1 + RoughMath.randOffset(maxOff2, options: options)]))
-        let end2 = [x2 + RoughMath.randOffset(maxOff2, options: options),
-                    y2 + RoughMath.randOffset(maxOff2, options: options)]
-        ops.append(QuadraticCurveTo(data: [
-            cpx + RoughMath.randOffset(maxOff2, options: options),
-            cpy + RoughMath.randOffset(maxOff2, options: options),
-            end2[0], end2[1]
-        ]))
         
         return ops
     }

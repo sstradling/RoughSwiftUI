@@ -39,6 +39,8 @@ extension SwiftUI.Path {
                 to: quad.point.cgPoint,
                 control: quad.controlPoint.cgPoint
             )
+        case _ as Close:
+            self.closeSubpath()
         default:
             // Unsupported or unknown operation types are ignored.
             break

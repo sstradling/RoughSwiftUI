@@ -146,4 +146,51 @@ final class TextPathConverterTests: XCTestCase {
         XCTAssertEqual(inkOrigin.y, bounds.minY, accuracy: 0.001)
     }
     
+    // MARK: - Diagnostic Tests for Path Structure
+    
+    func testGlyphPathStructureForSystemFont() {
+        let font = UIFont.systemFont(ofSize: 48, weight: .bold)
+        
+        // Analyze 'e' - should have 2 closed contours (outer + inner counter)
+        let pathE = TextPathConverter.path(from: "e", font: font)
+        let statsE = analyzePathStructure(pathE)
+        
+        // 'e' should have exactly 2 Move commands (2 contours: outer bowl + inner counter)
+        // If it has only 1 Move, it's a single continuous stroke
+        XCTAssertEqual(statsE.moveCount, statsE.closeCount, 
+            "'e' should have equal moves and closes (each subpath should be closed)")
+        
+        // Analyze 'd' - should have 2 closed contours (outer + inner counter)
+        let pathD = TextPathConverter.path(from: "d", font: font)
+        let statsD = analyzePathStructure(pathD)
+        
+        XCTAssertEqual(statsD.moveCount, statsD.closeCount,
+            "'d' should have equal moves and closes (each subpath should be closed)")
+    }
+    
+    private func analyzePathStructure(_ path: CGPath) -> (moveCount: Int, closeCount: Int, lineCount: Int, curveCount: Int) {
+        var moveCount = 0
+        var closeCount = 0
+        var lineCount = 0
+        var curveCount = 0
+        
+        path.applyWithBlock { elementPointer in
+            let element = elementPointer.pointee
+            switch element.type {
+            case .moveToPoint:
+                moveCount += 1
+            case .addLineToPoint:
+                lineCount += 1
+            case .addQuadCurveToPoint, .addCurveToPoint:
+                curveCount += 1
+            case .closeSubpath:
+                closeCount += 1
+            @unknown default:
+                break
+            }
+        }
+        
+        return (moveCount, closeCount, lineCount, curveCount)
+    }
+    
 }

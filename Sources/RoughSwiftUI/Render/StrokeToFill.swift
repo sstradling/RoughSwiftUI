@@ -179,6 +179,8 @@ struct StrokeToFillConverter {
                     control1: curve.controlPoint1.cgPoint,
                     control2: curve.controlPoint2.cgPoint
                 ))
+            case _ as Close:
+                elements.append(.closeSubpath)
             default:
                 break
             }
@@ -219,6 +221,12 @@ struct StrokeToFillConverter {
         baseWidth: CGFloat,
         profile: BrushProfile
     ) -> SwiftUI.Path? {
+        // Check if subpath is closed
+        let isClosed = elements.contains { element in
+            if case .closeSubpath = element { return true }
+            return false
+        }
+        
         // Sample the subpath
         let samples = sampleSubpath(elements)
         guard samples.count >= 2 else { return nil }
@@ -227,7 +235,8 @@ struct StrokeToFillConverter {
         let (leftPoints, rightPoints) = generateOutlinePoints(
             samples: samples,
             baseWidth: baseWidth,
-            profile: profile
+            profile: profile,
+            isClosed: isClosed
         )
         
         guard !leftPoints.isEmpty, !rightPoints.isEmpty else { return nil }
@@ -237,7 +246,8 @@ struct StrokeToFillConverter {
             leftPoints: leftPoints,
             rightPoints: rightPoints,
             cap: profile.cap,
-            samples: samples
+            samples: samples,
+            isClosed: isClosed
         )
     }
     
@@ -261,6 +271,7 @@ struct StrokeToFillConverter {
         rawSamples.reserveCapacity(elements.count * minSamplesPerSegment)
         
         var currentPoint = CGPoint.zero
+        var subpathStartPoint: CGPoint? = nil
         var accumulatedLength: CGFloat = 0
         
         // Single pass: collect samples with accumulated length
@@ -268,6 +279,7 @@ struct StrokeToFillConverter {
             switch element {
             case .move(let to):
                 currentPoint = to
+                subpathStartPoint = to
                 // Add starting point with initial tangent computed lazily
                 let tangent = computeInitialTangentFast(elements: elements, startIndex: index)
                 rawSamples.append(RawSample(point: to, tangentAngle: tangent, accumulatedLength: 0))
@@ -335,7 +347,24 @@ struct StrokeToFillConverter {
                 currentPoint = to
                 
             case .closeSubpath:
-                break
+                // Draw a line segment back to the start of the subpath
+                if let startPoint = subpathStartPoint {
+                    let segmentLength = distanceFast(currentPoint, startPoint)
+                    if segmentLength > 0 {
+                        let numSamples = max(2, Int(ceil(segmentLength / maxSampleSpacing)))
+                        let tangent = atan2(startPoint.y - currentPoint.y, startPoint.x - currentPoint.x)
+                        
+                        for i in 1...numSamples {
+                            let localT = CGFloat(i) / CGFloat(numSamples)
+                            let point = lerpFast(currentPoint, startPoint, t: localT)
+                            let sampleAccLength = accumulatedLength + segmentLength * localT
+                            rawSamples.append(RawSample(point: point, tangentAngle: tangent, accumulatedLength: sampleAccLength))
+                        }
+                        
+                        accumulatedLength += segmentLength
+                        currentPoint = startPoint
+                    }
+                }
             }
         }
         
@@ -388,17 +417,22 @@ struct StrokeToFillConverter {
     private static func generateOutlinePoints(
         samples: [PathSample],
         baseWidth: CGFloat,
-        profile: BrushProfile
+        profile: BrushProfile,
+        isClosed: Bool = false
     ) -> (left: [CGPoint], right: [CGPoint]) {
         var leftPoints: [CGPoint] = []
         var rightPoints: [CGPoint] = []
         
+        // For closed paths, we need uniform thickness (not tapered)
+        // to ensure the path joins seamlessly
+        let effectiveProfile = isClosed ? profile.withUniformThickness() : profile
+        
         for sample in samples {
             // Calculate thickness at this point
-            let thicknessMultiplier = profile.thicknessProfile.multiplier(at: sample.t)
+            let thicknessMultiplier = effectiveProfile.thicknessProfile.multiplier(at: sample.t)
             
             // Calculate effective width based on brush tip and direction
-            let effectiveWidth = profile.tip.effectiveWidth(
+            let effectiveWidth = effectiveProfile.tip.effectiveWidth(
                 baseWidth: baseWidth * thicknessMultiplier,
                 strokeAngle: sample.tangentAngle
             )
@@ -422,36 +456,59 @@ struct StrokeToFillConverter {
         leftPoints: [CGPoint],
         rightPoints: [CGPoint],
         cap: BrushCap,
-        samples: [PathSample]
+        samples: [PathSample],
+        isClosed: Bool = false
     ) -> SwiftUI.Path {
         var path = SwiftUI.Path()
         
         guard !leftPoints.isEmpty, !rightPoints.isEmpty else { return path }
         
-        // Start with the first left point
-        path.move(to: leftPoints[0])
-        
-        // Draw along the left side (forward)
-        for i in 1..<leftPoints.count {
-            path.addLine(to: leftPoints[i])
+        if isClosed && leftPoints.count > 2 {
+            // For closed paths, create two separate closed shapes:
+            // - Outer boundary (left points going forward, forms outer edge)
+            // - Inner boundary (right points going forward, forms inner edge)
+            // This creates a ring shape when rendered with even-odd fill.
+            
+            // Outer path (left points)
+            path.move(to: leftPoints[0])
+            for i in 1..<leftPoints.count {
+                path.addLine(to: leftPoints[i])
+            }
+            path.closeSubpath()
+            
+            // Inner path (right points) - same direction, will be subtracted by even-odd
+            path.move(to: rightPoints[0])
+            for i in 1..<rightPoints.count {
+                path.addLine(to: rightPoints[i])
+            }
+            path.closeSubpath()
+        } else {
+            // For open paths, create a "tube" shape
+            // Start with the first left point
+            path.move(to: leftPoints[0])
+            
+            // Draw along the left side (forward)
+            for i in 1..<leftPoints.count {
+                path.addLine(to: leftPoints[i])
+            }
+            
+            // Add end cap
+            if let lastLeft = leftPoints.last, let lastRight = rightPoints.last {
+                addCap(to: &path, from: lastLeft, to: lastRight, cap: cap, isEnd: true)
+            }
+            
+            // Draw along the right side (backward)
+            for i in (0..<rightPoints.count - 1).reversed() {
+                path.addLine(to: rightPoints[i])
+            }
+            
+            // Add start cap
+            if let firstLeft = leftPoints.first, let firstRight = rightPoints.first {
+                addCap(to: &path, from: firstRight, to: firstLeft, cap: cap, isEnd: false)
+            }
+            
+            path.closeSubpath()
         }
-        
-        // Add end cap
-        if let lastLeft = leftPoints.last, let lastRight = rightPoints.last {
-            addCap(to: &path, from: lastLeft, to: lastRight, cap: cap, isEnd: true)
-        }
-        
-        // Draw along the right side (backward)
-        for i in (0..<rightPoints.count - 1).reversed() {
-            path.addLine(to: rightPoints[i])
-        }
-        
-        // Add start cap
-        if let firstLeft = leftPoints.first, let firstRight = rightPoints.first {
-            addCap(to: &path, from: firstRight, to: firstLeft, cap: cap, isEnd: false)
-        }
-        
-        path.closeSubpath()
         
         return path
     }

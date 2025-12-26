@@ -13,4 +13,5 @@ public enum OperationType: String {
     case bezierCurveTo = "bcurveTo"
     case lineTo
     case quadraticCurveTo = "qcurveTo"
+    case close
 }
