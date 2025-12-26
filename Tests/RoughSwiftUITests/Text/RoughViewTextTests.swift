@@ -14,8 +14,8 @@ final class RoughViewTextTests: XCTestCase {
         // Should have one drawable
         XCTAssertEqual(view.drawables.count, 1)
         
-        // Drawable should be a Text
-        XCTAssertTrue(view.drawables[0] is RoughSwiftUI.Text)
+        // Drawable should be a FullText (which is Fulfillable for auto-centering)
+        XCTAssertTrue(view.drawables[0] is Fulfillable, "RoughView.text() should use FullText which is Fulfillable")
     }
     
     func testRoughViewTextModifierWithAttributedString() {
@@ -27,7 +27,7 @@ final class RoughViewTextTests: XCTestCase {
             .text(attributedString: attributed)
         
         XCTAssertEqual(view.drawables.count, 1)
-        XCTAssertTrue(view.drawables[0] is RoughSwiftUI.Text)
+        XCTAssertTrue(view.drawables[0] is Fulfillable, "RoughView.text(attributedString:) should use FullText which is Fulfillable")
     }
     
     func testRoughViewTextModifierWithFontName() {

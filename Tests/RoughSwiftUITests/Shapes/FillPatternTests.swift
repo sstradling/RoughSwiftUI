@@ -43,6 +43,47 @@ final class FillPatternTests: XCTestCase {
         XCTAssertEqual(fillSet?.type, .fillPath, "Should be fillPath type")
     }
     
+    func testSolidFillerEllipse() {
+        let filler = SolidFiller()
+        let options = Options()
+        
+        let fillSet = filler.fillEllipse(cx: 50, cy: 50, rx: 40, ry: 30, options: options)
+        
+        XCTAssertNotNil(fillSet, "Should produce fill set for ellipse")
+        XCTAssertEqual(fillSet?.type, .fillPath, "Should be fillPath type for solid fill")
+        
+        // Verify it has operations (single closed ellipse path from solidEllipseOps)
+        XCTAssertGreaterThan(fillSet?.operations.count ?? 0, 0, "Should have operations")
+        
+        // Verify the path is closed (last operation should be Close)
+        if let lastOp = fillSet?.operations.last {
+            XCTAssertTrue(lastOp is Close, "Path should be explicitly closed for proper filling")
+        }
+        
+        // Solid fill uses a single rough ellipse with hand-drawn aesthetic
+    }
+    
+    func testSolidFillerCircleGeneratesDrawing() {
+        // Integration test to verify solid fill works end-to-end with circles
+        let engine = Engine()
+        let gen = engine.generator(size: CGSize(width: 200, height: 200))
+        let drawable = Circle(x: 50, y: 50, diameter: 100)
+        
+        var options = Options()
+        options.fillStyle = .solid
+        options.fill = .orange
+        options.stroke = .black
+        
+        let drawing = gen.generate(drawable: drawable, options: options)
+        
+        XCTAssertNotNil(drawing, "Should generate drawing with solid fill")
+        XCTAssertEqual(drawing?.sets.count, 2, "Should have fill and stroke sets")
+        
+        // Check that fill set has fillPath type
+        let fillSet = drawing?.sets.first { $0.type == .fillPath }
+        XCTAssertNotNil(fillSet, "Should have fillPath set for solid fill")
+    }
+    
     func testZigzagFiller() {
         let filler = ZigzagFiller()
         var options = Options()

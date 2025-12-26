@@ -96,8 +96,10 @@ RoughSwiftUI supports all primitive shapes, including SVG paths and text:
 
 - line
 - rectangle
+- roundedRectangle
 - ellipse
 - circle
+- egg
 - linearPath
 - arc
 - curve
@@ -296,10 +298,12 @@ struct StylesView: View {
 
 ## Text Rendering
 
-RoughSwiftUI can render text with hand-drawn styling using CoreText glyph extraction:
+RoughSwiftUI can render text with hand-drawn styling using CoreText glyph extraction. Text is automatically centered within the view bounds by default, making it easy to create centered labels, buttons, and other UI components.
+
+### Basic Text Rendering
 
 ```swift
-// Basic text with system font
+// Basic text with system font (centered by default)
 RoughView()
     .fill(.blue)
     .fillStyle(.hachure)
@@ -325,7 +329,65 @@ let attributed = NSAttributedString(
 RoughView()
     .fill(.red)
     .text(attributedString: attributed)
+    .frame(width: 300, height: 100)
 ```
+
+### Text Positioning and Alignment
+
+Text is automatically centered within the view bounds by default. You can customize the positioning using alignment and offset parameters:
+
+```swift
+// Centered text (default)
+RoughView()
+    .fill(.orange)
+    .stroke(.black)
+    .strokeWidth(2.0)
+    .text("SLAP!", font: .systemFont(ofSize: 100, weight: .heavy))
+    .frame(width: 300, height: 160)
+
+// Leading (left) aligned, top aligned
+RoughView()
+    .fill(.blue)
+    .text("Hello", font: .systemFont(ofSize: 32),
+          horizontalAlignment: .leading,
+          verticalAlignment: .top)
+    .frame(width: 200, height: 100)
+
+// Trailing (right) aligned, bottom aligned
+RoughView()
+    .fill(.green)
+    .text("World", font: .systemFont(ofSize: 32),
+          horizontalAlignment: .trailing,
+          verticalAlignment: .bottom)
+    .frame(width: 200, height: 100)
+
+// Centered with offset adjustment
+RoughView()
+    .fill(.purple)
+    .text("Offset", font: .systemFont(ofSize: 32),
+          offsetX: 10, offsetY: -5)
+    .frame(width: 200, height: 100)
+
+// Combined alignment and offset
+RoughView()
+    .fill(.red)
+    .text("Custom", font: .systemFont(ofSize: 28),
+          horizontalAlignment: .leading,
+          verticalAlignment: .top,
+          offsetX: 8, offsetY: 4)
+    .frame(width: 250, height: 120)
+```
+
+### Text Alignment Options
+
+| Parameter | Options | Description |
+|-----------|---------|-------------|
+| `horizontalAlignment` | `.leading`, `.center` (default), `.trailing` | Horizontal position within the view |
+| `verticalAlignment` | `.top`, `.center` (default), `.bottom` | Vertical position within the view |
+| `offsetX` | Any `CGFloat` (default: `0`) | Additional horizontal offset in points. Positive moves right. |
+| `offsetY` | Any `CGFloat` (default: `0`) | Additional vertical offset in points. Positive moves down. |
+
+**Note:** Offsets are applied *after* alignment, allowing you to fine-tune the position relative to the aligned anchor point.
 
 ## SVG
 
@@ -543,6 +605,74 @@ This means the expensive work (path generation, variance calculation) only happe
 - The animation configuration changes
 
 During the actual animation loop, the cost is essentially zero - just swapping between pre-computed paths.
+
+## Rounded Rectangle
+
+RoughSwiftUI supports rounded rectangles with customizable corner radius:
+
+```swift
+// Rounded rectangle with default corner radius (8 points)
+RoughView()
+    .fill(.blue)
+    .stroke(.black)
+    .strokeWidth(2)
+    .roundedRectangle()
+    .frame(width: 200, height: 100)
+
+// Custom corner radius
+RoughView()
+    .fill(.green)
+    .fillStyle(.hachure)
+    .roundedRectangle(cornerRadius: 20)
+    .frame(width: 150, height: 80)
+
+// Large corner radius for pill-shaped rectangles
+RoughView()
+    .fill(.purple)
+    .roundedRectangle(cornerRadius: 50)
+    .frame(width: 200, height: 60)
+```
+
+Rounded rectangles automatically fill the available space, similar to `rectangle()` and `circle()`. The corner radius is applied uniformly to all four corners.
+
+## Egg Shape
+
+RoughSwiftUI includes an egg-shaped (ovoid) drawable with natural asymmetry:
+
+```swift
+// Basic egg shape with default tilt
+RoughView()
+    .fill(.yellow)
+    .stroke(.orange)
+    .strokeWidth(2)
+    .egg()
+    .frame(width: 100, height: 140)
+
+// Custom tilt for different egg orientations
+RoughView()
+    .fill(.pink)
+    .egg(tilt: 0.5)  // More pronounced asymmetry
+    .frame(width: 120, height: 160)
+
+// Symmetric ellipse (tilt = 0)
+RoughView()
+    .fill(.cyan)
+    .egg(tilt: 0)
+    .frame(width: 100, height: 100)
+
+// Negative tilt (wider top, narrower bottom)
+RoughView()
+    .fill(.green)
+    .egg(tilt: -0.3)
+    .frame(width: 100, height: 140)
+```
+
+The `tilt` parameter controls the asymmetry:
+- **Positive values** (default: `0.3`): Narrower top, wider bottom (natural egg shape)
+- **Zero**: Symmetric ellipse
+- **Negative values**: Narrower bottom, wider top
+
+Egg shapes automatically fill the available space and are centered within the view bounds.
 
 ## Creative Shapes
 

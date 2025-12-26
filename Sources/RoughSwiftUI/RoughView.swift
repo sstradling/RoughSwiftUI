@@ -369,41 +369,137 @@ public extension RoughView {
         draw(FullCircle())
     }
     
+    /// Draw a full-size rounded rectangle that fills the available space.
+    ///
+    /// - Parameter cornerRadius: The radius of the rounded corners. Default is 8.
+    /// - Returns: The view with a rounded rectangle added.
+    func roundedRectangle(cornerRadius: Float = 8) -> Self {
+        draw(FullRoundedRectangle(cornerRadius: cornerRadius))
+    }
+    
+    /// Draw a full-size egg shape that fills the available space.
+    ///
+    /// - Parameter tilt: Controls the asymmetry of the egg.
+    ///   - Positive values (default 0.3): narrower top, wider bottom (natural egg shape).
+    ///   - Negative values: narrower bottom, wider top.
+    ///   - Zero: symmetric ellipse.
+    /// - Returns: The view with an egg shape added.
+    func egg(tilt: Float = 0.3) -> Self {
+        draw(FullEgg(tilt: tilt))
+    }
+    
     // MARK: - Text modifiers
     
-    /// Add text to be rendered with rough styling.
+    /// Add text to be rendered with rough styling, positioned within the view bounds.
     ///
-    /// The text is converted to vector paths using CoreText and rendered
-    /// with the current fill/stroke settings.
+    /// The text is converted to vector paths using CoreText and positioned
+    /// according to the alignment and offset parameters. By default, text is
+    /// centered both horizontally and vertically.
     ///
     /// - Parameters:
     ///   - string: The text string to render.
     ///   - font: The font to use for rendering.
-    /// - Returns: The view with text added.
-    func text(_ string: String, font: UIFont) -> Self {
-        draw(Text(string, font: font))
+    ///   - horizontalAlignment: Horizontal alignment within the view. Default is `.center`.
+    ///   - verticalAlignment: Vertical alignment within the view. Default is `.center`.
+    ///   - offsetX: Additional horizontal offset in points. Positive moves right. Default is `0`.
+    ///   - offsetY: Additional vertical offset in points. Positive moves down. Default is `0`.
+    /// - Returns: The view with positioned text added.
+    ///
+    /// ## Example - Centered (Default)
+    /// ```swift
+    /// RoughView()
+    ///     .fill(.orange)
+    ///     .stroke(.black)
+    ///     .strokeWidth(2.0)
+    ///     .text("SLAP!", font: .systemFont(ofSize: 100, weight: .heavy))
+    ///     .frame(width: 300, height: 160)
+    /// ```
+    ///
+    /// ## Example - Leading Top with Offset
+    /// ```swift
+    /// RoughView()
+    ///     .fill(.blue)
+    ///     .text("Hello", font: .systemFont(ofSize: 32),
+    ///           horizontalAlignment: .leading,
+    ///           verticalAlignment: .top,
+    ///           offsetX: 8, offsetY: 4)
+    ///     .frame(width: 200, height: 100)
+    /// ```
+    func text(
+        _ string: String,
+        font: UIFont,
+        horizontalAlignment: RoughTextHorizontalAlignment = .center,
+        verticalAlignment: RoughTextVerticalAlignment = .center,
+        offsetX: CGFloat = 0,
+        offsetY: CGFloat = 0
+    ) -> Self {
+        draw(FullText(
+            string,
+            font: font,
+            horizontalAlignment: horizontalAlignment,
+            verticalAlignment: verticalAlignment,
+            offsetX: offsetX,
+            offsetY: offsetY
+        ))
     }
     
-    /// Add attributed text to be rendered with rough styling.
+    /// Add attributed text to be rendered with rough styling, positioned within the view bounds.
     ///
     /// The attributed string can contain multiple fonts, sizes, and other text attributes.
+    /// The text is positioned according to the alignment and offset parameters.
     ///
-    /// - Parameter attributedString: The attributed string to render.
-    /// - Returns: The view with text added.
-    func text(attributedString: NSAttributedString) -> Self {
-        draw(Text(attributedString: attributedString))
+    /// - Parameters:
+    ///   - attributedString: The attributed string to render.
+    ///   - horizontalAlignment: Horizontal alignment within the view. Default is `.center`.
+    ///   - verticalAlignment: Vertical alignment within the view. Default is `.center`.
+    ///   - offsetX: Additional horizontal offset in points. Default is `0`.
+    ///   - offsetY: Additional vertical offset in points. Default is `0`.
+    /// - Returns: The view with positioned text added.
+    func text(
+        attributedString: NSAttributedString,
+        horizontalAlignment: RoughTextHorizontalAlignment = .center,
+        verticalAlignment: RoughTextVerticalAlignment = .center,
+        offsetX: CGFloat = 0,
+        offsetY: CGFloat = 0
+    ) -> Self {
+        draw(FullText(
+            attributedString: attributedString,
+            horizontalAlignment: horizontalAlignment,
+            verticalAlignment: verticalAlignment,
+            offsetX: offsetX,
+            offsetY: offsetY
+        ))
     }
     
-    /// Add text with a named font to be rendered with rough styling.
+    /// Add text with a named font to be rendered with rough styling, positioned within the view bounds.
     ///
     /// - Parameters:
     ///   - string: The text string to render.
     ///   - fontName: The PostScript name of the font (e.g., "Helvetica-Bold").
     ///   - fontSize: The font size in points.
-    /// - Returns: The view with text added.
-    func text(_ string: String, fontName: String, fontSize: CGFloat) -> Self {
+    ///   - horizontalAlignment: Horizontal alignment within the view. Default is `.center`.
+    ///   - verticalAlignment: Vertical alignment within the view. Default is `.center`.
+    ///   - offsetX: Additional horizontal offset in points. Default is `0`.
+    ///   - offsetY: Additional vertical offset in points. Default is `0`.
+    /// - Returns: The view with positioned text added.
+    func text(
+        _ string: String,
+        fontName: String,
+        fontSize: CGFloat,
+        horizontalAlignment: RoughTextHorizontalAlignment = .center,
+        verticalAlignment: RoughTextVerticalAlignment = .center,
+        offsetX: CGFloat = 0,
+        offsetY: CGFloat = 0
+    ) -> Self {
         let font = UIFont(name: fontName, size: fontSize) ?? UIFont.systemFont(ofSize: fontSize)
-        return text(string, font: font)
+        return text(
+            string,
+            font: font,
+            horizontalAlignment: horizontalAlignment,
+            verticalAlignment: verticalAlignment,
+            offsetX: offsetX,
+            offsetY: offsetY
+        )
     }
     
     // MARK: - SVG-specific modifiers

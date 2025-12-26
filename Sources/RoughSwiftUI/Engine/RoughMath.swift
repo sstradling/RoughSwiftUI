@@ -469,6 +469,47 @@ public struct RoughMath {
         return ops
     }
     
+    /// Generates a single closed ellipse path suitable for solid fills.
+    /// Unlike `ellipseOps` which generates two overlapping strokes, this creates
+    /// one closed path that can be filled properly.
+    /// - Parameters:
+    ///   - cx: Center x coordinate
+    ///   - cy: Center y coordinate
+    ///   - rx: Horizontal radius
+    ///   - ry: Vertical radius
+    ///   - options: Rendering options
+    /// - Returns: Array of operations representing a closed fillable ellipse
+    public static func solidEllipseOps(
+        cx: Float, cy: Float,
+        rx: Float, ry: Float,
+        options: Options
+    ) -> [Operation] {
+        let increment = (2 * Float.pi) / options.curveStepCount
+        var rxMod = rx
+        var ryMod = ry
+        
+        // Add slight randomness to radii to maintain hand-drawn aesthetic
+        rxMod += randOffset(rx * 0.05, options: options)
+        ryMod += randOffset(ry * 0.05, options: options)
+        
+        // Generate a single closed ellipse suitable for filling
+        var ops = ellipseWithParams(
+            increment: increment,
+            cx: cx,
+            cy: cy,
+            rx: rxMod,
+            ry: ryMod,
+            offset: 1,
+            overlap: increment * randOffsetWithRange(0.1, randOffsetWithRange(0.4, 1, options: options), options: options),
+            options: options
+        )
+        
+        // Explicitly close the path for proper filling
+        ops.append(Close())
+        
+        return ops
+    }
+    
     // MARK: - Rectangle Operations
     
     /// Generates operations for a rough rectangle.
@@ -491,6 +532,290 @@ public struct RoughMath {
             [x, y + height]
         ]
         return polygonOps(points: points, options: options)
+    }
+    
+    // MARK: - Rounded Rectangle Operations
+    
+    /// Generates operations for a rough rounded rectangle.
+    /// - Parameters:
+    ///   - x: Top-left x coordinate
+    ///   - y: Top-left y coordinate
+    ///   - width: Width of rectangle
+    ///   - height: Height of rectangle
+    ///   - cornerRadius: Radius of rounded corners
+    ///   - options: Rendering options
+    /// - Returns: Array of operations representing the rounded rectangle outline
+    public static func roundedRectangleOps(
+        x: Float, y: Float,
+        width: Float, height: Float,
+        cornerRadius: Float,
+        options: Options
+    ) -> [Operation] {
+        // Clamp corner radius to valid range
+        let maxRadius = min(width, height) / 2
+        let r = min(cornerRadius, maxRadius)
+        
+        if r <= 0 {
+            // No rounding, use regular rectangle
+            return rectangleOps(x: x, y: y, width: width, height: height, options: options)
+        }
+        
+        var ops: [Operation] = []
+        
+        // Draw the four sides with arcs at corners
+        // Top edge (left to right)
+        ops.append(contentsOf: doubleLineOps(x1: x + r, y1: y, x2: x + width - r, y2: y, options: options))
+        
+        // Top-right corner arc
+        ops.append(contentsOf: cornerArcOps(cx: x + width - r, cy: y + r, r: r, startAngle: -Float.pi / 2, endAngle: 0, options: options))
+        
+        // Right edge (top to bottom)
+        ops.append(contentsOf: doubleLineOps(x1: x + width, y1: y + r, x2: x + width, y2: y + height - r, options: options))
+        
+        // Bottom-right corner arc
+        ops.append(contentsOf: cornerArcOps(cx: x + width - r, cy: y + height - r, r: r, startAngle: 0, endAngle: Float.pi / 2, options: options))
+        
+        // Bottom edge (right to left)
+        ops.append(contentsOf: doubleLineOps(x1: x + width - r, y1: y + height, x2: x + r, y2: y + height, options: options))
+        
+        // Bottom-left corner arc
+        ops.append(contentsOf: cornerArcOps(cx: x + r, cy: y + height - r, r: r, startAngle: Float.pi / 2, endAngle: Float.pi, options: options))
+        
+        // Left edge (bottom to top)
+        ops.append(contentsOf: doubleLineOps(x1: x, y1: y + height - r, x2: x, y2: y + r, options: options))
+        
+        // Top-left corner arc
+        ops.append(contentsOf: cornerArcOps(cx: x + r, cy: y + r, r: r, startAngle: Float.pi, endAngle: 3 * Float.pi / 2, options: options))
+        
+        return ops
+    }
+    
+    /// Generates rough operations for a corner arc (quarter circle).
+    private static func cornerArcOps(
+        cx: Float, cy: Float, r: Float,
+        startAngle: Float, endAngle: Float,
+        options: Options
+    ) -> [Operation] {
+        let steps = max(2, Int(options.curveStepCount / 4))
+        let increment = (endAngle - startAngle) / Float(steps)
+        
+        var points: [[Float]] = []
+        var angle = startAngle
+        
+        while angle <= endAngle + 0.001 {
+            points.append([
+                cx + r * cos(angle) + randOffset(1, options: options),
+                cy + r * sin(angle) + randOffset(1, options: options)
+            ])
+            angle += increment
+        }
+        
+        // Ensure we hit the exact end angle
+        let lastPoint = [cx + r * cos(endAngle), cy + r * sin(endAngle)]
+        if points.isEmpty || (points.last![0] != lastPoint[0] || points.last![1] != lastPoint[1]) {
+            points.append(lastPoint)
+        }
+        
+        // Convert points to bezier curves
+        if points.count >= 2 {
+            return bezierFromPoints(points, close: nil, options: options)
+        }
+        
+        return []
+    }
+    
+    /// Generates polygon approximation points for a rounded rectangle (for fills).
+    /// - Parameters:
+    ///   - x: Top-left x coordinate
+    ///   - y: Top-left y coordinate
+    ///   - width: Width of rectangle
+    ///   - height: Height of rectangle
+    ///   - cornerRadius: Radius of rounded corners
+    ///   - arcSteps: Number of points per corner arc (default 8)
+    /// - Returns: Array of polygon points approximating the rounded rectangle
+    public static func roundedRectanglePolygonPoints(
+        x: Float, y: Float,
+        width: Float, height: Float,
+        cornerRadius: Float,
+        arcSteps: Int = 8
+    ) -> [[Float]] {
+        let maxRadius = min(width, height) / 2
+        let r = min(cornerRadius, maxRadius)
+        
+        if r <= 0 {
+            return [
+                [x, y],
+                [x + width, y],
+                [x + width, y + height],
+                [x, y + height]
+            ]
+        }
+        
+        var points: [[Float]] = []
+        
+        // Top-left corner
+        for i in 0...arcSteps {
+            let angle = Float.pi + Float(i) * (Float.pi / 2) / Float(arcSteps)
+            points.append([x + r + r * cos(angle), y + r + r * sin(angle)])
+        }
+        
+        // Top-right corner
+        for i in 0...arcSteps {
+            let angle = -Float.pi / 2 + Float(i) * (Float.pi / 2) / Float(arcSteps)
+            points.append([x + width - r + r * cos(angle), y + r + r * sin(angle)])
+        }
+        
+        // Bottom-right corner
+        for i in 0...arcSteps {
+            let angle = Float(i) * (Float.pi / 2) / Float(arcSteps)
+            points.append([x + width - r + r * cos(angle), y + height - r + r * sin(angle)])
+        }
+        
+        // Bottom-left corner
+        for i in 0...arcSteps {
+            let angle = Float.pi / 2 + Float(i) * (Float.pi / 2) / Float(arcSteps)
+            points.append([x + r + r * cos(angle), y + height - r + r * sin(angle)])
+        }
+        
+        return points
+    }
+    
+    // MARK: - Egg Shape Operations
+    
+    /// Generates operations for a rough egg shape.
+    /// The egg is an asymmetric ellipse, wider at one end.
+    /// - Parameters:
+    ///   - cx: Center x coordinate
+    ///   - cy: Center y coordinate
+    ///   - width: Width of the egg at its widest point
+    ///   - height: Total height of the egg
+    ///   - tilt: Asymmetry factor (0.0 = symmetric, positive = narrower top, negative = narrower bottom)
+    ///   - options: Rendering options
+    /// - Returns: Array of operations representing the egg outline
+    public static func eggOps(
+        cx: Float, cy: Float,
+        width: Float, height: Float,
+        tilt: Float,
+        options: Options
+    ) -> [Operation] {
+        let increment = (2 * Float.pi) / options.curveStepCount
+        var rx = width / 2
+        var ry = height / 2
+        
+        // Add slight randomness to radii
+        rx += randOffset(rx * 0.05, options: options)
+        ry += randOffset(ry * 0.05, options: options)
+        
+        let o1 = eggWithParams(
+            increment: increment, cx: cx, cy: cy, rx: rx, ry: ry, tilt: tilt,
+            offset: 1, overlap: increment * randOffsetWithRange(0.1, randOffsetWithRange(0.4, 1, options: options), options: options),
+            options: options
+        )
+        let o2 = eggWithParams(
+            increment: increment, cx: cx, cy: cy, rx: rx, ry: ry, tilt: tilt,
+            offset: 1.5, overlap: 0,
+            options: options
+        )
+        return o1 + o2
+    }
+    
+    /// Generates egg shape with specific parameters.
+    private static func eggWithParams(
+        increment: Float, cx: Float, cy: Float, rx: Float, ry: Float, tilt: Float,
+        offset: Float, overlap: Float,
+        options: Options
+    ) -> [Operation] {
+        let radOffset = randOffset(0.5, options: options) - Float.pi / 2
+        var points: [[Float]] = []
+        
+        // Initial point with slight offset
+        let (initX, initY) = eggPoint(angle: radOffset - increment, cx: cx, cy: cy, rx: rx, ry: ry, tilt: tilt)
+        points.append([
+            randOffset(offset, options: options) + initX * 0.9 + cx * 0.1,
+            randOffset(offset, options: options) + initY * 0.9 + cy * 0.1
+        ])
+        
+        var angle = radOffset
+        while angle < Float.pi * 2 + radOffset - 0.01 {
+            let (px, py) = eggPoint(angle: angle, cx: cx, cy: cy, rx: rx, ry: ry, tilt: tilt)
+            points.append([
+                randOffset(offset, options: options) + px,
+                randOffset(offset, options: options) + py
+            ])
+            angle += increment
+        }
+        
+        // Overlap points for smooth closure
+        let (overlapX1, overlapY1) = eggPoint(angle: radOffset + Float.pi * 2 + overlap * 0.5, cx: cx, cy: cy, rx: rx, ry: ry, tilt: tilt)
+        points.append([
+            randOffset(offset, options: options) + overlapX1,
+            randOffset(offset, options: options) + overlapY1
+        ])
+        
+        let (overlapX2, overlapY2) = eggPoint(angle: radOffset + overlap, cx: cx, cy: cy, rx: rx, ry: ry, tilt: tilt)
+        points.append([
+            randOffset(offset, options: options) + overlapX2 * 0.98 + cx * 0.02,
+            randOffset(offset, options: options) + overlapY2 * 0.98 + cy * 0.02
+        ])
+        
+        let (overlapX3, overlapY3) = eggPoint(angle: radOffset + overlap * 0.5, cx: cx, cy: cy, rx: rx, ry: ry, tilt: tilt)
+        points.append([
+            randOffset(offset, options: options) + overlapX3 * 0.9 + cx * 0.1,
+            randOffset(offset, options: options) + overlapY3 * 0.9 + cy * 0.1
+        ])
+        
+        return bezierFromPoints(points, close: nil, options: options)
+    }
+    
+    /// Calculates a point on the egg curve at a given angle.
+    /// The egg shape is achieved by modulating the horizontal radius based on the y-position.
+    private static func eggPoint(
+        angle: Float, cx: Float, cy: Float, rx: Float, ry: Float, tilt: Float
+    ) -> (Float, Float) {
+        // Normalize the vertical position (-1 at top, 1 at bottom)
+        let normalizedY = sin(angle)
+        
+        // Modulate the horizontal radius based on vertical position
+        // When tilt > 0: top is narrower (egg pointing up)
+        // When tilt < 0: bottom is narrower (egg pointing down)
+        let radiusModulation = 1.0 - tilt * normalizedY
+        let effectiveRx = rx * radiusModulation
+        
+        let x = cx + effectiveRx * cos(angle)
+        let y = cy + ry * sin(angle)
+        
+        return (x, y)
+    }
+    
+    /// Generates polygon approximation points for an egg shape (for fills).
+    /// - Parameters:
+    ///   - cx: Center x coordinate
+    ///   - cy: Center y coordinate
+    ///   - width: Width of the egg at its widest point
+    ///   - height: Total height of the egg
+    ///   - tilt: Asymmetry factor
+    ///   - stepCount: Number of points around the perimeter
+    /// - Returns: Array of polygon points approximating the egg
+    public static func eggPolygonPoints(
+        cx: Float, cy: Float,
+        width: Float, height: Float,
+        tilt: Float,
+        stepCount: Float
+    ) -> [[Float]] {
+        let rx = width / 2
+        let ry = height / 2
+        let increment = (2 * Float.pi) / stepCount
+        
+        var points: [[Float]] = []
+        var angle: Float = 0
+        
+        while angle < 2 * Float.pi {
+            let (x, y) = eggPoint(angle: angle, cx: cx, cy: cy, rx: rx, ry: ry, tilt: tilt)
+            points.append([x, y])
+            angle += increment
+        }
+        
+        return points
     }
 }
 

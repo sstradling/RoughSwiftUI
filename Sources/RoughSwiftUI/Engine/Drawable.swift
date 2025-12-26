@@ -214,10 +214,13 @@ public struct Path: Drawable {
     }
 }
 
-/// A text string rendered as a rough path.
+/// A text string rendered as a rough path at a fixed position.
 ///
 /// This drawable converts text into SVG path data using CoreText glyph extraction,
 /// then renders it through the rough.js engine for hand-drawn styling.
+///
+/// By default, text is positioned at the origin (0,0). For auto-centering within
+/// the view bounds, use `FullText` instead (via `RoughView.text()`).
 public struct Text: Drawable {
     public var method: String { "path" }
     
@@ -260,6 +263,229 @@ public struct Text: Drawable {
     }
 }
 
+// MARK: - Text Alignment
+
+/// Horizontal alignment options for text within a view.
+public enum RoughTextHorizontalAlignment: Sendable {
+    /// Align text to the leading (left) edge.
+    case leading
+    /// Center text horizontally.
+    case center
+    /// Align text to the trailing (right) edge.
+    case trailing
+}
+
+/// Vertical alignment options for text within a view.
+public enum RoughTextVerticalAlignment: Sendable {
+    /// Align text to the top edge.
+    case top
+    /// Center text vertically.
+    case center
+    /// Align text to the bottom edge.
+    case bottom
+}
+
+/// A text drawable that automatically positions within the available space.
+///
+/// This implements the `Fulfillable` protocol to receive the canvas size and
+/// transform the text path based on alignment and offset settings. By default,
+/// text is centered both horizontally and vertically.
+///
+/// This drawable uses typographic bounds (matching SwiftUI.Text sizing) rather
+/// than ink bounds, ensuring proper alignment and consistent sizing with standard text.
+///
+/// ## Example - Centered Text (Default)
+/// ```swift
+/// RoughView()
+///     .fill(.orange)
+///     .stroke(.black)
+///     .text("Hello!", font: .systemFont(ofSize: 48, weight: .bold))
+///     .frame(width: 300, height: 100)
+/// ```
+///
+/// ## Example - Custom Alignment
+/// ```swift
+/// RoughView()
+///     .fill(.blue)
+///     .text("Leading Top", font: .systemFont(ofSize: 24),
+///           horizontalAlignment: .leading, verticalAlignment: .top)
+///     .frame(width: 300, height: 100)
+/// ```
+///
+/// ## Example - With Offset
+/// ```swift
+/// RoughView()
+///     .fill(.green)
+///     .text("Offset", font: .systemFont(ofSize: 32), offsetX: 10, offsetY: -5)
+///     .frame(width: 200, height: 80)
+/// ```
+struct FullText: Drawable, Fulfillable {
+    var method: String { "path" }
+    var arguments: [Any] { [] }
+    
+    /// The CGPath containing the text glyph outlines.
+    private let cgPath: CGPath
+    
+    /// Typographic size of the text (matching SwiftUI.Text dimensions).
+    private let typographicSize: CGSize
+    
+    /// The font ascent (distance from baseline to top of tallest glyph).
+    private let ascent: CGFloat
+    
+    /// The origin of the ink bounds (minX, minY of the path's bounding box).
+    /// Used to normalize the path to start at (0, baseline).
+    private let inkOrigin: CGPoint
+    
+    /// Horizontal alignment within the canvas.
+    let horizontalAlignment: RoughTextHorizontalAlignment
+    
+    /// Vertical alignment within the canvas.
+    let verticalAlignment: RoughTextVerticalAlignment
+    
+    /// Additional horizontal offset in points (applied after alignment).
+    let offsetX: CGFloat
+    
+    /// Additional vertical offset in points (applied after alignment).
+    let offsetY: CGFloat
+    
+    /// Creates a positioned text drawable from a plain string and font.
+    ///
+    /// - Parameters:
+    ///   - string: The text to render.
+    ///   - font: The font to use for glyph extraction.
+    ///   - horizontalAlignment: Horizontal alignment within the view. Default is `.center`.
+    ///   - verticalAlignment: Vertical alignment within the view. Default is `.center`.
+    ///   - offsetX: Additional horizontal offset in points. Default is `0`.
+    ///   - offsetY: Additional vertical offset in points. Default is `0`.
+    init(
+        _ string: String,
+        font: UIFont,
+        horizontalAlignment: RoughTextHorizontalAlignment = .center,
+        verticalAlignment: RoughTextVerticalAlignment = .center,
+        offsetX: CGFloat = 0,
+        offsetY: CGFloat = 0
+    ) {
+        let (path, size, asc, origin) = TextPathConverter.pathSizeAndAscent(for: string, font: font)
+        self.cgPath = path
+        self.typographicSize = size
+        self.ascent = asc
+        self.inkOrigin = origin
+        self.horizontalAlignment = horizontalAlignment
+        self.verticalAlignment = verticalAlignment
+        self.offsetX = offsetX
+        self.offsetY = offsetY
+    }
+    
+    /// Creates a positioned text drawable from an attributed string.
+    ///
+    /// The attributed string can contain multiple fonts, sizes, and other
+    /// text attributes. All styling will be preserved in the glyph extraction.
+    ///
+    /// - Parameters:
+    ///   - attributedString: The attributed string to render.
+    ///   - horizontalAlignment: Horizontal alignment within the view. Default is `.center`.
+    ///   - verticalAlignment: Vertical alignment within the view. Default is `.center`.
+    ///   - offsetX: Additional horizontal offset in points. Default is `0`.
+    ///   - offsetY: Additional vertical offset in points. Default is `0`.
+    init(
+        attributedString: NSAttributedString,
+        horizontalAlignment: RoughTextHorizontalAlignment = .center,
+        verticalAlignment: RoughTextVerticalAlignment = .center,
+        offsetX: CGFloat = 0,
+        offsetY: CGFloat = 0
+    ) {
+        let (path, size, asc, origin) = TextPathConverter.pathSizeAndAscent(for: attributedString)
+        self.cgPath = path
+        self.typographicSize = size
+        self.ascent = asc
+        self.inkOrigin = origin
+        self.horizontalAlignment = horizontalAlignment
+        self.verticalAlignment = verticalAlignment
+        self.offsetX = offsetX
+        self.offsetY = offsetY
+    }
+    
+    /// Computes the SVG path string with alignment and offset transform applied.
+    ///
+    /// This method receives the canvas size and calculates the translation
+    /// needed to position the text according to the alignment and offset settings.
+    /// It uses typographic bounds for positioning to match SwiftUI.Text behavior.
+    ///
+    /// - Parameter size: The canvas/view size to position within.
+    /// - Returns: An array containing the transformed SVG path string.
+    func arguments(size: Size) -> [Any] {
+        // Handle edge cases
+        guard typographicSize.width > 0 && typographicSize.height > 0 else {
+            return [cgPath.toSVGPathStringFlippingY()]
+        }
+        
+        let canvasWidth = CGFloat(size.width)
+        let canvasHeight = CGFloat(size.height)
+        
+        // Use typographic size for positioning (matches SwiftUI.Text)
+        let textWidth = typographicSize.width
+        let textHeight = typographicSize.height
+        
+        // Calculate target position based on alignment
+        // This is where we want the top-left corner of the text's typographic box
+        let targetX: CGFloat
+        switch horizontalAlignment {
+        case .leading:
+            targetX = 0
+        case .center:
+            targetX = (canvasWidth - textWidth) / 2
+        case .trailing:
+            targetX = canvasWidth - textWidth
+        }
+        
+        let targetY: CGFloat
+        switch verticalAlignment {
+        case .top:
+            targetY = 0
+        case .center:
+            targetY = (canvasHeight - textHeight) / 2
+        case .bottom:
+            targetY = canvasHeight - textHeight
+        }
+        
+        // Apply user offsets
+        let finalX = targetX + offsetX
+        let finalY = targetY + offsetY
+        
+        // Build the transform:
+        //
+        // The path from CoreText has:
+        // - X coords: glyphs positioned starting from inkOrigin.x (may not be 0 due to side bearings)
+        // - Y coords: baseline at y=0, ascenders extend to positive Y (up to 'ascent'),
+        //             descenders extend to negative Y (down to '-descent')
+        //
+        // For screen coordinates (Y increases downward), we need to:
+        // 1. Normalize the path to start at x=0 by subtracting inkOrigin.x
+        // 2. Translate to the final position
+        // 3. Flip Y axis
+        //
+        // Combined transform:
+        // x' = x - inkOrigin.x + finalX
+        // y' = -y + (finalY + ascent)
+        //
+        // Using affine transform: [a b 0; c d 0; tx ty 1]
+        // x' = ax + cy + tx
+        // y' = bx + dy + ty
+        //
+        // We want:
+        // x' = x + (finalX - inkOrigin.x)  →  a=1, c=0, tx=finalX - inkOrigin.x
+        // y' = -y + (finalY + ascent)      →  b=0, d=-1, ty=finalY + ascent
+        
+        let transform = CGAffineTransform(
+            a: 1, b: 0,
+            c: 0, d: -1,
+            tx: finalX - inkOrigin.x, ty: finalY + ascent
+        )
+        
+        return [cgPath.toSVGPathString(applying: transform)]
+    }
+}
+
 protocol Fulfillable {
     func arguments(size: Size) -> [Any]
 }
@@ -290,6 +516,141 @@ struct FullCircle: Drawable, Fulfillable {
         let diameter = max(0, min(size.width, size.height) - inset * 2)
         return [
             size.width / 2, size.height / 2, diameter
+        ]
+    }
+}
+
+// MARK: - Rounded Rectangle
+
+/// A rectangle with rounded corners drawn with a rough, hand-drawn style.
+///
+/// The corner radius is applied uniformly to all four corners. If the radius
+/// exceeds half the width or height, it will be clamped to create a valid shape.
+public struct RoundedRectangle: Drawable {
+    public var method: String { "roundedRectangle" }
+
+    public var arguments: [Any] {
+        [
+            x, y, width, height, cornerRadius
+        ]
+    }
+
+    let x: Float
+    let y: Float
+    let width: Float
+    let height: Float
+    let cornerRadius: Float
+
+    /// Creates a rounded rectangle drawable.
+    ///
+    /// - Parameters:
+    ///   - x: The x-coordinate of the top-left corner.
+    ///   - y: The y-coordinate of the top-left corner.
+    ///   - width: The width of the rectangle.
+    ///   - height: The height of the rectangle.
+    ///   - cornerRadius: The radius of the rounded corners.
+    public init(
+        x: Float,
+        y: Float,
+        width: Float,
+        height: Float,
+        cornerRadius: Float
+    ) {
+        self.x = x
+        self.y = y
+        self.width = width
+        self.height = height
+        self.cornerRadius = cornerRadius
+    }
+}
+
+/// A full-size rounded rectangle that fills the available space.
+struct FullRoundedRectangle: Drawable, Fulfillable {
+    var method: String { "roundedRectangle" }
+    var arguments: [Any] { [] }
+    
+    let cornerRadius: Float
+    
+    init(cornerRadius: Float = 8) {
+        self.cornerRadius = cornerRadius
+    }
+    
+    func arguments(size: Size) -> [Any] {
+        // Inset slightly so the rough strokes (randomness + stroke width)
+        // don't get clipped by the canvas edges.
+        let inset: Float = 4
+        let w = max(0, size.width - inset * 2)
+        let h = max(0, size.height - inset * 2)
+        return [
+            inset, inset, w, h, cornerRadius
+        ]
+    }
+}
+
+// MARK: - Egg Shape
+
+/// An egg-shaped (ovoid) drawable with a rough, hand-drawn style.
+///
+/// The egg shape is asymmetric, with a wider bottom and narrower top (or vice versa
+/// depending on the tilt parameter). This creates a natural egg appearance.
+public struct EggShape: Drawable {
+    public var method: String { "egg" }
+
+    public var arguments: [Any] {
+        [
+            x, y, width, height, tilt
+        ]
+    }
+
+    let x: Float
+    let y: Float
+    let width: Float
+    let height: Float
+    let tilt: Float
+
+    /// Creates an egg-shaped drawable.
+    ///
+    /// - Parameters:
+    ///   - x: The x-coordinate of the center.
+    ///   - y: The y-coordinate of the center.
+    ///   - width: The width of the egg at its widest point.
+    ///   - height: The total height of the egg.
+    ///   - tilt: Controls the asymmetry of the egg. Positive values make the top narrower,
+    ///           negative values make the bottom narrower. Default is 0.3 for a natural egg shape.
+    public init(
+        x: Float,
+        y: Float,
+        width: Float,
+        height: Float,
+        tilt: Float = 0.3
+    ) {
+        self.x = x
+        self.y = y
+        self.width = width
+        self.height = height
+        self.tilt = tilt
+    }
+}
+
+/// A full-size egg that fills the available space.
+struct FullEgg: Drawable, Fulfillable {
+    var method: String { "egg" }
+    var arguments: [Any] { [] }
+    
+    let tilt: Float
+    
+    init(tilt: Float = 0.3) {
+        self.tilt = tilt
+    }
+    
+    func arguments(size: Size) -> [Any] {
+        // Inset slightly so the rough strokes (randomness + stroke width)
+        // don't get clipped by the canvas edges.
+        let inset: Float = 4
+        let w = max(0, size.width - inset * 2)
+        let h = max(0, size.height - inset * 2)
+        return [
+            size.width / 2, size.height / 2, w, h, tilt
         ]
     }
 }

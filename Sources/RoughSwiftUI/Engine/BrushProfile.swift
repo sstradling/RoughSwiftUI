@@ -302,5 +302,16 @@ public struct BrushProfile: Equatable, Hashable, Sendable {
         
         return hasNonCircularTip || hasVariableThickness
     }
+    
+    /// Returns a copy of this profile with uniform thickness.
+    /// Used for closed paths where tapered ends would cause visible seams.
+    func withUniformThickness() -> BrushProfile {
+        BrushProfile(
+            tip: tip,
+            thicknessProfile: .uniform,
+            cap: cap,
+            join: join
+        )
+    }
 }
 
