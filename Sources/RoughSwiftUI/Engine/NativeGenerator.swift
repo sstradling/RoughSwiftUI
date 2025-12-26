@@ -392,14 +392,19 @@ public final class NativeGenerator {
             // Pattern fill
             let bezier = UIBezierPath(svgPath: pathString)
             let bounds = bezier.cgPath.boundingBox
-            let polygonSize = [Float(bounds.width), Float(bounds.height)]
             
-            // Create a bounding box polygon for pattern
+            // Create a bounding box polygon for pattern that matches the actual path bounds
+            // The hachure lines need to be positioned at the same location as the path
+            let minX = Float(bounds.minX)
+            let minY = Float(bounds.minY)
+            let maxX = Float(bounds.maxX)
+            let maxY = Float(bounds.maxY)
+            
             let points: [[Float]] = [
-                [0, 0],
-                [polygonSize[0], 0],
-                [polygonSize[0], polygonSize[1]],
-                [0, polygonSize[1]]
+                [minX, minY],
+                [maxX, minY],
+                [maxX, maxY],
+                [minX, maxY]
             ]
             
             let filler = FillPatternFactory.filler(for: options.fillStyle)
@@ -408,7 +413,7 @@ public final class NativeGenerator {
                     type: .path2DPattern,
                     operations: fillSet.operations,
                     path: pathString,
-                    size: Size(width: polygonSize[0], height: polygonSize[1])
+                    size: Size(width: Float(bounds.width), height: Float(bounds.height))
                 )
             }
             return nil

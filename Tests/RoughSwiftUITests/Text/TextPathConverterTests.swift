@@ -62,4 +62,88 @@ final class TextPathConverterTests: XCTestCase {
         XCTAssertGreaterThan(largePath.boundingBox.height, smallPath.boundingBox.height)
     }
     
+    // MARK: - Typographic Size Tests
+    
+    func testTypographicSizeReturnsPositiveDimensions() {
+        let font = UIFont.systemFont(ofSize: 48)
+        let size = TextPathConverter.typographicSize(for: "Hello", font: font)
+        
+        XCTAssertGreaterThan(size.width, 0)
+        XCTAssertGreaterThan(size.height, 0)
+    }
+    
+    func testTypographicSizeWithAttributedString() {
+        let attributed = NSAttributedString(
+            string: "Test",
+            attributes: [.font: UIFont.boldSystemFont(ofSize: 36)]
+        )
+        let size = TextPathConverter.typographicSize(for: attributed)
+        
+        XCTAssertGreaterThan(size.width, 0)
+        XCTAssertGreaterThan(size.height, 0)
+    }
+    
+    func testTypographicMetricsReturnsAscentAndSize() {
+        let font = UIFont.systemFont(ofSize: 48)
+        let (size, ascent) = TextPathConverter.typographicMetrics(for: "Ay", font: font)
+        
+        XCTAssertGreaterThan(size.width, 0)
+        XCTAssertGreaterThan(size.height, 0)
+        XCTAssertGreaterThan(ascent, 0, "Ascent should be positive")
+        XCTAssertLessThanOrEqual(ascent, size.height, "Ascent should not exceed height")
+    }
+    
+    // MARK: - Path Size And Ascent Tests
+    
+    func testPathSizeAndAscentReturnsAllComponents() {
+        let font = UIFont.systemFont(ofSize: 48)
+        let (path, size, ascent, inkOrigin) = TextPathConverter.pathSizeAndAscent(for: "Hello", font: font)
+        
+        // Path should not be empty
+        XCTAssertFalse(path.isEmpty)
+        
+        // Size should have positive dimensions
+        XCTAssertGreaterThan(size.width, 0)
+        XCTAssertGreaterThan(size.height, 0)
+        
+        // Ascent should be positive
+        XCTAssertGreaterThan(ascent, 0)
+        
+        // Ink origin should match path's bounding box origin
+        let bounds = path.boundingBox
+        XCTAssertEqual(inkOrigin.x, bounds.minX, accuracy: 0.001)
+        XCTAssertEqual(inkOrigin.y, bounds.minY, accuracy: 0.001)
+    }
+    
+    func testPathSizeAndAscentWithAttributedString() {
+        let attributed = NSAttributedString(
+            string: "Test",
+            attributes: [.font: UIFont.boldSystemFont(ofSize: 36)]
+        )
+        let (path, size, ascent, inkOrigin) = TextPathConverter.pathSizeAndAscent(for: attributed)
+        
+        XCTAssertFalse(path.isEmpty)
+        XCTAssertGreaterThan(size.width, 0)
+        XCTAssertGreaterThan(size.height, 0)
+        XCTAssertGreaterThan(ascent, 0)
+        
+        // Ink origin should match path's bounding box origin
+        let bounds = path.boundingBox
+        XCTAssertEqual(inkOrigin.x, bounds.minX, accuracy: 0.001)
+        XCTAssertEqual(inkOrigin.y, bounds.minY, accuracy: 0.001)
+    }
+    
+    func testInkOriginAccountsForSideBearings() {
+        // Some fonts have side bearings (space before first glyph)
+        let font = UIFont.systemFont(ofSize: 48)
+        let (path, _, _, inkOrigin) = TextPathConverter.pathSizeAndAscent(for: "A", font: font)
+        
+        let bounds = path.boundingBox
+        
+        // The ink origin should accurately reflect where the glyph starts
+        // This may or may not be at x=0 depending on the font's side bearings
+        XCTAssertEqual(inkOrigin.x, bounds.minX, accuracy: 0.001)
+        XCTAssertEqual(inkOrigin.y, bounds.minY, accuracy: 0.001)
+    }
+    
 }

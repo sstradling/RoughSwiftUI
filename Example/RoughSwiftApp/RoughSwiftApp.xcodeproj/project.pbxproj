@@ -7,6 +7,51 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		BA129A6E2EFDEDAD0024F01F /* Fredoka-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A512EFDEDAD0024F01F /* Fredoka-Regular.ttf */; };
+		BA129A6F2EFDEDAD0024F01F /* Nunito-VariableFont_wght.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A6A2EFDEDAD0024F01F /* Nunito-VariableFont_wght.ttf */; };
+		BA129A702EFDEDAD0024F01F /* Fredoka_Expanded-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A422EFDEDAD0024F01F /* Fredoka_Expanded-Regular.ttf */; };
+		BA129A712EFDEDAD0024F01F /* Nunito-MediumItalic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A642EFDEDAD0024F01F /* Nunito-MediumItalic.ttf */; };
+		BA129A722EFDEDAD0024F01F /* Nunito-ExtraBoldItalic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A5D2EFDEDAD0024F01F /* Nunito-ExtraBoldItalic.ttf */; };
+		BA129A732EFDEDAD0024F01F /* Fredoka-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A502EFDEDAD0024F01F /* Fredoka-Medium.ttf */; };
+		BA129A742EFDEDAD0024F01F /* Fredoka_SemiExpanded-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A4B2EFDEDAD0024F01F /* Fredoka_SemiExpanded-Medium.ttf */; };
+		BA129A752EFDEDAD0024F01F /* Nunito-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A662EFDEDAD0024F01F /* Nunito-SemiBold.ttf */; };
+		BA129A762EFDEDAD0024F01F /* Fredoka_Expanded-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A3F2EFDEDAD0024F01F /* Fredoka_Expanded-Bold.ttf */; };
+		BA129A782EFDEDAD0024F01F /* Nunito-LightItalic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A622EFDEDAD0024F01F /* Nunito-LightItalic.ttf */; };
+		BA129A792EFDEDAD0024F01F /* Fredoka_Condensed-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A3A2EFDEDAD0024F01F /* Fredoka_Condensed-Bold.ttf */; };
+		BA129A7B2EFDEDAD0024F01F /* Nunito-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A5A2EFDEDAD0024F01F /* Nunito-Bold.ttf */; };
+		BA129A7C2EFDEDAD0024F01F /* Fredoka_Expanded-Light.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A402EFDEDAD0024F01F /* Fredoka_Expanded-Light.ttf */; };
+		BA129A7D2EFDEDAD0024F01F /* Fredoka_SemiCondensed-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A462EFDEDAD0024F01F /* Fredoka_SemiCondensed-Medium.ttf */; };
+		BA129A7E2EFDEDAD0024F01F /* Nunito-BlackItalic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A592EFDEDAD0024F01F /* Nunito-BlackItalic.ttf */; };
+		BA129A802EFDEDAD0024F01F /* Fredoka_SemiCondensed-Light.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A452EFDEDAD0024F01F /* Fredoka_SemiCondensed-Light.ttf */; };
+		BA129A812EFDEDAD0024F01F /* Nunito-Italic-VariableFont_wght.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A692EFDEDAD0024F01F /* Nunito-Italic-VariableFont_wght.ttf */; };
+		BA129A822EFDEDAD0024F01F /* Fredoka_Expanded-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A432EFDEDAD0024F01F /* Fredoka_Expanded-SemiBold.ttf */; };
+		BA129A832EFDEDAD0024F01F /* Nunito-Italic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A602EFDEDAD0024F01F /* Nunito-Italic.ttf */; };
+		BA129A842EFDEDAD0024F01F /* Fredoka_SemiCondensed-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A442EFDEDAD0024F01F /* Fredoka_SemiCondensed-Bold.ttf */; };
+		BA129A852EFDEDAD0024F01F /* Nunito-ExtraLightItalic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A5F2EFDEDAD0024F01F /* Nunito-ExtraLightItalic.ttf */; };
+		BA129A862EFDEDAD0024F01F /* Fredoka_Expanded-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A412EFDEDAD0024F01F /* Fredoka_Expanded-Medium.ttf */; };
+		BA129A872EFDEDAD0024F01F /* Fredoka-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A522EFDEDAD0024F01F /* Fredoka-SemiBold.ttf */; };
+		BA129A882EFDEDAD0024F01F /* Nunito-Light.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A612EFDEDAD0024F01F /* Nunito-Light.ttf */; };
+		BA129A892EFDEDAD0024F01F /* Fredoka_SemiExpanded-Light.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A4A2EFDEDAD0024F01F /* Fredoka_SemiExpanded-Light.ttf */; };
+		BA129A8A2EFDEDAD0024F01F /* Fredoka_SemiExpanded-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A4C2EFDEDAD0024F01F /* Fredoka_SemiExpanded-Regular.ttf */; };
+		BA129A8B2EFDEDAD0024F01F /* Fredoka_SemiExpanded-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A492EFDEDAD0024F01F /* Fredoka_SemiExpanded-Bold.ttf */; };
+		BA129A8C2EFDEDAD0024F01F /* Fredoka_Condensed-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A3E2EFDEDAD0024F01F /* Fredoka_Condensed-SemiBold.ttf */; };
+		BA129A8D2EFDEDAD0024F01F /* Fredoka_Condensed-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A3C2EFDEDAD0024F01F /* Fredoka_Condensed-Medium.ttf */; };
+		BA129A8E2EFDEDAD0024F01F /* Fredoka_SemiCondensed-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A472EFDEDAD0024F01F /* Fredoka_SemiCondensed-Regular.ttf */; };
+		BA129A8F2EFDEDAD0024F01F /* Nunito-SemiBoldItalic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A672EFDEDAD0024F01F /* Nunito-SemiBoldItalic.ttf */; };
+		BA129A902EFDEDAD0024F01F /* Nunito-ExtraLight.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A5E2EFDEDAD0024F01F /* Nunito-ExtraLight.ttf */; };
+		BA129A922EFDEDAD0024F01F /* Fredoka_SemiCondensed-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A482EFDEDAD0024F01F /* Fredoka_SemiCondensed-SemiBold.ttf */; };
+		BA129A932EFDEDAD0024F01F /* Nunito-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A652EFDEDAD0024F01F /* Nunito-Regular.ttf */; };
+		BA129A942EFDEDAD0024F01F /* Fredoka-VariableFont_wdth,wght.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A542EFDEDAD0024F01F /* Fredoka-VariableFont_wdth,wght.ttf */; };
+		BA129A952EFDEDAD0024F01F /* Fredoka-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A4E2EFDEDAD0024F01F /* Fredoka-Bold.ttf */; };
+		BA129A962EFDEDAD0024F01F /* Fredoka_Condensed-Light.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A3B2EFDEDAD0024F01F /* Fredoka_Condensed-Light.ttf */; };
+		BA129A972EFDEDAD0024F01F /* Nunito-Black.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A582EFDEDAD0024F01F /* Nunito-Black.ttf */; };
+		BA129A982EFDEDAD0024F01F /* Fredoka_SemiExpanded-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A4D2EFDEDAD0024F01F /* Fredoka_SemiExpanded-SemiBold.ttf */; };
+		BA129A992EFDEDAD0024F01F /* Nunito-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A632EFDEDAD0024F01F /* Nunito-Medium.ttf */; };
+		BA129A9A2EFDEDAD0024F01F /* Nunito-ExtraBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A5C2EFDEDAD0024F01F /* Nunito-ExtraBold.ttf */; };
+		BA129A9B2EFDEDAD0024F01F /* Fredoka_Condensed-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A3D2EFDEDAD0024F01F /* Fredoka_Condensed-Regular.ttf */; };
+		BA129A9C2EFDEDAD0024F01F /* Nunito-BoldItalic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A5B2EFDEDAD0024F01F /* Nunito-BoldItalic.ttf */; };
+		BA129A9D2EFDEDAD0024F01F /* Fredoka-Light.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A4F2EFDEDAD0024F01F /* Fredoka-Light.ttf */; };
+		BA15ADD22EE3CB9200421BAF /* RoughSwiftUI in Frameworks */ = {isa = PBXBuildFile; productRef = BA15ADD12EE3CB9200421BAF /* RoughSwiftUI */; };
 		BACB84922EDE7B8D00878DDE /* Inject in Frameworks */ = {isa = PBXBuildFile; productRef = BACB84912EDE7B8D00878DDE /* Inject */; };
 		BAEF0FA72EDE5CD800C46DE6 /* RoughSwiftUI in Frameworks */ = {isa = PBXBuildFile; productRef = BAEF0FA62EDE5CD800C46DE6 /* RoughSwiftUI */; };
 		D2C5CBF127EF63D200BBE97D /* RoughSwiftAppApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2C5CBF027EF63D200BBE97D /* RoughSwiftAppApp.swift */; };
@@ -17,6 +62,51 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		BA129A3A2EFDEDAD0024F01F /* Fredoka_Condensed-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Fredoka_Condensed-Bold.ttf"; sourceTree = "<group>"; };
+		BA129A3B2EFDEDAD0024F01F /* Fredoka_Condensed-Light.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Fredoka_Condensed-Light.ttf"; sourceTree = "<group>"; };
+		BA129A3C2EFDEDAD0024F01F /* Fredoka_Condensed-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Fredoka_Condensed-Medium.ttf"; sourceTree = "<group>"; };
+		BA129A3D2EFDEDAD0024F01F /* Fredoka_Condensed-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Fredoka_Condensed-Regular.ttf"; sourceTree = "<group>"; };
+		BA129A3E2EFDEDAD0024F01F /* Fredoka_Condensed-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Fredoka_Condensed-SemiBold.ttf"; sourceTree = "<group>"; };
+		BA129A3F2EFDEDAD0024F01F /* Fredoka_Expanded-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Fredoka_Expanded-Bold.ttf"; sourceTree = "<group>"; };
+		BA129A402EFDEDAD0024F01F /* Fredoka_Expanded-Light.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Fredoka_Expanded-Light.ttf"; sourceTree = "<group>"; };
+		BA129A412EFDEDAD0024F01F /* Fredoka_Expanded-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Fredoka_Expanded-Medium.ttf"; sourceTree = "<group>"; };
+		BA129A422EFDEDAD0024F01F /* Fredoka_Expanded-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Fredoka_Expanded-Regular.ttf"; sourceTree = "<group>"; };
+		BA129A432EFDEDAD0024F01F /* Fredoka_Expanded-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Fredoka_Expanded-SemiBold.ttf"; sourceTree = "<group>"; };
+		BA129A442EFDEDAD0024F01F /* Fredoka_SemiCondensed-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Fredoka_SemiCondensed-Bold.ttf"; sourceTree = "<group>"; };
+		BA129A452EFDEDAD0024F01F /* Fredoka_SemiCondensed-Light.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Fredoka_SemiCondensed-Light.ttf"; sourceTree = "<group>"; };
+		BA129A462EFDEDAD0024F01F /* Fredoka_SemiCondensed-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Fredoka_SemiCondensed-Medium.ttf"; sourceTree = "<group>"; };
+		BA129A472EFDEDAD0024F01F /* Fredoka_SemiCondensed-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Fredoka_SemiCondensed-Regular.ttf"; sourceTree = "<group>"; };
+		BA129A482EFDEDAD0024F01F /* Fredoka_SemiCondensed-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Fredoka_SemiCondensed-SemiBold.ttf"; sourceTree = "<group>"; };
+		BA129A492EFDEDAD0024F01F /* Fredoka_SemiExpanded-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Fredoka_SemiExpanded-Bold.ttf"; sourceTree = "<group>"; };
+		BA129A4A2EFDEDAD0024F01F /* Fredoka_SemiExpanded-Light.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Fredoka_SemiExpanded-Light.ttf"; sourceTree = "<group>"; };
+		BA129A4B2EFDEDAD0024F01F /* Fredoka_SemiExpanded-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Fredoka_SemiExpanded-Medium.ttf"; sourceTree = "<group>"; };
+		BA129A4C2EFDEDAD0024F01F /* Fredoka_SemiExpanded-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Fredoka_SemiExpanded-Regular.ttf"; sourceTree = "<group>"; };
+		BA129A4D2EFDEDAD0024F01F /* Fredoka_SemiExpanded-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Fredoka_SemiExpanded-SemiBold.ttf"; sourceTree = "<group>"; };
+		BA129A4E2EFDEDAD0024F01F /* Fredoka-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Fredoka-Bold.ttf"; sourceTree = "<group>"; };
+		BA129A4F2EFDEDAD0024F01F /* Fredoka-Light.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Fredoka-Light.ttf"; sourceTree = "<group>"; };
+		BA129A502EFDEDAD0024F01F /* Fredoka-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Fredoka-Medium.ttf"; sourceTree = "<group>"; };
+		BA129A512EFDEDAD0024F01F /* Fredoka-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Fredoka-Regular.ttf"; sourceTree = "<group>"; };
+		BA129A522EFDEDAD0024F01F /* Fredoka-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Fredoka-SemiBold.ttf"; sourceTree = "<group>"; };
+		BA129A542EFDEDAD0024F01F /* Fredoka-VariableFont_wdth,wght.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Fredoka-VariableFont_wdth,wght.ttf"; sourceTree = "<group>"; };
+		BA129A582EFDEDAD0024F01F /* Nunito-Black.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Nunito-Black.ttf"; sourceTree = "<group>"; };
+		BA129A592EFDEDAD0024F01F /* Nunito-BlackItalic.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Nunito-BlackItalic.ttf"; sourceTree = "<group>"; };
+		BA129A5A2EFDEDAD0024F01F /* Nunito-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Nunito-Bold.ttf"; sourceTree = "<group>"; };
+		BA129A5B2EFDEDAD0024F01F /* Nunito-BoldItalic.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Nunito-BoldItalic.ttf"; sourceTree = "<group>"; };
+		BA129A5C2EFDEDAD0024F01F /* Nunito-ExtraBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Nunito-ExtraBold.ttf"; sourceTree = "<group>"; };
+		BA129A5D2EFDEDAD0024F01F /* Nunito-ExtraBoldItalic.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Nunito-ExtraBoldItalic.ttf"; sourceTree = "<group>"; };
+		BA129A5E2EFDEDAD0024F01F /* Nunito-ExtraLight.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Nunito-ExtraLight.ttf"; sourceTree = "<group>"; };
+		BA129A5F2EFDEDAD0024F01F /* Nunito-ExtraLightItalic.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Nunito-ExtraLightItalic.ttf"; sourceTree = "<group>"; };
+		BA129A602EFDEDAD0024F01F /* Nunito-Italic.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Nunito-Italic.ttf"; sourceTree = "<group>"; };
+		BA129A612EFDEDAD0024F01F /* Nunito-Light.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Nunito-Light.ttf"; sourceTree = "<group>"; };
+		BA129A622EFDEDAD0024F01F /* Nunito-LightItalic.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Nunito-LightItalic.ttf"; sourceTree = "<group>"; };
+		BA129A632EFDEDAD0024F01F /* Nunito-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Nunito-Medium.ttf"; sourceTree = "<group>"; };
+		BA129A642EFDEDAD0024F01F /* Nunito-MediumItalic.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Nunito-MediumItalic.ttf"; sourceTree = "<group>"; };
+		BA129A652EFDEDAD0024F01F /* Nunito-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Nunito-Regular.ttf"; sourceTree = "<group>"; };
+		BA129A662EFDEDAD0024F01F /* Nunito-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Nunito-SemiBold.ttf"; sourceTree = "<group>"; };
+		BA129A672EFDEDAD0024F01F /* Nunito-SemiBoldItalic.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Nunito-SemiBoldItalic.ttf"; sourceTree = "<group>"; };
+		BA129A692EFDEDAD0024F01F /* Nunito-Italic-VariableFont_wght.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Nunito-Italic-VariableFont_wght.ttf"; sourceTree = "<group>"; };
+		BA129A6A2EFDEDAD0024F01F /* Nunito-VariableFont_wght.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Nunito-VariableFont_wght.ttf"; sourceTree = "<group>"; };
+		BA129A9E2EFDEDF10024F01F /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		D2C5CBED27EF63D200BBE97D /* RoughSwiftApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RoughSwiftApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D2C5CBF027EF63D200BBE97D /* RoughSwiftAppApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoughSwiftAppApp.swift; sourceTree = "<group>"; };
 		D2C5CBF227EF63D200BBE97D /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -30,6 +120,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				BA15ADD22EE3CB9200421BAF /* RoughSwiftUI in Frameworks */,
 				BAEF0FA72EDE5CD800C46DE6 /* RoughSwiftUI in Frameworks */,
 				BACB84922EDE7B8D00878DDE /* Inject in Frameworks */,
 			);
@@ -38,6 +129,80 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		BA129A532EFDEDAD0024F01F /* static */ = {
+			isa = PBXGroup;
+			children = (
+				BA129A3A2EFDEDAD0024F01F /* Fredoka_Condensed-Bold.ttf */,
+				BA129A3B2EFDEDAD0024F01F /* Fredoka_Condensed-Light.ttf */,
+				BA129A3C2EFDEDAD0024F01F /* Fredoka_Condensed-Medium.ttf */,
+				BA129A3D2EFDEDAD0024F01F /* Fredoka_Condensed-Regular.ttf */,
+				BA129A3E2EFDEDAD0024F01F /* Fredoka_Condensed-SemiBold.ttf */,
+				BA129A3F2EFDEDAD0024F01F /* Fredoka_Expanded-Bold.ttf */,
+				BA129A402EFDEDAD0024F01F /* Fredoka_Expanded-Light.ttf */,
+				BA129A412EFDEDAD0024F01F /* Fredoka_Expanded-Medium.ttf */,
+				BA129A422EFDEDAD0024F01F /* Fredoka_Expanded-Regular.ttf */,
+				BA129A432EFDEDAD0024F01F /* Fredoka_Expanded-SemiBold.ttf */,
+				BA129A442EFDEDAD0024F01F /* Fredoka_SemiCondensed-Bold.ttf */,
+				BA129A452EFDEDAD0024F01F /* Fredoka_SemiCondensed-Light.ttf */,
+				BA129A462EFDEDAD0024F01F /* Fredoka_SemiCondensed-Medium.ttf */,
+				BA129A472EFDEDAD0024F01F /* Fredoka_SemiCondensed-Regular.ttf */,
+				BA129A482EFDEDAD0024F01F /* Fredoka_SemiCondensed-SemiBold.ttf */,
+				BA129A492EFDEDAD0024F01F /* Fredoka_SemiExpanded-Bold.ttf */,
+				BA129A4A2EFDEDAD0024F01F /* Fredoka_SemiExpanded-Light.ttf */,
+				BA129A4B2EFDEDAD0024F01F /* Fredoka_SemiExpanded-Medium.ttf */,
+				BA129A4C2EFDEDAD0024F01F /* Fredoka_SemiExpanded-Regular.ttf */,
+				BA129A4D2EFDEDAD0024F01F /* Fredoka_SemiExpanded-SemiBold.ttf */,
+				BA129A4E2EFDEDAD0024F01F /* Fredoka-Bold.ttf */,
+				BA129A4F2EFDEDAD0024F01F /* Fredoka-Light.ttf */,
+				BA129A502EFDEDAD0024F01F /* Fredoka-Medium.ttf */,
+				BA129A512EFDEDAD0024F01F /* Fredoka-Regular.ttf */,
+				BA129A522EFDEDAD0024F01F /* Fredoka-SemiBold.ttf */,
+			);
+			path = static;
+			sourceTree = "<group>";
+		};
+		BA129A572EFDEDAD0024F01F /* Fredoka */ = {
+			isa = PBXGroup;
+			children = (
+				BA129A532EFDEDAD0024F01F /* static */,
+				BA129A542EFDEDAD0024F01F /* Fredoka-VariableFont_wdth,wght.ttf */,
+			);
+			path = Fredoka;
+			sourceTree = "<group>";
+		};
+		BA129A682EFDEDAD0024F01F /* static */ = {
+			isa = PBXGroup;
+			children = (
+				BA129A582EFDEDAD0024F01F /* Nunito-Black.ttf */,
+				BA129A592EFDEDAD0024F01F /* Nunito-BlackItalic.ttf */,
+				BA129A5A2EFDEDAD0024F01F /* Nunito-Bold.ttf */,
+				BA129A5B2EFDEDAD0024F01F /* Nunito-BoldItalic.ttf */,
+				BA129A5C2EFDEDAD0024F01F /* Nunito-ExtraBold.ttf */,
+				BA129A5D2EFDEDAD0024F01F /* Nunito-ExtraBoldItalic.ttf */,
+				BA129A5E2EFDEDAD0024F01F /* Nunito-ExtraLight.ttf */,
+				BA129A5F2EFDEDAD0024F01F /* Nunito-ExtraLightItalic.ttf */,
+				BA129A602EFDEDAD0024F01F /* Nunito-Italic.ttf */,
+				BA129A612EFDEDAD0024F01F /* Nunito-Light.ttf */,
+				BA129A622EFDEDAD0024F01F /* Nunito-LightItalic.ttf */,
+				BA129A632EFDEDAD0024F01F /* Nunito-Medium.ttf */,
+				BA129A642EFDEDAD0024F01F /* Nunito-MediumItalic.ttf */,
+				BA129A652EFDEDAD0024F01F /* Nunito-Regular.ttf */,
+				BA129A662EFDEDAD0024F01F /* Nunito-SemiBold.ttf */,
+				BA129A672EFDEDAD0024F01F /* Nunito-SemiBoldItalic.ttf */,
+			);
+			path = static;
+			sourceTree = "<group>";
+		};
+		BA129A6D2EFDEDAD0024F01F /* Nunito */ = {
+			isa = PBXGroup;
+			children = (
+				BA129A682EFDEDAD0024F01F /* static */,
+				BA129A692EFDEDAD0024F01F /* Nunito-Italic-VariableFont_wght.ttf */,
+				BA129A6A2EFDEDAD0024F01F /* Nunito-VariableFont_wght.ttf */,
+			);
+			path = Nunito;
+			sourceTree = "<group>";
+		};
 		D2C5CBE427EF63D200BBE97D = {
 			isa = PBXGroup;
 			children = (
@@ -59,8 +224,11 @@
 		D2C5CBEF27EF63D200BBE97D /* RoughSwiftApp */ = {
 			isa = PBXGroup;
 			children = (
+				BA129A9E2EFDEDF10024F01F /* Info.plist */,
 				D2C5CBF027EF63D200BBE97D /* RoughSwiftAppApp.swift */,
 				D2C5CBF227EF63D200BBE97D /* ContentView.swift */,
+				BA129A572EFDEDAD0024F01F /* Fredoka */,
+				BA129A6D2EFDEDAD0024F01F /* Nunito */,
 				D2C5CC0427EFCDA100BBE97D /* PlayView.swift */,
 				D2C5CBF427EF63D500BBE97D /* Assets.xcassets */,
 				D2C5CBF627EF63D500BBE97D /* Preview Content */,
@@ -109,6 +277,7 @@
 			packageProductDependencies = (
 				BAEF0FA62EDE5CD800C46DE6 /* RoughSwiftUI */,
 				BACB84912EDE7B8D00878DDE /* Inject */,
+				BA15ADD12EE3CB9200421BAF /* RoughSwiftUI */,
 			);
 			productName = RoughSwiftApp;
 			productReference = D2C5CBED27EF63D200BBE97D /* RoughSwiftApp.app */;
@@ -139,8 +308,8 @@
 			);
 			mainGroup = D2C5CBE427EF63D200BBE97D;
 			packageReferences = (
-				BAEF0FA52EDE5CD800C46DE6 /* XCLocalSwiftPackageReference "../../../RoughSwiftUI" */,
 				BACB84902EDE7B8D00878DDE /* XCRemoteSwiftPackageReference "Inject" */,
+				BA15ADD02EE3CB9200421BAF /* XCLocalSwiftPackageReference "../../../RoughSwiftUI" */,
 			);
 			productRefGroup = D2C5CBEE27EF63D200BBE97D /* Products */;
 			projectDirPath = "";
@@ -156,6 +325,50 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				BA129A6E2EFDEDAD0024F01F /* Fredoka-Regular.ttf in Resources */,
+				BA129A6F2EFDEDAD0024F01F /* Nunito-VariableFont_wght.ttf in Resources */,
+				BA129A702EFDEDAD0024F01F /* Fredoka_Expanded-Regular.ttf in Resources */,
+				BA129A712EFDEDAD0024F01F /* Nunito-MediumItalic.ttf in Resources */,
+				BA129A722EFDEDAD0024F01F /* Nunito-ExtraBoldItalic.ttf in Resources */,
+				BA129A732EFDEDAD0024F01F /* Fredoka-Medium.ttf in Resources */,
+				BA129A742EFDEDAD0024F01F /* Fredoka_SemiExpanded-Medium.ttf in Resources */,
+				BA129A752EFDEDAD0024F01F /* Nunito-SemiBold.ttf in Resources */,
+				BA129A762EFDEDAD0024F01F /* Fredoka_Expanded-Bold.ttf in Resources */,
+				BA129A782EFDEDAD0024F01F /* Nunito-LightItalic.ttf in Resources */,
+				BA129A792EFDEDAD0024F01F /* Fredoka_Condensed-Bold.ttf in Resources */,
+				BA129A7B2EFDEDAD0024F01F /* Nunito-Bold.ttf in Resources */,
+				BA129A7C2EFDEDAD0024F01F /* Fredoka_Expanded-Light.ttf in Resources */,
+				BA129A7D2EFDEDAD0024F01F /* Fredoka_SemiCondensed-Medium.ttf in Resources */,
+				BA129A7E2EFDEDAD0024F01F /* Nunito-BlackItalic.ttf in Resources */,
+				BA129A802EFDEDAD0024F01F /* Fredoka_SemiCondensed-Light.ttf in Resources */,
+				BA129A812EFDEDAD0024F01F /* Nunito-Italic-VariableFont_wght.ttf in Resources */,
+				BA129A822EFDEDAD0024F01F /* Fredoka_Expanded-SemiBold.ttf in Resources */,
+				BA129A832EFDEDAD0024F01F /* Nunito-Italic.ttf in Resources */,
+				BA129A842EFDEDAD0024F01F /* Fredoka_SemiCondensed-Bold.ttf in Resources */,
+				BA129A852EFDEDAD0024F01F /* Nunito-ExtraLightItalic.ttf in Resources */,
+				BA129A862EFDEDAD0024F01F /* Fredoka_Expanded-Medium.ttf in Resources */,
+				BA129A872EFDEDAD0024F01F /* Fredoka-SemiBold.ttf in Resources */,
+				BA129A882EFDEDAD0024F01F /* Nunito-Light.ttf in Resources */,
+				BA129A892EFDEDAD0024F01F /* Fredoka_SemiExpanded-Light.ttf in Resources */,
+				BA129A8A2EFDEDAD0024F01F /* Fredoka_SemiExpanded-Regular.ttf in Resources */,
+				BA129A8B2EFDEDAD0024F01F /* Fredoka_SemiExpanded-Bold.ttf in Resources */,
+				BA129A8C2EFDEDAD0024F01F /* Fredoka_Condensed-SemiBold.ttf in Resources */,
+				BA129A8D2EFDEDAD0024F01F /* Fredoka_Condensed-Medium.ttf in Resources */,
+				BA129A8E2EFDEDAD0024F01F /* Fredoka_SemiCondensed-Regular.ttf in Resources */,
+				BA129A8F2EFDEDAD0024F01F /* Nunito-SemiBoldItalic.ttf in Resources */,
+				BA129A902EFDEDAD0024F01F /* Nunito-ExtraLight.ttf in Resources */,
+				BA129A922EFDEDAD0024F01F /* Fredoka_SemiCondensed-SemiBold.ttf in Resources */,
+				BA129A932EFDEDAD0024F01F /* Nunito-Regular.ttf in Resources */,
+				BA129A942EFDEDAD0024F01F /* Fredoka-VariableFont_wdth,wght.ttf in Resources */,
+				BA129A952EFDEDAD0024F01F /* Fredoka-Bold.ttf in Resources */,
+				BA129A962EFDEDAD0024F01F /* Fredoka_Condensed-Light.ttf in Resources */,
+				BA129A972EFDEDAD0024F01F /* Nunito-Black.ttf in Resources */,
+				BA129A982EFDEDAD0024F01F /* Fredoka_SemiExpanded-SemiBold.ttf in Resources */,
+				BA129A992EFDEDAD0024F01F /* Nunito-Medium.ttf in Resources */,
+				BA129A9A2EFDEDAD0024F01F /* Nunito-ExtraBold.ttf in Resources */,
+				BA129A9B2EFDEDAD0024F01F /* Fredoka_Condensed-Regular.ttf in Resources */,
+				BA129A9C2EFDEDAD0024F01F /* Nunito-BoldItalic.ttf in Resources */,
+				BA129A9D2EFDEDAD0024F01F /* Fredoka-Light.ttf in Resources */,
 				D2C5CBF827EF63D500BBE97D /* Preview Assets.xcassets in Resources */,
 				D2C5CBF527EF63D500BBE97D /* Assets.xcassets in Resources */,
 			);
@@ -302,6 +515,7 @@
 				DEVELOPMENT_TEAM = 949D6SDPYY;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = RoughSwiftApp/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -332,6 +546,7 @@
 				DEVELOPMENT_TEAM = 949D6SDPYY;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = RoughSwiftApp/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -375,7 +590,7 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		BAEF0FA52EDE5CD800C46DE6 /* XCLocalSwiftPackageReference "../../../RoughSwiftUI" */ = {
+		BA15ADD02EE3CB9200421BAF /* XCLocalSwiftPackageReference "../../../RoughSwiftUI" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = ../../../RoughSwiftUI;
 		};
@@ -393,6 +608,10 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		BA15ADD12EE3CB9200421BAF /* RoughSwiftUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = RoughSwiftUI;
+		};
 		BACB84912EDE7B8D00878DDE /* Inject */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = BACB84902EDE7B8D00878DDE /* XCRemoteSwiftPackageReference "Inject" */;

@@ -403,4 +403,62 @@ final class TextDrawableTests: XCTestCase {
         }
     }
     
+    // MARK: - Ink Origin Tests
+    
+    func testFullTextAccountsForInkOrigin() {
+        // When using ink bounds, the path may not start at x=0
+        // FullText should normalize this so text renders at the correct position
+        let fullText = FullText("A", font: UIFont.systemFont(ofSize: 48), horizontalAlignment: .leading)
+        let canvasSize = Size(width: 300, height: 100)
+        
+        let args = fullText.arguments(size: canvasSize)
+        let svgPath = args[0] as! String
+        
+        // The path should contain move commands
+        XCTAssertTrue(svgPath.contains("M"))
+        
+        // Extract the first X coordinate - with ink origin normalization,
+        // leading-aligned text should start near x=0
+        if let range = svgPath.range(of: "M([\\d.-]+)", options: .regularExpression) {
+            let match = String(svgPath[range])
+            if let x = Float(match.dropFirst()) {
+                // Leading-aligned text should be near left edge (close to 0)
+                // The ink origin subtraction should normalize the path
+                XCTAssertGreaterThanOrEqual(x, 0, "Text should not be at negative X")
+                XCTAssertLessThan(x, 50, "Leading text should be near left edge after ink origin normalization")
+            }
+        }
+    }
+    
+    func testFullTextInkOriginDoesNotClipLeftStrokes() {
+        // Test that the ink origin normalization prevents left-side clipping
+        let fullText = FullText("H", font: UIFont.systemFont(ofSize: 48), horizontalAlignment: .leading)
+        let canvasSize = Size(width: 200, height: 100)
+        
+        let args = fullText.arguments(size: canvasSize)
+        let svgPath = args[0] as! String
+        
+        // All X coordinates in the path should be >= 0
+        // This ensures no clipping on the left side
+        let pattern = "M([\\d.-]+)|L([\\d.-]+)|C([\\d.-]+)"
+        let regex = try? NSRegularExpression(pattern: pattern)
+        let range = NSRange(svgPath.startIndex..., in: svgPath)
+        
+        if let matches = regex?.matches(in: svgPath, range: range) {
+            for match in matches {
+                // Check each captured group for X coordinates
+                for i in 1..<match.numberOfRanges {
+                    if let matchRange = Range(match.range(at: i), in: svgPath) {
+                        let xStr = String(svgPath[matchRange])
+                        if let x = Float(xStr) {
+                            // X coordinates should not be significantly negative
+                            // (small negative values due to roughness are acceptable)
+                            XCTAssertGreaterThan(x, -10, "X coordinate should not be significantly negative (would clip left strokes)")
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
 }

@@ -291,6 +291,9 @@ public enum RoughTextVerticalAlignment: Sendable {
 /// transform the text path based on alignment and offset settings. By default,
 /// text is centered both horizontally and vertically.
 ///
+/// This drawable uses typographic bounds (matching SwiftUI.Text sizing) rather
+/// than ink bounds, ensuring proper alignment and consistent sizing with standard text.
+///
 /// ## Example - Centered Text (Default)
 /// ```swift
 /// RoughView()
@@ -323,8 +326,15 @@ struct FullText: Drawable, Fulfillable {
     /// The CGPath containing the text glyph outlines.
     private let cgPath: CGPath
     
-    /// Cached bounding box of the text path.
-    private let bounds: CGRect
+    /// Typographic size of the text (matching SwiftUI.Text dimensions).
+    private let typographicSize: CGSize
+    
+    /// The font ascent (distance from baseline to top of tallest glyph).
+    private let ascent: CGFloat
+    
+    /// The origin of the ink bounds (minX, minY of the path's bounding box).
+    /// Used to normalize the path to start at (0, baseline).
+    private let inkOrigin: CGPoint
     
     /// Horizontal alignment within the canvas.
     let horizontalAlignment: RoughTextHorizontalAlignment
@@ -355,8 +365,11 @@ struct FullText: Drawable, Fulfillable {
         offsetX: CGFloat = 0,
         offsetY: CGFloat = 0
     ) {
-        self.cgPath = TextPathConverter.path(from: string, font: font)
-        self.bounds = cgPath.boundingBox
+        let (path, size, asc, origin) = TextPathConverter.pathSizeAndAscent(for: string, font: font)
+        self.cgPath = path
+        self.typographicSize = size
+        self.ascent = asc
+        self.inkOrigin = origin
         self.horizontalAlignment = horizontalAlignment
         self.verticalAlignment = verticalAlignment
         self.offsetX = offsetX
@@ -381,8 +394,11 @@ struct FullText: Drawable, Fulfillable {
         offsetX: CGFloat = 0,
         offsetY: CGFloat = 0
     ) {
-        self.cgPath = TextPathConverter.path(from: attributedString)
-        self.bounds = cgPath.boundingBox
+        let (path, size, asc, origin) = TextPathConverter.pathSizeAndAscent(for: attributedString)
+        self.cgPath = path
+        self.typographicSize = size
+        self.ascent = asc
+        self.inkOrigin = origin
         self.horizontalAlignment = horizontalAlignment
         self.verticalAlignment = verticalAlignment
         self.offsetX = offsetX
@@ -393,58 +409,78 @@ struct FullText: Drawable, Fulfillable {
     ///
     /// This method receives the canvas size and calculates the translation
     /// needed to position the text according to the alignment and offset settings.
+    /// It uses typographic bounds for positioning to match SwiftUI.Text behavior.
     ///
     /// - Parameter size: The canvas/view size to position within.
     /// - Returns: An array containing the transformed SVG path string.
     func arguments(size: Size) -> [Any] {
-        // Handle edge cases where bounds are invalid
-        guard !bounds.isNull && !bounds.isInfinite && bounds.width > 0 && bounds.height > 0 else {
+        // Handle edge cases
+        guard typographicSize.width > 0 && typographicSize.height > 0 else {
             return [cgPath.toSVGPathStringFlippingY()]
         }
         
         let canvasWidth = CGFloat(size.width)
         let canvasHeight = CGFloat(size.height)
-        let textWidth = bounds.width
-        let textHeight = bounds.height
         
-        // Small inset to prevent clipping at edges
-        let inset: CGFloat = 4
+        // Use typographic size for positioning (matches SwiftUI.Text)
+        let textWidth = typographicSize.width
+        let textHeight = typographicSize.height
         
-        // Calculate target center position based on alignment
-        // We position the text by its center point, then transform accordingly
-        let targetCenterX: CGFloat
+        // Calculate target position based on alignment
+        // This is where we want the top-left corner of the text's typographic box
+        let targetX: CGFloat
         switch horizontalAlignment {
         case .leading:
-            targetCenterX = inset + textWidth / 2
+            targetX = 0
         case .center:
-            targetCenterX = canvasWidth / 2
+            targetX = (canvasWidth - textWidth) / 2
         case .trailing:
-            targetCenterX = canvasWidth - inset - textWidth / 2
+            targetX = canvasWidth - textWidth
         }
         
-        let targetCenterY: CGFloat
+        let targetY: CGFloat
         switch verticalAlignment {
         case .top:
-            targetCenterY = inset + textHeight / 2
+            targetY = 0
         case .center:
-            targetCenterY = canvasHeight / 2
+            targetY = (canvasHeight - textHeight) / 2
         case .bottom:
-            targetCenterY = canvasHeight - inset - textHeight / 2
+            targetY = canvasHeight - textHeight
         }
         
-        // Apply user offsets (offsets are relative to the center)
-        let finalCenterX = targetCenterX + offsetX
-        let finalCenterY = targetCenterY + offsetY
+        // Apply user offsets
+        let finalX = targetX + offsetX
+        let finalY = targetY + offsetY
         
-        // Build the transform to position text center at finalCenterX/finalCenterY:
-        // Transform operations are applied in reverse order:
-        // 1. Translate bounds center to origin (using midX/midY)
-        // 2. Flip Y axis (CoreText uses bottom-up, SVG uses top-down)
-        // 3. Translate to target center position
-        var transform = CGAffineTransform.identity
-        transform = transform.translatedBy(x: finalCenterX, y: finalCenterY)
-        transform = transform.scaledBy(x: 1, y: -1)
-        transform = transform.translatedBy(x: -bounds.midX, y: -bounds.midY)
+        // Build the transform:
+        //
+        // The path from CoreText has:
+        // - X coords: glyphs positioned starting from inkOrigin.x (may not be 0 due to side bearings)
+        // - Y coords: baseline at y=0, ascenders extend to positive Y (up to 'ascent'),
+        //             descenders extend to negative Y (down to '-descent')
+        //
+        // For screen coordinates (Y increases downward), we need to:
+        // 1. Normalize the path to start at x=0 by subtracting inkOrigin.x
+        // 2. Translate to the final position
+        // 3. Flip Y axis
+        //
+        // Combined transform:
+        // x' = x - inkOrigin.x + finalX
+        // y' = -y + (finalY + ascent)
+        //
+        // Using affine transform: [a b 0; c d 0; tx ty 1]
+        // x' = ax + cy + tx
+        // y' = bx + dy + ty
+        //
+        // We want:
+        // x' = x + (finalX - inkOrigin.x)  →  a=1, c=0, tx=finalX - inkOrigin.x
+        // y' = -y + (finalY + ascent)      →  b=0, d=-1, ty=finalY + ascent
+        
+        let transform = CGAffineTransform(
+            a: 1, b: 0,
+            c: 0, d: -1,
+            tx: finalX - inkOrigin.x, ty: finalY + ascent
+        )
         
         return [cgPath.toSVGPathString(applying: transform)]
     }

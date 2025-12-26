@@ -138,9 +138,11 @@ public struct SwiftUIRenderer {
             if let clipPath = command.clipPath {
                 var clippedContext = context
                 if command.inverseClip {
-                    clippedContext.clip(to: clipPath, options: .inverse)
+                    // Use even-odd rule with inverse for proper handling of paths with holes
+                    clippedContext.clip(to: clipPath, style: SwiftUI.FillStyle(eoFill: true), options: .inverse)
                 } else {
-                    clippedContext.clip(to: clipPath)
+                    // Use even-odd fill rule for clipping to properly handle paths with holes (like glyph counters)
+                    clippedContext.clip(to: clipPath, style: SwiftUI.FillStyle(eoFill: true))
                 }
                 renderCommand(command, in: &clippedContext)
             } else {
@@ -163,9 +165,11 @@ public struct SwiftUIRenderer {
                 style: strokeStyle
             )
         case let .fill(color):
+            // Use even-odd fill rule for proper handling of paths with holes (like glyph counters)
             context.fill(
                 command.path,
-                with: .color(color)
+                with: .color(color),
+                style: SwiftUI.FillStyle(eoFill: true)
             )
         }
     }
@@ -305,26 +309,54 @@ private extension SwiftUIRenderer {
             ]
 
         case .path2DPattern:
-            // Approximate the pattern fill by stroking the SVG path with fill color.
+            // Pattern fill: render hachure lines clipped to the shape path
             guard let svgPathString = set.path else { return [] }
-            let basePath = SwiftPath(UIBezierPath(svgPath: svgPathString).cgPath)
-            let path: SwiftPath
+            
+            // Build the hachure lines path from operations
+            let hachureBasePath = SwiftPath.from(operationSet: set)
+            
+            // Build the clip path from the SVG path string
+            let shapeBasePath = SwiftPath(UIBezierPath(svgPath: svgPathString).cgPath)
+            
+            // Apply transforms if needed
+            let hachurePath: SwiftPath
+            let shapePath: SwiftPath
             if let transform = svgTransform {
-                path = basePath.applying(transform)
+                hachurePath = hachureBasePath.applying(transform)
+                shapePath = shapeBasePath.applying(transform)
             } else {
-                path = basePath
+                hachurePath = hachureBasePath
+                shapePath = shapeBasePath
             }
+            
             let color = Color(options.fill).opacity(Double(options.fillOpacity))
-            return [
-                RoughRenderCommand(
-                    path: path,
-                    style: .stroke(color, lineWidth: CGFloat(effectiveFillWeight)),
-                    clipPath: clipPath,
-                    inverseClip: inverseClip,
-                    cap: options.strokeCap,
-                    join: options.strokeJoin
-                )
-            ]
+            
+            // If there are hachure operations, render them clipped to the shape
+            // Otherwise fall back to stroking the shape (for stroke alignment behavior)
+            if !set.operations.isEmpty {
+                return [
+                    RoughRenderCommand(
+                        path: hachurePath,
+                        style: .stroke(color, lineWidth: CGFloat(effectiveFillWeight)),
+                        clipPath: shapePath,
+                        inverseClip: false,
+                        cap: options.strokeCap,
+                        join: options.strokeJoin
+                    )
+                ]
+            } else {
+                // Fallback: stroke the shape path (used for stroke alignment tests)
+                return [
+                    RoughRenderCommand(
+                        path: shapePath,
+                        style: .stroke(color, lineWidth: CGFloat(effectiveFillWeight)),
+                        clipPath: clipPath,
+                        inverseClip: inverseClip,
+                        cap: options.strokeCap,
+                        join: options.strokeJoin
+                    )
+                ]
+            }
         }
     }
     
@@ -499,19 +531,19 @@ private extension SwiftUIRenderer {
         let sh = frame.height / bounds.height
         let scaleFactor = min(sw, sh)
         
-        // Build transform: scale around center, then move to frame center
-        let centerX = bounds.midX
-        let centerY = bounds.midY
+        // Calculate the scaled dimensions
+        let scaledWidth = bounds.width * scaleFactor
+        let scaledHeight = bounds.height * scaleFactor
         
-        var transform = CGAffineTransform.identity
-        // Translate center of bounds to origin
-        transform = transform.translatedBy(x: -centerX, y: -centerY)
-        // Scale
-        transform = transform.scaledBy(x: scaleFactor, y: scaleFactor)
-        // Translate to center of frame
-        transform = transform.translatedBy(x: frame.midX / scaleFactor, y: frame.midY / scaleFactor)
+        // Calculate offset to center the scaled path in the frame
+        // After scaling, bounds.origin maps to (bounds.minX * scale, bounds.minY * scale)
+        // We want it to map to ((frame.width - scaledWidth) / 2, (frame.height - scaledHeight) / 2)
+        let offsetX = (frame.width - scaledWidth) / 2 - bounds.minX * scaleFactor
+        let offsetY = (frame.height - scaledHeight) / 2 - bounds.minY * scaleFactor
         
-        return transform
+        // Build transform: scale then translate
+        // For point p: new_p = (p.x * scale + offsetX, p.y * scale + offsetY)
+        return CGAffineTransform(a: scaleFactor, b: 0, c: 0, d: scaleFactor, tx: offsetX, ty: offsetY)
     }
 }
 
