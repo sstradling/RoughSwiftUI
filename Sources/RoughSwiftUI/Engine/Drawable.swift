@@ -321,10 +321,14 @@ public enum RoughTextVerticalAlignment: Sendable {
 /// ```
 struct FullText: Drawable, Fulfillable {
     var method: String { "path" }
-    var arguments: [Any] { [] }
+    /// Cache key that distinguishes different text glyphs.
+    /// Needed because the drawable arguments are otherwise size-only for text.
+    var arguments: [Any] { [cacheKey] }
     
     /// The CGPath containing the text glyph outlines.
     private let cgPath: CGPath
+    /// Stable cache key derived from the glyph path.
+    private let cacheKey: String
     
     /// Typographic size of the text (matching SwiftUI.Text dimensions).
     private let typographicSize: CGSize
@@ -367,6 +371,7 @@ struct FullText: Drawable, Fulfillable {
     ) {
         let (path, size, asc, origin) = TextPathConverter.pathSizeAndAscent(for: string, font: font)
         self.cgPath = path
+        self.cacheKey = path.toSVGPathStringFlippingY()
         self.typographicSize = size
         self.ascent = asc
         self.inkOrigin = origin
@@ -396,6 +401,7 @@ struct FullText: Drawable, Fulfillable {
     ) {
         let (path, size, asc, origin) = TextPathConverter.pathSizeAndAscent(for: attributedString)
         self.cgPath = path
+        self.cacheKey = path.toSVGPathStringFlippingY()
         self.typographicSize = size
         self.ascent = asc
         self.inkOrigin = origin
