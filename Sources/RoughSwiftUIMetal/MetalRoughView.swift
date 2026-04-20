@@ -262,7 +262,9 @@ private struct MetalRibbonLayer: UIViewRepresentable {
                 colorStart: draw.appearance.colorStart,
                 colorEnd: draw.appearance.colorEnd,
                 opacityScale: draw.appearance.opacityScale,
-                edgeSoftness: draw.appearance.edgeSoftness
+                edgeSoftness: draw.appearance.edgeSoftness,
+                textureMode: draw.appearance.textureMode,
+                textureParams: draw.appearance.textureParams
             )
             encoder.setVertexBytes(&uniforms, length: MemoryLayout<RibbonUniforms>.stride, index: 1)
             encoder.setFragmentBytes(&uniforms, length: MemoryLayout<RibbonUniforms>.stride, index: 1)
@@ -279,7 +281,9 @@ private struct MetalRibbonLayer: UIViewRepresentable {
 // MARK: - Uniforms
 
 /// Mirrors the `RibbonUniforms` struct in `RibbonShaders.metal`. Field order
-/// and packing must match exactly.
+/// and packing must match exactly. The trailing `_pad` field aligns
+/// `textureParams` (a `float4` in MSL, alignment 16) on the 16-byte
+/// boundary after the two preceding `Int32`s.
 struct RibbonUniforms {
     var projectionScale: SIMD2<Float>
     var projectionOffset: SIMD2<Float>
@@ -287,4 +291,7 @@ struct RibbonUniforms {
     var colorEnd: SIMD4<Float>
     var opacityScale: Float
     var edgeSoftness: Float
+    var textureMode: Int32
+    var _pad: Int32 = 0
+    var textureParams: SIMD4<Float>
 }
