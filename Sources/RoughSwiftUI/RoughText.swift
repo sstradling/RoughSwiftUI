@@ -46,6 +46,19 @@ public struct RoughText: View {
     
     /// The typographic size of the text (matching SwiftUI.Text dimensions).
     private let textSize: CGSize
+
+    /// Public accessor for the underlying `RoughView`, used by alternate
+    /// renderer modules (e.g. `RoughSwiftUIMetal`) that need to wrap
+    /// the same drawables in a different host view. Returns the
+    /// configured view *without* the typographic frame applied; callers
+    /// are responsible for re-applying `frame(width:height:)` using
+    /// `typographicSize` to match the default `RoughText` layout.
+    public var underlyingRoughView: RoughView { roughView }
+
+    /// Public accessor for the typographic size of this text. Pair with
+    /// `underlyingRoughView` when hosting `RoughText` content in an
+    /// alternate renderer.
+    public var typographicSize: CGSize { textSize }
     
     /// Create a rough text view from a plain string and font.
     ///
