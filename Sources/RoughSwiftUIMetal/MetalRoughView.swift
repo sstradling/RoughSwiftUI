@@ -51,6 +51,14 @@ public struct MetalRoughView: View {
 
 // MARK: - SwiftUI fill layer
 
+/// Shared device-less `MetalRoughRenderer` used by the SwiftUI fill
+/// canvas. The fill canvas only needs the renderer's command-splitting
+/// logic — it never invokes any Metal API — so we can use a single
+/// global instance rather than allocating one per draw. Constructing a
+/// renderer with `device: nil` is cheap (no pipeline cache); reusing
+/// one avoids the per-frame allocation in tight redraw loops.
+private let sharedFillRenderer = MetalRoughRenderer(device: nil)
+
 /// SwiftUI canvas that draws only the *fill* commands of each drawable,
 /// leaving strokes for the Metal layer above.
 private struct FillCanvas: View {
@@ -63,14 +71,13 @@ private struct FillCanvas: View {
             guard renderSize.width > 0, renderSize.height > 0 else { return }
 
             let generator = Engine.shared.generator(size: renderSize)
-            let renderer = MetalRoughRenderer(device: nil) // device unused for fills
             for drawable in roughView.drawables {
                 guard let drawing = generator.generate(
                     drawable: drawable,
                     options: roughView.options
                 ) else { continue }
 
-                let commands = renderer.commands(
+                let commands = sharedFillRenderer.commands(
                     for: drawing,
                     options: roughView.options,
                     in: renderSize
@@ -167,12 +174,15 @@ private struct MetalRibbonLayer: UIViewRepresentable {
             }
         }
 
-        // `draw(in:)` is invoked on the main run loop because the MTKView is
-        // paused and we trigger redraws via `setNeedsDisplay()`. The body
-        // touches main-actor-isolated state (`Engine.shared`, `roughView`),
-        // so we hop back onto the main actor explicitly to keep strict
-        // concurrency checking happy.
+        // `draw(in:)` is invoked on the main run loop because the MTKView
+        // is paused and we trigger redraws via `setNeedsDisplay()`, which
+        // schedules a draw on the next display tick on the main thread.
+        // The body touches main-actor-isolated state (`Engine.shared`,
+        // `roughView`), so we assert main-thread before assuming isolation —
+        // this turns a silent corruption (if MetalKit ever calls us off-main)
+        // into a loud crash with a useful stack trace.
         nonisolated func draw(in view: MTKView) {
+            dispatchPrecondition(condition: .onQueue(.main))
             MainActor.assumeIsolated {
                 self.drawOnMain(in: view)
             }
