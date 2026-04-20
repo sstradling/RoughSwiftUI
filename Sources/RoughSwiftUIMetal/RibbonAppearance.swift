@@ -13,11 +13,27 @@ import simd
 import UIKit
 import RoughSwiftUI
 
+/// Texture mode enum encoded as an integer for the fragment shader.
+///
+/// The Metal shader reads this from `RibbonUniforms.textureMode` and
+/// switches on it to select between smooth, pencil grain, chalk grain,
+/// ink bleed, and watercolor variants. Values must match
+/// `kBrushTexture*` constants in `RibbonShaders.metal`.
+enum RibbonTextureMode: Int32 {
+    case smooth     = 0
+    case pencil     = 1
+    case chalk      = 2
+    case ink        = 3
+    case watercolor = 4
+}
+
 /// Inputs to the gradient-ribbon fragment shader for a single stroke.
 ///
 /// The shader interpolates `colorStart` to `colorEnd` along the stroke,
-/// multiplies the result by `opacityScale`, and applies a soft edge across
-/// the ribbon width controlled by `edgeSoftness`.
+/// multiplies the result by `opacityScale`, applies a soft edge across
+/// the ribbon width controlled by `edgeSoftness`, and finally modulates
+/// alpha (and color) according to the procedural texture in
+/// `textureMode` / `textureParams`.
 public struct RibbonAppearance: Equatable {
     /// Color at `s = 0` (start of the stroke).
     public var colorStart: SIMD4<Float>
@@ -34,16 +50,37 @@ public struct RibbonAppearance: Equatable {
     /// out to the boundary at `|t| = 1`.
     public var edgeSoftness: Float
 
+    /// Texture mode integer; matches `RibbonTextureMode` raw values and
+    /// the `kBrushTexture*` constants in `RibbonShaders.metal`.
+    public var textureMode: Int32
+
+    /// Texture parameters packed for the shader. Layout depends on
+    /// `textureMode`:
+    ///
+    /// - `.smooth`: unused.
+    /// - `.pencil`, `.chalk`: `(grain, density, 0, 0)`.
+    /// - `.ink`: `(bleed, 0, 0, 0)`.
+    /// - `.watercolor`: `(edgeDarkness, bleed, 0, 0)`.
+    ///
+    /// Carrying parameters as a `SIMD4<Float>` keeps the uniform buffer
+    /// layout stable across texture modes; adding a new mode only
+    /// requires picking new component slots and updating the shader.
+    public var textureParams: SIMD4<Float>
+
     public init(
         colorStart: SIMD4<Float>,
         colorEnd: SIMD4<Float>,
         opacityScale: Float,
-        edgeSoftness: Float
+        edgeSoftness: Float,
+        textureMode: Int32 = RibbonTextureMode.smooth.rawValue,
+        textureParams: SIMD4<Float> = .zero
     ) {
         self.colorStart = colorStart
         self.colorEnd = colorEnd
         self.opacityScale = opacityScale
         self.edgeSoftness = edgeSoftness
+        self.textureMode = textureMode
+        self.textureParams = textureParams
     }
 
     /// Builds an appearance from base library `Options`.
@@ -98,11 +135,34 @@ public struct RibbonAppearance: Equatable {
             baseEnd.x, baseEnd.y, baseEnd.z, baseEnd.w * alphaEnd
         )
 
+        // Map BrushTexture into shader-friendly mode + params.
+        let mode: RibbonTextureMode
+        let params: SIMD4<Float>
+        switch options.brushTexture {
+        case .smooth:
+            mode = .smooth
+            params = .zero
+        case .pencil(let grain, let density):
+            mode = .pencil
+            params = SIMD4<Float>(grain, density, 0, 0)
+        case .chalk(let grain, let density):
+            mode = .chalk
+            params = SIMD4<Float>(grain, density, 0, 0)
+        case .ink(let bleed):
+            mode = .ink
+            params = SIMD4<Float>(bleed, 0, 0, 0)
+        case .watercolor(let edgeDarkness, let bleed):
+            mode = .watercolor
+            params = SIMD4<Float>(edgeDarkness, bleed, 0, 0)
+        }
+
         return RibbonAppearance(
             colorStart: colorStart,
             colorEnd: colorEnd,
             opacityScale: options.strokeOpacity,
-            edgeSoftness: options.strokeEdgeSoftness
+            edgeSoftness: options.strokeEdgeSoftness,
+            textureMode: mode.rawValue,
+            textureParams: params
         )
     }
 }
