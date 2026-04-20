@@ -84,11 +84,15 @@ public enum RibbonMeshBuilder {
     /// - Parameters:
     ///   - operations: The operations from a `.path` operation set.
     ///   - baseWidth: Stroke width in points.
+    ///   - widthJitter: Optional along-stroke width modulation, applied
+    ///     at vertex generation time so the resulting triangle strip
+    ///     visibly varies in width along the path.
     /// - Returns: A `RibbonMesh`, or `nil` if the operations describe no
     ///   drawable geometry.
     public static func build(
         operations: [Operation],
-        baseWidth: CGFloat
+        baseWidth: CGFloat,
+        widthJitter: WidthJitter? = nil
     ) -> RibbonMesh? {
         let elements = operationsToElements(operations)
         guard !elements.isEmpty else { return nil }
@@ -96,7 +100,7 @@ public enum RibbonMeshBuilder {
         let subpaths = splitIntoSubpaths(elements)
         var meshes: [RibbonMesh] = []
         for sub in subpaths {
-            if let m = buildSubpath(sub, baseWidth: baseWidth) {
+            if let m = buildSubpath(sub, baseWidth: baseWidth, widthJitter: widthJitter) {
                 meshes.append(m)
             }
         }
@@ -108,7 +112,8 @@ public enum RibbonMeshBuilder {
 
     private static func buildSubpath(
         _ elements: [PathElement],
-        baseWidth: CGFloat
+        baseWidth: CGFloat,
+        widthJitter: WidthJitter? = nil
     ) -> RibbonMesh? {
         let isClosed = elements.contains { if case .closeSubpath = $0 { return true } else { return false } }
 
@@ -118,13 +123,19 @@ public enum RibbonMeshBuilder {
         let totalLength = samples.last?.cumulativeLength ?? 0
         guard totalLength > 0 else { return nil }
 
-        let halfWidth = baseWidth / 2
+        let baseHalfWidth = baseWidth / 2
+        // Match the StrokeToFillConverter min-width clamp so visible
+        // geometry stays consistent between renderers.
+        let minHalfWidth: CGFloat = 0.05
 
         var vertices: [RibbonVertex] = []
         vertices.reserveCapacity(samples.count * 2 + (isClosed ? 2 : 0))
 
         for sample in samples {
             let n = sample.tangentAngle + .pi / 2
+            // Apply along-stroke width jitter if configured.
+            let widthMul = widthJitter?.multiplier(at: sample.cumulativeLength) ?? 1
+            let halfWidth = max(minHalfWidth, baseHalfWidth * widthMul)
             let dx = cos(n) * halfWidth
             let dy = sin(n) * halfWidth
             let s = Float(sample.cumulativeLength / totalLength)

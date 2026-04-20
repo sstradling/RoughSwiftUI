@@ -24,6 +24,10 @@ struct PathSample {
     
     /// The normalized position along the path (0 = start, 1 = end).
     let t: CGFloat
+
+    /// Distance from the start of the (sub)path in points. Used by
+    /// `WidthJitter` for arc-length-indexed noise sampling.
+    let cumulativeLength: CGFloat
     
     /// The perpendicular (normal) direction at this point.
     var normalAngle: CGFloat {
@@ -62,11 +66,13 @@ struct StrokeToFillConverter {
     ///   - path: The source SwiftUI path to convert.
     ///   - baseWidth: The base stroke width.
     ///   - profile: The brush profile to apply.
+    ///   - widthJitter: Optional along-stroke width modulation.
     /// - Returns: A filled path representing the variable-width stroke.
     static func convert(
         path: SwiftUI.Path,
         baseWidth: CGFloat,
-        profile: BrushProfile
+        profile: BrushProfile,
+        widthJitter: WidthJitter? = nil
     ) -> SwiftUI.Path {
         measurePerformance(PathOpsSignpost.strokeToFill, log: RoughPerformanceLog.pathOps, metadata: "width=\(Int(baseWidth))") {
             // Extract path elements
@@ -82,7 +88,8 @@ struct StrokeToFillConverter {
                 if let outlinePath = convertSubpath(
                     subpath,
                     baseWidth: baseWidth,
-                    profile: profile
+                    profile: profile,
+                    widthJitter: widthJitter
                 ) {
                     resultPath.addPath(outlinePath)
                 }
@@ -98,11 +105,13 @@ struct StrokeToFillConverter {
     ///   - operations: Array of engine operations (Move, LineTo, etc.).
     ///   - baseWidth: The base stroke width.
     ///   - profile: The brush profile to apply.
+    ///   - widthJitter: Optional along-stroke width modulation.
     /// - Returns: A filled path representing the variable-width stroke.
     static func convert(
         operations: [Operation],
         baseWidth: CGFloat,
-        profile: BrushProfile
+        profile: BrushProfile,
+        widthJitter: WidthJitter? = nil
     ) -> SwiftUI.Path {
         measurePerformance(PathOpsSignpost.strokeToFill, log: RoughPerformanceLog.pathOps, metadata: "ops=\(operations.count)") {
             // Convert operations to path elements
@@ -118,7 +127,8 @@ struct StrokeToFillConverter {
                 if let outlinePath = convertSubpath(
                     subpath,
                     baseWidth: baseWidth,
-                    profile: profile
+                    profile: profile,
+                    widthJitter: widthJitter
                 ) {
                     resultPath.addPath(outlinePath)
                 }
@@ -219,24 +229,26 @@ struct StrokeToFillConverter {
     private static func convertSubpath(
         _ elements: [PathElement],
         baseWidth: CGFloat,
-        profile: BrushProfile
+        profile: BrushProfile,
+        widthJitter: WidthJitter? = nil
     ) -> SwiftUI.Path? {
         // Check if subpath is closed
         let isClosed = elements.contains { element in
             if case .closeSubpath = element { return true }
             return false
         }
-        
+
         // Sample the subpath
         let samples = sampleSubpath(elements)
         guard samples.count >= 2 else { return nil }
-        
+
         // Generate outline points
         let (leftPoints, rightPoints) = generateOutlinePoints(
             samples: samples,
             baseWidth: baseWidth,
             profile: profile,
-            isClosed: isClosed
+            isClosed: isClosed,
+            widthJitter: widthJitter
         )
         
         guard !leftPoints.isEmpty, !rightPoints.isEmpty else { return nil }
@@ -378,7 +390,8 @@ struct StrokeToFillConverter {
             PathSample(
                 point: raw.point,
                 tangentAngle: raw.tangentAngle,
-                t: raw.accumulatedLength * inverseTotalLength
+                t: raw.accumulatedLength * inverseTotalLength,
+                cumulativeLength: raw.accumulatedLength
             )
         }
     }
@@ -418,36 +431,46 @@ struct StrokeToFillConverter {
         samples: [PathSample],
         baseWidth: CGFloat,
         profile: BrushProfile,
-        isClosed: Bool = false
+        isClosed: Bool = false,
+        widthJitter: WidthJitter? = nil
     ) -> (left: [CGPoint], right: [CGPoint]) {
         var leftPoints: [CGPoint] = []
         var rightPoints: [CGPoint] = []
-        
+
         // For closed paths, we need uniform thickness (not tapered)
         // to ensure the path joins seamlessly
         let effectiveProfile = isClosed ? profile.withUniformThickness() : profile
-        
+
+        // Minimum width clamp: prevents the ribbon from collapsing to
+        // zero (which would punch invisible holes) when WidthJitter
+        // amplitude pushes the multiplier below zero.
+        let minWidth: CGFloat = 0.1
+
         for sample in samples {
-            // Calculate thickness at this point
+            // Calculate thickness at this point.
             let thicknessMultiplier = effectiveProfile.thicknessProfile.multiplier(at: sample.t)
-            
-            // Calculate effective width based on brush tip and direction
-            let effectiveWidth = effectiveProfile.tip.effectiveWidth(
-                baseWidth: baseWidth * thicknessMultiplier,
+
+            // Apply along-stroke width jitter if configured.
+            let jitterMultiplier = widthJitter?.multiplier(at: sample.cumulativeLength) ?? 1
+
+            // Calculate effective width based on brush tip and direction.
+            let scaledBaseWidth = baseWidth * thicknessMultiplier * jitterMultiplier
+            let effectiveWidth = max(minWidth, effectiveProfile.tip.effectiveWidth(
+                baseWidth: scaledBaseWidth,
                 strokeAngle: sample.tangentAngle
-            )
-            
+            ))
+
             let halfWidth = effectiveWidth / 2
-            
-            // Calculate offset points perpendicular to the stroke
+
+            // Calculate offset points perpendicular to the stroke.
             let normalAngle = sample.normalAngle
             let dx = cos(normalAngle) * halfWidth
             let dy = sin(normalAngle) * halfWidth
-            
+
             leftPoints.append(CGPoint(x: sample.point.x + dx, y: sample.point.y + dy))
             rightPoints.append(CGPoint(x: sample.point.x - dx, y: sample.point.y - dy))
         }
-        
+
         return (leftPoints, rightPoints)
     }
     

@@ -25,6 +25,7 @@ RoughSwiftUI allows you to easily create shapes in a hand-drawn, sketchy, comic 
 - [x] Scribble fill pattern for continuous zig-zag fills
 - [x] Optional Metal renderer for stroke ribbons (`RoughSwiftUIMetal` product)
 - [x] Procedural stroke textures (pencil/chalk/ink/watercolor) on the Metal renderer
+- [x] Along-stroke width jitter for subtle hand-drawn wobble (both renderers)
 - [ ] SVG elliptical arc
 
 ## Basic

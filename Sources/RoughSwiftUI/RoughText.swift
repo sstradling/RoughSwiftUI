@@ -260,6 +260,22 @@ public extension RoughText {
         RoughText(roughView: roughView.watercolorTexture(edgeDarkness: edgeDarkness, bleed: bleed),
                   textSize: textSize)
     }
+
+    /// Sets along-stroke width jitter. See `RoughView.strokeWidthJitter(_:)`.
+    func strokeWidthJitter(_ value: WidthJitter?) -> Self {
+        RoughText(roughView: roughView.strokeWidthJitter(value),
+                  textSize: textSize)
+    }
+
+    /// Convenience: along-stroke width jitter with explicit parameters.
+    func strokeWidthJitter(
+        amount: CGFloat = 0.15,
+        frequency: CGFloat = 0.05,
+        seed: UInt64 = 0
+    ) -> Self {
+        RoughText(roughView: roughView.strokeWidthJitter(amount: amount, frequency: frequency, seed: seed),
+                  textSize: textSize)
+    }
     
     /// Set the fill style (hachure, crossHatch, dots, etc.).
     func fillStyle(_ value: FillStyle) -> Self {

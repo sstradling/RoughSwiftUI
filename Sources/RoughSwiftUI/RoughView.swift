@@ -326,6 +326,33 @@ public extension RoughView {
     func watercolorTexture(edgeDarkness: Float = 0.5, bleed: Float = 0.4) -> Self {
         brushTexture(.watercolor(edgeDarkness: edgeDarkness, bleed: bleed))
     }
+
+    /// Sets along-stroke width jitter — deterministic noise that
+    /// modulates the stroke width along its arc length. Subtle hand-drawn
+    /// wobble that makes constant-width lines feel hand-drawn instead of
+    /// mechanical.
+    ///
+    /// Honored by both the SwiftUI renderer (via `StrokeToFillConverter`)
+    /// and the Metal renderer (via `RibbonMeshBuilder`). Pass `nil` to
+    /// reset to a uniform-width stroke.
+    ///
+    /// - Parameter value: The jitter descriptor, or `nil` for none.
+    /// - Returns: The view with the jitter applied.
+    func strokeWidthJitter(_ value: WidthJitter?) -> Self {
+        var v = self
+        v.options.strokeWidthJitter = value
+        return v
+    }
+
+    /// Convenience: along-stroke width jitter with explicit parameters.
+    /// See `WidthJitter` for parameter documentation.
+    func strokeWidthJitter(
+        amount: CGFloat = 0.15,
+        frequency: CGFloat = 0.05,
+        seed: UInt64 = 0
+    ) -> Self {
+        strokeWidthJitter(WidthJitter(amount: amount, frequency: frequency, seed: seed))
+    }
     
     /// Set the fill opacity (transparency).
     ///
