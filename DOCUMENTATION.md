@@ -13,9 +13,10 @@
 7. [Text Rendering](#text-rendering)
 8. [Brush Profiles](#brush-profiles)
 9. [Animation](#animation)
-10. [Engine & Caching](#engine--caching)
-11. [Common Patterns](#common-patterns)
-12. [Troubleshooting](#troubleshooting)
+10. [Stroke Continuity](#stroke-continuity)
+11. [Engine & Caching](#engine--caching)
+12. [Common Patterns](#common-patterns)
+13. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -745,6 +746,75 @@ AnimatedRoughView(
 }
 .frame(width: 150, height: 100)
 ```
+
+---
+
+## Stroke Continuity
+
+### Overview
+
+Native curved shapes (circle, ellipse, arc, egg, rounded-rectangle
+corners, polygons, lines) can be generated in one of two modes:
+
+| Mode | How outlines are built |
+|---|---|
+| `.legacy` (default) | Sample `curveStepCount` points around the perimeter and stitch them with Catmull-Rom→Bezier conversion. Each "step" becomes its own short cubic — increasing `curveStepCount` for smoothness produces *more* visible polygon facets. |
+| `.continuous` | Emit a small fixed number of true cubic Beziers that match the underlying parametric shape. A circle is 4 cubics per pass; polygon edges share endpoints with their neighbors so a closed shape is one continuous subpath. |
+
+The default is `.legacy` so existing visual snapshots and downstream
+tests are unaffected. Opt in per-view with `RoughView.strokeContinuity(_:)`.
+
+### When to use `.continuous`
+
+- Drawing large curved shapes where polygonal facets become visible.
+- Wanting a closed subpath (one `Move` + cubics + `Close`) for downstream
+  consumers like `StrokeToFillConverter` or the Metal `RibbonMeshBuilder`.
+- Reducing the number of operations in cached drawings (a `.continuous`
+  circle uses ~8 cubics vs. ~18 for `.legacy` defaults — smaller cache
+  entries and faster path-element iteration during animation).
+
+### Scope
+
+Affects: `line`, `rectangle`, `ellipse`, `circle`, `linearPath`,
+`polygon`, `arc`, `roundedRectangle`, `egg`.
+
+Does **not** affect SVG paths or text. SVG and text glyphs are rendered
+through `SVGPathRenderer`, which already preserves the authored cubic and
+quadratic Beziers — only their endpoints and control handles are
+jittered. The `strokeContinuity` setting is exposed on `RoughText` for
+API parity but has no effect on glyph rendering.
+
+### Example
+
+```swift
+RoughView()
+    .stroke(.systemTeal)
+    .strokeWidth(3)
+    .strokeContinuity(.continuous)        // opt in
+    .circle()
+    .frame(width: 200, height: 200)
+```
+
+### Reference
+
+```swift
+public enum StrokeContinuity: Equatable, Hashable, Sendable {
+    case legacy
+    case continuous
+}
+
+public extension RoughView {
+    func strokeContinuity(_ value: StrokeContinuity) -> Self
+}
+
+public extension RoughText {
+    func strokeContinuity(_ value: StrokeContinuity) -> Self
+}
+```
+
+The mode is part of `Options.cacheHash`, so legacy and continuous
+drawings of the same shape are cached as separate entries (no stale
+results when toggling at runtime).
 
 ---
 
