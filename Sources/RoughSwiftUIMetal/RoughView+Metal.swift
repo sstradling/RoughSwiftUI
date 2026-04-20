@@ -12,6 +12,34 @@
 import SwiftUI
 import RoughSwiftUI
 
+public extension RoughText {
+    /// Wraps this `RoughText` in a Metal-accelerated host view.
+    ///
+    /// Equivalent to `RoughView.metalAccelerated()`: stroke ribbons are
+    /// rendered through the Metal pipeline while fills (hachure,
+    /// scribble, dots, SVG fills) continue through SwiftUI `Canvas`.
+    /// Text glyphs are SVG paths under the hood, so Metal stroke
+    /// rendering applies to the glyph outlines exactly as it does to
+    /// any other SVG path.
+    ///
+    /// The returned view preserves the text's typographic size, so it
+    /// composes with surrounding SwiftUI layout exactly the same as a
+    /// default `RoughText`.
+    ///
+    /// See `RoughView.metalAccelerated()` for the full tradeoff
+    /// discussion (loss of SwiftUI compositing on the stroke layer,
+    /// `ImageRenderer` snapshot caveats, no-op on devices without Metal).
+    ///
+    /// - Returns: A view rendering this text via the hybrid SwiftUI +
+    ///   Metal pipeline, sized to match the underlying typographic
+    ///   bounds.
+    func metalAccelerated() -> some View {
+        underlyingRoughView
+            .metalAccelerated()
+            .frame(width: typographicSize.width, height: typographicSize.height)
+    }
+}
+
 public extension RoughView {
     /// Wraps this `RoughView` in a Metal-accelerated host view.
     ///

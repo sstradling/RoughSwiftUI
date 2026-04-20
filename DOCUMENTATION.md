@@ -917,6 +917,12 @@ RoughView()
     .circle()
     .frame(width: 200, height: 200)
 
+// Metal-accelerated text with gradient stroke
+RoughText("Hello", font: .systemFont(ofSize: 64, weight: .bold))
+    .strokeGradient(from: .red, to: .blue)
+    .strokeWidth(2)
+    .metalAccelerated()
+
 // Higher-amplitude wobble at faster cadence
 RoughView()
     .stroke(.brown)
@@ -985,6 +991,7 @@ runtime correctly invalidates cached drawings.
 | `strokeEdgeSoftness` | **Ignored** (SwiftUI `Canvas` has no per-pixel control) | Per-pixel `smoothstep` falloff |
 | `brushTexture` | **Ignored** (no procedural noise primitive in `Canvas`) | Per-pixel procedural texture |
 | `strokeWidthJitter` | Routes through `StrokeToFillConverter` to vary per-sample width | Modulates per-vertex width in `RibbonMeshBuilder` |
+| `brushProfile` (calligraphic / tapered) | `StrokeToFillConverter` produces a single filled outline | **Falls back to SwiftUI** — Metal mesh shader can't reproduce calligraphic/tapered widths, so the SwiftUI fill layer renders the border instead |
 
 The first two fields reach feature parity between renderers — opting
 into Metal is no longer required to get gradient or tapered strokes;

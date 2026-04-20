@@ -63,18 +63,24 @@ public final class MetalRoughRenderer: RoughRenderer {
 
     /// Returns the SwiftUI commands for the *non-border* parts of the drawing.
     ///
-    /// Border (`OperationSet.type == .path`) sets are intentionally omitted:
+    /// Border (`OperationSet.type == .path`) sets are normally omitted —
     /// those are rendered by the Metal pipeline via
     /// `metalDrawList(for:options:in:)`. Fill sketches, fill paths, SVG fills,
-    /// and scribble fills all stay on the SwiftUI layer because they share
-    /// the existing fill-pattern code (hachure, scribble, dots, …) which is
-    /// not yet ported to Metal.
+    /// and scribble fills always stay on the SwiftUI layer because they
+    /// share the existing fill-pattern code (hachure, scribble, dots, …)
+    /// which is not yet ported to Metal.
+    ///
+    /// **Brush profile fallback**: when `Options.brushProfile` requires
+    /// stroke-to-fill conversion (calligraphic tip, taper profile, etc.),
+    /// the Metal mesh shader cannot reproduce the resulting filled
+    /// outline. In that case the border is *kept* in the SwiftUI command
+    /// list (so the SwiftUI fallback's `StrokeToFillConverter` runs) and
+    /// `metalDrawList` returns no draws for the border.
     ///
     /// Implementation: ask the fallback renderer for the commands of the
-    /// full drawing and the commands of the border-only subset, then return
-    /// the difference (preserving order). This delegates all SVG transform,
-    /// stroke-alignment, and scribble-fill bookkeeping to `SwiftUIRenderer`
-    /// without re-implementing it here.
+    /// full drawing; if the border isn't being routed to Metal, return
+    /// the full list. Otherwise drop the border-only commands from the
+    /// tail (the standard renderer emits border commands last).
     public func commands(
         for drawing: Drawing,
         options: Options,
@@ -85,14 +91,25 @@ public final class MetalRoughRenderer: RoughRenderer {
         let borderSets = drawing.sets.filter { $0.type == .path }
         guard !borderSets.isEmpty else { return allCommands }
 
-        // Ask the fallback how many commands the border sets alone produce.
-        // The standard renderer emits border commands as the *last* sets in
-        // its result (after scribble fill and after fill sketches), so we
-        // can drop that many from the tail.
+        // If the border is NOT going to Metal (because the brush profile
+        // requires a filled outline), keep the SwiftUI border commands.
+        guard bordersHandledByMetal(options: options) else {
+            return allCommands
+        }
+
+        // Drop the border commands; Metal will render them.
         let borderOnly = Drawing(shape: drawing.shape, sets: borderSets, options: options)
         let borderCount = fallback.commands(for: borderOnly, options: options, in: size).count
         guard borderCount > 0, borderCount <= allCommands.count else { return allCommands }
         return Array(allCommands.prefix(allCommands.count - borderCount))
+    }
+
+    /// Returns `true` iff border (`.path`) operation sets should be
+    /// rendered by the Metal pipeline rather than the SwiftUI fallback.
+    /// Returns `false` when the brush profile requires stroke-to-fill
+    /// conversion, since the Metal mesh shader doesn't reproduce that.
+    func bordersHandledByMetal(options: Options) -> Bool {
+        return !options.brushProfile.requiresCustomRendering
     }
 
     /// Render via the SwiftUI fallback renderer. Provided for protocol
@@ -116,12 +133,18 @@ public final class MetalRoughRenderer: RoughRenderer {
     }
 
     /// Returns the list of stroke ribbons to be rendered by the Metal pipeline.
+    ///
+    /// Returns an empty list when no Metal device is available or when
+    /// the brush profile requires stroke-to-fill conversion (in that
+    /// case the border is rendered by the SwiftUI fallback layer
+    /// underneath; see `bordersHandledByMetal(options:)`).
     public func metalDrawList(
         for drawing: Drawing,
         options: Options,
         in size: CGSize
     ) -> [RibbonDraw] {
         guard pipelineCache != nil else { return [] }
+        guard bordersHandledByMetal(options: options) else { return [] }
 
         var draws: [RibbonDraw] = []
         draws.reserveCapacity(drawing.sets.count)
