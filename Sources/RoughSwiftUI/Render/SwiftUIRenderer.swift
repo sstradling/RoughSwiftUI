@@ -60,7 +60,13 @@ public struct RoughRenderCommand {
 }
 
 /// Convert `Drawing`/`OperationSet` data into SwiftUI `Path` commands and render them.
-public struct SwiftUIRenderer {
+///
+/// This is the default `RoughRenderer` implementation used by `RoughView` and
+/// `RoughText`. It targets `SwiftUI.Canvas` and integrates fully with SwiftUI
+/// compositing (`.opacity`, `.blendMode`, `.mask`, `ImageRenderer`, etc.).
+public struct SwiftUIRenderer: RoughRenderer {
+
+    public init() {}
 
     /// Build a list of draw commands representing the given `Drawing`.
     ///
