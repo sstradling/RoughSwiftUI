@@ -946,6 +946,22 @@ public enum BrushTexture: Equatable, Hashable, Sendable {
 All four fields are part of `Options.cacheHash`, so toggling them at
 runtime correctly invalidates cached drawings.
 
+#### Renderer support matrix
+
+| Field | SwiftUI renderer | Metal renderer |
+|---|---|---|
+| `strokeColorAlongPath` | Per-segment stroke commands (16 segments per stroke by default) | Per-pixel fragment-shader interpolation |
+| `strokeOpacityAlongPath` | Per-segment alpha modulation | Per-pixel alpha modulation |
+| `strokeEdgeSoftness` | **Ignored** (SwiftUI `Canvas` has no per-pixel control) | Per-pixel `smoothstep` falloff |
+| `brushTexture` | **Ignored** (no procedural noise primitive in `Canvas`) | Per-pixel procedural texture |
+
+The first two fields reach feature parity between renderers — opting
+into Metal is no longer required to get gradient or tapered strokes;
+the SwiftUI renderer's segmented-stroke emission produces the same
+visible result at a slightly higher CPU cost (one `context.stroke` call
+per segment vs. one quad). The Metal-only fields require shader-level
+control that SwiftUI `Canvas` does not expose.
+
 #### Texture parameter reference
 
 | Texture | Parameter | Range | Default | Effect |
@@ -960,11 +976,10 @@ runtime correctly invalidates cached drawings.
 
 #### SwiftUI renderer behavior
 
-The default SwiftUI renderer currently **ignores** these fields and
-continues to render the solid `stroke` color. A future PR will add
-multi-segment fill emission to the SwiftUI renderer for parity. Until
-then, set `strokeColorAlongPath` etc. only on views you also wrap with
-`.metalAccelerated()`.
+The SwiftUI renderer honors `strokeColorAlongPath` and
+`strokeOpacityAlongPath` directly via per-segment stroke emission (see
+the support matrix above). It does **not** honor `strokeEdgeSoftness`
+or `brushTexture`; for those, opt into the Metal renderer.
 
 ### RibbonMesh
 
