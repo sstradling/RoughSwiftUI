@@ -848,6 +848,7 @@ solid stroke that matches the SwiftUI renderer pixel-for-pixel.
 | `strokeColorAlongPath` | `ColorAlongPath?` | Linear color gradient or solid color along each stroke. Overrides `stroke`. |
 | `strokeOpacityAlongPath` | `OpacityAlongPath?` | Linear taper or constant alpha multiplier along each stroke. Multiplies with `stroke.alpha`. |
 | `strokeEdgeSoftness` | `Float` (0…1) | Cross-stroke alpha falloff toward the boundary. |
+| `brushTexture` | `BrushTexture` | Procedural texture style: `.smooth` (default), `.pencil`, `.chalk`, `.ink`, or `.watercolor`. |
 
 #### Modifiers
 
@@ -874,6 +875,38 @@ RoughView()
     .strokeEdgeSoftness(0.6)
     .ellipse(...)
     .metalAccelerated()
+
+// Pencil grain
+RoughView()
+    .stroke(.black)
+    .strokeWidth(4)
+    .pencilTexture()                      // grain = 1.5, density = 0.7
+    .circle()
+    .metalAccelerated()
+
+// Chalk (chunkier grain, edge drop-out)
+RoughView()
+    .stroke(.white)
+    .strokeWidth(6)
+    .chalkTexture(grain: 1.0, density: 0.5)
+    .roundedRectangle(cornerRadius: 12)
+    .metalAccelerated()
+
+// Ink bleed (smooth across-stroke falloff, no gaps)
+RoughView()
+    .stroke(.darkGray)
+    .strokeWidth(8)
+    .inkTexture(bleed: 0.8)
+    .ellipse(...)
+    .metalAccelerated()
+
+// Watercolor (edge-darkened wash with uneven alpha)
+RoughView()
+    .stroke(.blue)
+    .strokeWidth(10)
+    .watercolorTexture(edgeDarkness: 0.5, bleed: 0.4)
+    .rectangle()
+    .metalAccelerated()
 ```
 
 #### Reference
@@ -894,10 +927,36 @@ public enum OpacityAlongPath: Equatable, Hashable, Sendable {
 }
 
 public typealias StrokeEdgeSoftness = Float
+
+public enum BrushTexture: Equatable, Hashable, Sendable {
+    case smooth
+    case pencil(grain: Float = 1.5, density: Float = 0.7)
+    case chalk(grain: Float = 0.8, density: Float = 0.55)
+    case ink(bleed: Float = 0.6)
+    case watercolor(edgeDarkness: Float = 0.5, bleed: Float = 0.4)
+
+    public static let pencilDefault: BrushTexture
+    public static let chalkDefault: BrushTexture
+    public static let inkDefault: BrushTexture
+    public static let watercolorDefault: BrushTexture
+    public var isSmooth: Bool { get }
+}
 ```
 
-All three are part of `Options.cacheHash`, so toggling them at runtime
-correctly invalidates cached drawings.
+All four fields are part of `Options.cacheHash`, so toggling them at
+runtime correctly invalidates cached drawings.
+
+#### Texture parameter reference
+
+| Texture | Parameter | Range | Default | Effect |
+|---|---|---|---|---|
+| `.pencil` | `grain` | typically 0.5…3 | `1.5` | Spatial frequency of the noise lattice; higher = finer grain. |
+| `.pencil` | `density` | `[0, 1]` | `0.7` | Fraction of pixels rendered; lower = sparser. |
+| `.chalk` | `grain` | typically 0.5…2 | `0.8` | Coarser noise lattice than pencil. |
+| `.chalk` | `density` | `[0, 1]` | `0.55` | Fraction of pixels rendered; chalk has extra edge drop-out. |
+| `.ink` | `bleed` | `[0, 1]` | `0.6` | Width of soft alpha falloff toward the stroke boundary; no gaps. |
+| `.watercolor` | `edgeDarkness` | `[0, 1]` | `0.5` | How much the boundary is darkened relative to the interior. |
+| `.watercolor` | `bleed` | `[0, 1]` | `0.4` | Width of the soft falloff inside the boundary. |
 
 #### SwiftUI renderer behavior
 

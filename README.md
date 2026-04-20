@@ -24,6 +24,7 @@ RoughSwiftUI allows you to easily create shapes in a hand-drawn, sketchy, comic 
 - [x] Text rendering with rough styling
 - [x] Scribble fill pattern for continuous zig-zag fills
 - [x] Optional Metal renderer for stroke ribbons (`RoughSwiftUIMetal` product)
+- [x] Procedural stroke textures (pencil/chalk/ink/watercolor) on the Metal renderer
 - [ ] SVG elliptical arc
 
 ## Basic
@@ -898,14 +899,23 @@ RoughView()
     .roundedRectangle(cornerRadius: 12)
     .metalAccelerated()
     .frame(width: 240, height: 80)
+
+// Procedural texture: pencil grain, chalk, ink bleed, or watercolor wash.
+RoughView()
+    .stroke(.black)
+    .strokeWidth(4)
+    .pencilTexture()                  // or .chalkTexture, .inkTexture, .watercolorTexture
+    .circle()
+    .metalAccelerated()
+    .frame(width: 200, height: 200)
 ```
 
 The wrapped view renders fills via SwiftUI `Canvas` (preserving full
 fill-style fidelity, including hachure, scribble, dots, and SVG fills) and
 renders strokes via a Metal fragment shader. For default appearances the
 output matches the SwiftUI-only renderer; opting in unlocks per-pixel
-along-path effects: linear color gradients, opacity envelopes, and soft
-stroke edges.
+along-path effects: linear color gradients, opacity envelopes, soft
+stroke edges, and procedural pencil / chalk / ink / watercolor textures.
 
 **When to opt in:** dense scenes (hundreds of stroked shapes per frame),
 or when you want shader-driven per-pixel stroke effects. **When to skip:**
