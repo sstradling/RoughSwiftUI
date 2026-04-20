@@ -218,20 +218,27 @@ private extension SwiftUIRenderer {
             }
             let strokeColor = Color(options.stroke).opacity(Double(options.strokeOpacity))
 
-            // Check if brush profile requires custom rendering. The
-            // brush-profile path takes precedence over along-path color
-            // because it converts the stroke to a single filled outline,
-            // which can't carry per-segment colors without restructuring
-            // the converter. A future change can add a "color along path"
-            // overload to StrokeToFillConverter; for now, a user
-            // configuring both gets brush-profile width with the solid
-            // base color.
-            if options.brushProfile.requiresCustomRendering {
-                // Convert stroke to filled path with variable width
+            // Use StrokeToFillConverter when either:
+            //   1. The brush profile requires custom rendering (calligraphic
+            //      tip, non-uniform thickness profile), or
+            //   2. WidthJitter is configured. The converter is the only
+            //      place that knows how to vary width per-sample, so a
+            //      stroke with WidthJitter set must take this path.
+            //
+            // The brush-profile/jitter path takes precedence over
+            // along-path color because it converts the stroke to a single
+            // filled outline, which can't carry per-segment colors without
+            // restructuring the converter. A future change can add a
+            // "color along path" overload; for now, a user configuring
+            // both gets jittered width with the solid base color.
+            let needsCustomFill = options.brushProfile.requiresCustomRendering
+                || options.strokeWidthJitter != nil
+            if needsCustomFill {
                 let filledPath = StrokeToFillConverter.convert(
                     operations: set.operations,
                     baseWidth: CGFloat(strokeWidth),
-                    profile: options.brushProfile
+                    profile: options.brushProfile,
+                    widthJitter: options.strokeWidthJitter
                 )
                 let finalPath: SwiftPath
                 if let transform = svgTransform {
