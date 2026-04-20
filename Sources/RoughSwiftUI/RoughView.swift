@@ -227,11 +227,13 @@ public extension RoughView {
     /// Sets a linear color gradient along each stroke from `start` (at the
     /// beginning of the stroke) to `end` (at the end).
     ///
-    /// **Renderer support**: currently honored by the Metal renderer
-    /// (`RoughView.metalAccelerated()`) only. The default SwiftUI
-    /// renderer ignores this value and continues to use the solid `stroke`
-    /// color; a future PR will add segmented-fill emission to the SwiftUI
-    /// renderer for parity.
+    /// **Renderer support**: honored by both the default SwiftUI renderer
+    /// (via per-segment stroke emission, default 16 segments per stroke)
+    /// and the Metal renderer (`RoughView.metalAccelerated()`, via
+    /// per-pixel fragment-shader interpolation). When combined with a
+    /// custom `brushProfile` that requires stroke-to-fill conversion,
+    /// the SwiftUI renderer falls back to a single fill with the solid
+    /// `stroke` color.
     ///
     /// - Parameters:
     ///   - start: Color at the start of each stroke (`s = 0`).
@@ -260,8 +262,8 @@ public extension RoughView {
     /// (at the beginning) to `end` (at the end). Values are clamped to
     /// `[0, 1]`.
     ///
-    /// **Renderer support**: currently honored by the Metal renderer only;
-    /// see `strokeGradient(from:to:)`.
+    /// **Renderer support**: honored by both renderers; see
+    /// `strokeGradient(from:to:)`.
     func strokeOpacityTaper(from start: Float, to end: Float) -> Self {
         var v = self
         v.options.strokeOpacityAlongPath = .taper(

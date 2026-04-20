@@ -217,8 +217,15 @@ private extension SwiftUIRenderer {
                 path = basePath
             }
             let strokeColor = Color(options.stroke).opacity(Double(options.strokeOpacity))
-            
-            // Check if brush profile requires custom rendering
+
+            // Check if brush profile requires custom rendering. The
+            // brush-profile path takes precedence over along-path color
+            // because it converts the stroke to a single filled outline,
+            // which can't carry per-segment colors without restructuring
+            // the converter. A future change can add a "color along path"
+            // overload to StrokeToFillConverter; for now, a user
+            // configuring both gets brush-profile width with the solid
+            // base color.
             if options.brushProfile.requiresCustomRendering {
                 // Convert stroke to filled path with variable width
                 let filledPath = StrokeToFillConverter.convert(
@@ -226,7 +233,6 @@ private extension SwiftUIRenderer {
                     baseWidth: CGFloat(strokeWidth),
                     profile: options.brushProfile
                 )
-                // Apply transform if needed
                 let finalPath: SwiftPath
                 if let transform = svgTransform {
                     finalPath = filledPath.applying(transform)
@@ -239,17 +245,35 @@ private extension SwiftUIRenderer {
                         style: .fill(strokeColor)
                     )
                 ]
-            } else {
-                // Standard stroke rendering with cap and join
-                return [
-                    RoughRenderCommand(
-                        path: path,
-                        style: .stroke(strokeColor, lineWidth: CGFloat(strokeWidth)),
-                        cap: options.strokeCap,
-                        join: options.strokeJoin
-                    )
-                ]
             }
+
+            // Variable color/opacity along path: split into per-segment
+            // strokes. Only triggered when at least one along-path
+            // descriptor is set; otherwise the trivial single-stroke
+            // path below runs unchanged.
+            if options.strokeColorAlongPath != nil
+                || options.strokeOpacityAlongPath != nil {
+                return SegmentedStrokeBuilder.build(
+                    path: path,
+                    lineWidth: CGFloat(strokeWidth),
+                    cap: options.strokeCap,
+                    join: options.strokeJoin,
+                    colorAlongPath: options.strokeColorAlongPath,
+                    opacityAlongPath: options.strokeOpacityAlongPath,
+                    baseColor: options.stroke,
+                    baseOpacity: options.strokeOpacity
+                )
+            }
+
+            // Standard stroke rendering with cap and join.
+            return [
+                RoughRenderCommand(
+                    path: path,
+                    style: .stroke(strokeColor, lineWidth: CGFloat(strokeWidth)),
+                    cap: options.strokeCap,
+                    join: options.strokeJoin
+                )
+            ]
 
         case .fillSketch:
             // Skip fillSketch when using scribble fill (we handle it separately)

@@ -70,23 +70,27 @@ public struct Options: Equatable, Hashable {
     /// Optional along-path color description for the stroke. When `nil`
     /// (the default), the stroke uses the single color set via `stroke`.
     ///
-    /// Currently consumed by the Metal renderer
-    /// (`RoughView.metalAccelerated()`); the SwiftUI renderer ignores
-    /// this value for now and continues to render with the solid `stroke`
-    /// color. A future PR will add multi-segment fill emission to the
-    /// SwiftUI renderer for parity.
+    /// Honored by both renderers:
+    /// - **SwiftUI**: emits per-segment stroke commands with
+    ///   midpoint-sampled color (default 16 segments per stroke).
+    /// - **Metal**: interpolated per-pixel by the fragment shader.
+    ///
+    /// When combined with a custom `brushProfile` that requires
+    /// stroke-to-fill conversion, the SwiftUI renderer falls back to a
+    /// single fill with the solid `stroke` color (see `BrushProfile`).
     public var strokeColorAlongPath: ColorAlongPath?
 
     /// Optional along-path opacity envelope for the stroke. When `nil`,
     /// the stroke uses the single multiplier set via `strokeOpacity`.
-    ///
-    /// See `strokeColorAlongPath` for the renderer-support note.
+    /// See `strokeColorAlongPath` for the same renderer-support note.
     public var strokeOpacityAlongPath: OpacityAlongPath?
 
     /// Cross-stroke edge softness in `[0, 1]`, supported only by the
     /// Metal renderer. `0` (the default) reproduces the SwiftUI
     /// renderer's hard-edged look; higher values fade the alpha from the
-    /// centerline to the boundary for an ink-like soft edge.
+    /// centerline to the boundary for an ink-like soft edge. SwiftUI
+    /// `Canvas` has no per-pixel control comparable to a Metal fragment
+    /// shader, so the SwiftUI renderer ignores this field.
     public var strokeEdgeSoftness: StrokeEdgeSoftness = 0
 
     /// Procedural texture style applied across the stroke ribbon.

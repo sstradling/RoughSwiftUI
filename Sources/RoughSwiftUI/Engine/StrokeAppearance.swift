@@ -8,8 +8,8 @@
 //  Types describing how a stroke's color and opacity vary along its length.
 //
 //  These types live in the base library (no Metal dependency) so that:
-//    - The SwiftUI renderer can consume them and emit segmented fill
-//      commands for the variable-color path (a future PR).
+//    - The SwiftUI renderer can consume them and emit per-segment stroke
+//      commands via `SegmentedStrokeBuilder`.
 //    - The Metal renderer can consume them via `RibbonAppearance.from(options:)`
 //      and drive the gradient/opacity-envelope fragment shader directly.
 //
