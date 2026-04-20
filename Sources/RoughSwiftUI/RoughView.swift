@@ -287,6 +287,43 @@ public extension RoughView {
         v.options.strokeEdgeSoftness = max(0, min(1, value))
         return v
     }
+
+    /// Sets the procedural stroke texture (pencil/chalk/ink/watercolor).
+    ///
+    /// **Renderer support**: currently honored by the Metal renderer
+    /// only. The SwiftUI renderer treats every value as `.smooth`.
+    ///
+    /// - Parameter value: The texture style. Default is `.smooth`.
+    /// - Returns: The view with the texture applied.
+    func brushTexture(_ value: BrushTexture) -> Self {
+        var v = self
+        v.options.brushTexture = value
+        return v
+    }
+
+    /// Convenience: pencil-grain texture with library defaults
+    /// (`grain = 1.5`, `density = 0.7`). See `BrushTexture.pencil` for
+    /// parameter details.
+    func pencilTexture(grain: Float = 1.5, density: Float = 0.7) -> Self {
+        brushTexture(.pencil(grain: grain, density: density))
+    }
+
+    /// Convenience: chalk-grain texture with library defaults
+    /// (`grain = 0.8`, `density = 0.55`).
+    func chalkTexture(grain: Float = 0.8, density: Float = 0.55) -> Self {
+        brushTexture(.chalk(grain: grain, density: density))
+    }
+
+    /// Convenience: ink-bleed texture with library defaults (`bleed = 0.6`).
+    func inkTexture(bleed: Float = 0.6) -> Self {
+        brushTexture(.ink(bleed: bleed))
+    }
+
+    /// Convenience: watercolor edge-darkened wash with library defaults
+    /// (`edgeDarkness = 0.5`, `bleed = 0.4`).
+    func watercolorTexture(edgeDarkness: Float = 0.5, bleed: Float = 0.4) -> Self {
+        brushTexture(.watercolor(edgeDarkness: edgeDarkness, bleed: bleed))
+    }
     
     /// Set the fill opacity (transparency).
     ///

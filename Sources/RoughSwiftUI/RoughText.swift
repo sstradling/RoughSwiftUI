@@ -230,6 +230,36 @@ public extension RoughText {
         RoughText(roughView: roughView.strokeEdgeSoftness(value),
                   textSize: textSize)
     }
+
+    /// Sets the procedural stroke texture. See `RoughView.brushTexture(_:)`.
+    func brushTexture(_ value: BrushTexture) -> Self {
+        RoughText(roughView: roughView.brushTexture(value),
+                  textSize: textSize)
+    }
+
+    /// Convenience: pencil texture preset.
+    func pencilTexture(grain: Float = 1.5, density: Float = 0.7) -> Self {
+        RoughText(roughView: roughView.pencilTexture(grain: grain, density: density),
+                  textSize: textSize)
+    }
+
+    /// Convenience: chalk texture preset.
+    func chalkTexture(grain: Float = 0.8, density: Float = 0.55) -> Self {
+        RoughText(roughView: roughView.chalkTexture(grain: grain, density: density),
+                  textSize: textSize)
+    }
+
+    /// Convenience: ink texture preset.
+    func inkTexture(bleed: Float = 0.6) -> Self {
+        RoughText(roughView: roughView.inkTexture(bleed: bleed),
+                  textSize: textSize)
+    }
+
+    /// Convenience: watercolor texture preset.
+    func watercolorTexture(edgeDarkness: Float = 0.5, bleed: Float = 0.4) -> Self {
+        RoughText(roughView: roughView.watercolorTexture(edgeDarkness: edgeDarkness, bleed: bleed),
+                  textSize: textSize)
+    }
     
     /// Set the fill style (hachure, crossHatch, dots, etc.).
     func fillStyle(_ value: FillStyle) -> Self {
