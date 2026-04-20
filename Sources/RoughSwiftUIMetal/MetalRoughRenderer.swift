@@ -134,7 +134,8 @@ public final class MetalRoughRenderer: RoughRenderer {
         for set in drawing.sets where set.type == .path {
             guard let mesh = RibbonMeshBuilder.build(
                 operations: set.operations,
-                baseWidth: strokeWidth
+                baseWidth: strokeWidth,
+                widthJitter: options.strokeWidthJitter
             ), !mesh.isEmpty else { continue }
 
             // SVG paths require an additional canvas-fitting transform that the
