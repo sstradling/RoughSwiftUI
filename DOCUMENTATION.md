@@ -849,6 +849,7 @@ solid stroke that matches the SwiftUI renderer pixel-for-pixel.
 | `strokeOpacityAlongPath` | `OpacityAlongPath?` | Linear taper or constant alpha multiplier along each stroke. Multiplies with `stroke.alpha`. |
 | `strokeEdgeSoftness` | `Float` (0…1) | Cross-stroke alpha falloff toward the boundary. |
 | `brushTexture` | `BrushTexture` | Procedural texture style: `.smooth` (default), `.pencil`, `.chalk`, `.ink`, or `.watercolor`. |
+| `strokeWidthJitter` | `WidthJitter?` | Along-stroke width modulation (deterministic noise). Subtle hand-drawn wobble at constant base width. |
 
 #### Modifiers
 
@@ -907,6 +908,21 @@ RoughView()
     .watercolorTexture(edgeDarkness: 0.5, bleed: 0.4)
     .rectangle()
     .metalAccelerated()
+
+// Hand-drawn width wobble (works on both renderers)
+RoughView()
+    .stroke(.black)
+    .strokeWidth(4)
+    .strokeWidthJitter()                   // amount = 0.15, frequency = 0.05
+    .circle()
+    .frame(width: 200, height: 200)
+
+// Higher-amplitude wobble at faster cadence
+RoughView()
+    .stroke(.brown)
+    .strokeWidth(6)
+    .strokeWidthJitter(amount: 0.35, frequency: 0.2, seed: 42)
+    .roundedRectangle(cornerRadius: 12)
 ```
 
 #### Reference
@@ -927,6 +943,20 @@ public enum OpacityAlongPath: Equatable, Hashable, Sendable {
 }
 
 public typealias StrokeEdgeSoftness = Float
+
+public struct WidthJitter: Equatable, Hashable, Sendable {
+    public var amount: CGFloat       // 0 = none, 0.3 = ±30% wobble (default 0.15)
+    public var frequency: CGFloat    // cycles per 100 points of arc length (default 0.05)
+    public var seed: UInt64          // deterministic noise seed (default 0)
+
+    public init(
+        amount: CGFloat = 0.15,
+        frequency: CGFloat = 0.05,
+        seed: UInt64 = 0
+    )
+
+    public func multiplier(at arcLength: CGFloat) -> CGFloat
+}
 
 public enum BrushTexture: Equatable, Hashable, Sendable {
     case smooth
@@ -954,6 +984,7 @@ runtime correctly invalidates cached drawings.
 | `strokeOpacityAlongPath` | Per-segment alpha modulation | Per-pixel alpha modulation |
 | `strokeEdgeSoftness` | **Ignored** (SwiftUI `Canvas` has no per-pixel control) | Per-pixel `smoothstep` falloff |
 | `brushTexture` | **Ignored** (no procedural noise primitive in `Canvas`) | Per-pixel procedural texture |
+| `strokeWidthJitter` | Routes through `StrokeToFillConverter` to vary per-sample width | Modulates per-vertex width in `RibbonMeshBuilder` |
 
 The first two fields reach feature parity between renderers — opting
 into Metal is no longer required to get gradient or tapered strokes;
