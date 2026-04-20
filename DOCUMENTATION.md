@@ -13,9 +13,10 @@
 7. [Text Rendering](#text-rendering)
 8. [Brush Profiles](#brush-profiles)
 9. [Animation](#animation)
-10. [Engine & Caching](#engine--caching)
-11. [Common Patterns](#common-patterns)
-12. [Troubleshooting](#troubleshooting)
+10. [Renderers](#renderers)
+11. [Engine & Caching](#engine--caching)
+12. [Common Patterns](#common-patterns)
+13. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -744,6 +745,128 @@ AnimatedRoughView(
         .rectangle()
 }
 .frame(width: 150, height: 100)
+```
+
+---
+
+## Renderers
+
+### Overview
+
+`RoughSwiftUI` ships a single required renderer (`SwiftUIRenderer`, the
+default used by `RoughView` and `RoughText`) and an optional Metal-backed
+renderer in a separate library product (`RoughSwiftUIMetal`). Both conform
+to the `RoughRenderer` protocol so callers can substitute them in places
+that take a renderer reference.
+
+```swift
+public protocol RoughRenderer {
+    func commands(
+        for drawing: Drawing,
+        options: Options,
+        in size: CGSize
+    ) -> [RoughRenderCommand]
+
+    func render(
+        drawing: Drawing,
+        options: Options,
+        in context: inout GraphicsContext,
+        size: CGSize
+    )
+}
+```
+
+### SwiftUIRenderer (default)
+
+The default renderer targets `SwiftUI.Canvas`. It integrates fully with
+SwiftUI compositing (`.opacity`, `.blendMode`, `.mask`, `ImageRenderer`,
+animations, accessibility) and is used automatically by `RoughView`. You
+do not need to construct it directly except for advanced custom-canvas
+use cases (see *Advanced Usage* in the README).
+
+### MetalRoughRenderer (opt-in)
+
+A separate library product exposes `MetalRoughRenderer` and a
+`RoughView.metalAccelerated()` modifier. Importing the product is opt-in:
+
+```swift
+import RoughSwiftUI
+import RoughSwiftUIMetal
+
+RoughView()
+    .stroke(.systemTeal)
+    .strokeWidth(4)
+    .circle()
+    .metalAccelerated()           // wraps in MetalRoughView
+    .frame(width: 200, height: 200)
+```
+
+`MetalRoughView` internally renders fills via SwiftUI `Canvas` and stroke
+ribbons via a Metal fragment shader. For default appearances the visible
+output matches the SwiftUI renderer; the value of opting in comes from
+per-pixel along-path effects (gradient color, opacity envelopes,
+procedural grain) that are layered on top of the same triangle-strip mesh
+in future work.
+
+#### Tradeoffs
+
+- **Loss of SwiftUI compositing on the stroke layer.** The Metal layer is
+  hosted via `MTKView`/`UIViewRepresentable` and is opaque to SwiftUI
+  modifiers applied above the call to `.metalAccelerated()`. Apply
+  `.opacity`, `.blur`, `.mask`, etc. *to children of the wrapped `RoughView`*
+  for predictable behavior, or omit `.metalAccelerated()` entirely for full
+  fidelity.
+- **`ImageRenderer` snapshot fidelity.** SwiftUI's `ImageRenderer` may not
+  capture the Metal stroke layer on all platforms. Prefer
+  `UIGraphicsImageRenderer` for snapshotting Metal-accelerated views.
+- **No GPU device, no GPU output.** Devices without Metal silently fall
+  back to fills only (strokes do not render). This is rare on real iOS
+  hardware but can occur in some CI simulator configurations.
+- **Two renderers, two test surfaces.** Behavior is exercised by
+  `RoughSwiftUITests` (SwiftUI) and `RoughSwiftUIMetalTests` (Metal mesh
+  builder + renderer split). The Metal pipeline state itself requires a
+  GPU device and is exercised only on hosts that have one.
+
+#### When to opt in
+
+| You want… | Use |
+|---|---|
+| Default look, full SwiftUI integration | `RoughView` (no opt-in) |
+| Per-pixel along-path color/opacity gradients on strokes | `.metalAccelerated()` |
+| Hundreds of stroked shapes per frame (charts, dense diagrams) | `.metalAccelerated()` |
+| Snapshot via `ImageRenderer`, accessibility-first content | `RoughView` (no opt-in) |
+
+### RibbonMesh
+
+The Metal renderer's intermediate representation. Each stroke is a
+triangle-strip mesh with per-vertex `(s, t)` parameters where `s ∈ [0, 1]`
+runs along the stroke and `t ∈ [-1, +1]` runs across it. This is the
+data structure consumed by `RibbonShaders.metal`.
+
+```swift
+public struct RibbonVertex {
+    public var position: SIMD2<Float>     // canvas points
+    public var parametric: SIMD2<Float>   // (s, t)
+}
+
+public struct RibbonMesh {
+    public var vertices: [RibbonVertex]
+    public let isClosed: Bool
+    public let totalLength: CGFloat
+}
+```
+
+Build one from the engine's operations:
+
+```swift
+import RoughSwiftUIMetal
+
+if let mesh = RibbonMeshBuilder.build(
+    operations: operationSet.operations,
+    baseWidth: 4
+) {
+    // Hand off to a custom Metal pass
+}
 ```
 
 ---

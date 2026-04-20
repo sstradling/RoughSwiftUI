@@ -23,6 +23,7 @@ RoughSwiftUI allows you to easily create shapes in a hand-drawn, sketchy, comic 
 - [x] Custom brush profiles for calligraphic effects
 - [x] Text rendering with rough styling
 - [x] Scribble fill pattern for continuous zig-zag fills
+- [x] Optional Metal renderer for stroke ribbons (`RoughSwiftUIMetal` product)
 - [ ] SVG elliptical arc
 
 ## Basic
@@ -855,6 +856,47 @@ Based on signpost data, common bottlenecks include:
 2. **Stroke-to-Fill Conversion**: Brush profiles with custom tips require path sampling. Use standard brush profiles when performance is critical.
 
 3. **Animation Frame Pre-computation**: Initial frame generation can take time for complex shapes. Consider showing a loading state for animations with many steps and complex drawings.
+
+## Optional: Metal-accelerated rendering
+
+`RoughSwiftUI` ships an optional Metal renderer in a separate library
+product, `RoughSwiftUIMetal`. Importing it is opt-in: the base library has
+no Metal dependency.
+
+```swift
+.product(name: "RoughSwiftUI",      package: "RoughSwiftUI"),
+.product(name: "RoughSwiftUIMetal", package: "RoughSwiftUI"), // optional
+```
+
+```swift
+import SwiftUI
+import RoughSwiftUI
+import RoughSwiftUIMetal
+
+RoughView()
+    .stroke(.systemTeal)
+    .strokeWidth(4)
+    .circle()
+    .metalAccelerated()              // routes strokes through Metal
+    .frame(width: 200, height: 200)
+```
+
+The wrapped view renders fills via SwiftUI `Canvas` (preserving full
+fill-style fidelity, including hachure, scribble, dots, and SVG fills) and
+renders strokes via a Metal fragment shader. For default appearances the
+output matches the SwiftUI-only renderer; the value of opting in comes
+from per-pixel along-path effects (gradient color, opacity envelopes,
+procedural grain) that are layered on top of the same triangle-strip mesh
+in future work.
+
+**When to opt in:** dense scenes (hundreds of stroked shapes per frame),
+or when you want shader-driven per-pixel stroke effects. **When to skip:**
+when you rely on SwiftUI compositing (`.opacity`, `.blur`, `.mask`,
+`ImageRenderer` snapshotting) being applied to the stroke output — those
+operate on the rasterized Metal layer rather than the underlying paths.
+
+See the *Renderers* section in `DOCUMENTATION.md` for the full tradeoff
+discussion and the `RibbonMesh` API.
 
 ## Installation
 
