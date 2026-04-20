@@ -836,6 +836,77 @@ in future work.
 | Hundreds of stroked shapes per frame (charts, dense diagrams) | `.metalAccelerated()` |
 | Snapshot via `ImageRenderer`, accessibility-first content | `RoughView` (no opt-in) |
 
+### Variable stroke appearance
+
+The Metal renderer reads three optional fields on `Options` to drive its
+gradient/opacity/edge-softness fragment shader. All three default to
+"unset" so opting into Metal without configuring them produces a flat
+solid stroke that matches the SwiftUI renderer pixel-for-pixel.
+
+| Option | Type | Effect |
+|---|---|---|
+| `strokeColorAlongPath` | `ColorAlongPath?` | Linear color gradient or solid color along each stroke. Overrides `stroke`. |
+| `strokeOpacityAlongPath` | `OpacityAlongPath?` | Linear taper or constant alpha multiplier along each stroke. Multiplies with `stroke.alpha`. |
+| `strokeEdgeSoftness` | `Float` (0…1) | Cross-stroke alpha falloff toward the boundary. |
+
+#### Modifiers
+
+```swift
+// Convenience: gradient stroke from red to blue
+RoughView()
+    .strokeGradient(from: .red, to: .blue)
+    .strokeWidth(6)
+    .circle()
+    .metalAccelerated()
+
+// Convenience: taper opacity from invisible to fully opaque
+RoughView()
+    .strokeOpacityTaper(from: 0, to: 1)
+    .stroke(.black)
+    .strokeWidth(4)
+    .rectangle()
+    .metalAccelerated()
+
+// Soft ink-like edges
+RoughView()
+    .stroke(.darkGray)
+    .strokeWidth(8)
+    .strokeEdgeSoftness(0.6)
+    .ellipse(...)
+    .metalAccelerated()
+```
+
+#### Reference
+
+```swift
+public struct ColorAlongPath: Equatable, Hashable {
+    public enum Kind: Equatable, Hashable, Sendable { case solid, gradient }
+    public let kind: Kind
+    public let startColor: UIColor
+    public let endColor: UIColor
+    public static func solid(_ color: UIColor) -> ColorAlongPath
+    public static func gradient(from start: UIColor, to end: UIColor) -> ColorAlongPath
+}
+
+public enum OpacityAlongPath: Equatable, Hashable, Sendable {
+    case constant(Float)
+    case taper(start: Float, end: Float)
+}
+
+public typealias StrokeEdgeSoftness = Float
+```
+
+All three are part of `Options.cacheHash`, so toggling them at runtime
+correctly invalidates cached drawings.
+
+#### SwiftUI renderer behavior
+
+The default SwiftUI renderer currently **ignores** these fields and
+continues to render the solid `stroke` color. A future PR will add
+multi-segment fill emission to the SwiftUI renderer for parity. Until
+then, set `strokeColorAlongPath` etc. only on views you also wrap with
+`.metalAccelerated()`.
+
 ### RibbonMesh
 
 The Metal renderer's intermediate representation. Each stroke is a

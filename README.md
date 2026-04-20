@@ -873,21 +873,39 @@ import SwiftUI
 import RoughSwiftUI
 import RoughSwiftUIMetal
 
+// Solid stroke — matches the SwiftUI renderer pixel-for-pixel.
 RoughView()
     .stroke(.systemTeal)
     .strokeWidth(4)
     .circle()
-    .metalAccelerated()              // routes strokes through Metal
+    .metalAccelerated()
     .frame(width: 200, height: 200)
+
+// Gradient stroke — interpolated per-pixel along the path.
+RoughView()
+    .strokeGradient(from: .red, to: .blue)
+    .strokeWidth(6)
+    .circle()
+    .metalAccelerated()
+    .frame(width: 200, height: 200)
+
+// Tapered opacity + soft edges.
+RoughView()
+    .stroke(.black)
+    .strokeWidth(8)
+    .strokeOpacityTaper(from: 0, to: 1)
+    .strokeEdgeSoftness(0.5)
+    .roundedRectangle(cornerRadius: 12)
+    .metalAccelerated()
+    .frame(width: 240, height: 80)
 ```
 
 The wrapped view renders fills via SwiftUI `Canvas` (preserving full
 fill-style fidelity, including hachure, scribble, dots, and SVG fills) and
 renders strokes via a Metal fragment shader. For default appearances the
-output matches the SwiftUI-only renderer; the value of opting in comes
-from per-pixel along-path effects (gradient color, opacity envelopes,
-procedural grain) that are layered on top of the same triangle-strip mesh
-in future work.
+output matches the SwiftUI-only renderer; opting in unlocks per-pixel
+along-path effects: linear color gradients, opacity envelopes, and soft
+stroke edges.
 
 **When to opt in:** dense scenes (hundreds of stroked shapes per frame),
 or when you want shader-driven per-pixel stroke effects. **When to skip:**
