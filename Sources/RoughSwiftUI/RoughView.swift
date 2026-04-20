@@ -178,6 +178,31 @@ public extension RoughView {
         return v
     }
 
+    /// Selects between sampled-point (legacy) and continuous-Bezier stroke
+    /// generation for native curved shapes.
+    ///
+    /// - `.legacy` (default): the original behavior — outlines are sampled
+    ///   at `curveStepCount` points and stitched together with Catmull-Rom
+    ///   conversion. Increasing `curveStepCount` for smoothness produces
+    ///   *more* visible polygon facets, not fewer.
+    /// - `.continuous`: emits a small fixed number of true cubic Beziers
+    ///   that match the underlying parametric shape. A circle becomes 4
+    ///   cubics per pass; polygon edges share endpoints with their
+    ///   neighbors so a closed shape is one continuous subpath.
+    ///
+    /// Affects: line, rectangle, ellipse, circle, linearPath, polygon,
+    /// arc, roundedRectangle, egg. Does not affect SVG paths or text
+    /// (those already preserve their authored Beziers via
+    /// `SVGPathRenderer`).
+    ///
+    /// - Parameter value: The continuity mode to apply.
+    /// - Returns: The view with updated stroke continuity.
+    func strokeContinuity(_ value: StrokeContinuity) -> Self {
+        var v = self
+        v.options.strokeContinuity = value
+        return v
+    }
+
     func curveStepCount(_ value: Float) -> Self {
         var v = self
         v.options.curveStepCount = value

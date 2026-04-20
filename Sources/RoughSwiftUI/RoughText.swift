@@ -165,6 +165,16 @@ public extension RoughText {
     func curveTightness(_ value: Float) -> Self {
         RoughText(roughView: roughView.curveTightness(value), textSize: textSize)
     }
+
+    /// Selects between sampled-point (legacy) and continuous-Bezier stroke
+    /// generation for native curved shapes. See
+    /// `RoughView.strokeContinuity(_:)` for details. Note that text
+    /// glyphs themselves are rendered through `SVGPathRenderer` and
+    /// preserve their authored Beziers regardless of this setting; the
+    /// modifier is exposed here for API parity with `RoughView`.
+    func strokeContinuity(_ value: StrokeContinuity) -> Self {
+        RoughText(roughView: roughView.strokeContinuity(value), textSize: textSize)
+    }
     
     /// Set the curve step count.
     func curveStepCount(_ value: Float) -> Self {

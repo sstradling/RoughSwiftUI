@@ -64,6 +64,18 @@ public struct Options: Equatable, Hashable {
     public var dashOffset: Float = -1
     public var dashGap: Float = -1
     public var zigzagOffset: Float = -1
+
+    /// Selects between sampled-point (legacy) and continuous-Bezier stroke
+    /// generation for native curved shapes (circle, ellipse, arc, egg,
+    /// rounded-rectangle corners, polygons, lines).
+    ///
+    /// Default is `.legacy` so existing visual snapshots and downstream
+    /// tests are unaffected. Opt in per-view with
+    /// `RoughView.strokeContinuity(.continuous)` to render true cubic
+    /// Bezier curves instead of point-sampled approximations.
+    ///
+    /// See `StrokeContinuity` for a full discussion of the tradeoffs.
+    public var strokeContinuity: StrokeContinuity = .legacy
     
     // MARK: - Scribble Fill Options
     
@@ -196,6 +208,7 @@ public struct Options: Equatable, Hashable {
         hasher.combine(scribbleCurvature)
         hasher.combine(scribbleUseBrushStroke)
         hasher.combine(scribbleTightnessPattern)
+        hasher.combine(strokeContinuity)
         return hasher.finalize()
     }
     
