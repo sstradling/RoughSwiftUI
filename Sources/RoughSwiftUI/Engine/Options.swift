@@ -98,6 +98,21 @@ public struct Options: Equatable, Hashable {
     /// treats every value as `.smooth`. See `BrushTexture` for the
     /// available styles and their parameters. Default is `.smooth`.
     public var brushTexture: BrushTexture = .smooth
+
+    /// Optional along-stroke width jitter. When `nil` (the default), the
+    /// stroke renders at uniform `strokeWidth`. When set, both renderers
+    /// modulate the per-sample width by a deterministic 1-D value noise
+    /// indexed by accumulated arc length, producing the subtle bulges
+    /// and narrowings characteristic of hand-drawn lines.
+    ///
+    /// Honored by both renderers:
+    /// - **SwiftUI**: applied inside `StrokeToFillConverter`'s outline
+    ///   construction; the resulting filled outline visibly varies in
+    ///   width along the path.
+    /// - **Metal**: applied at vertex generation time in
+    ///   `RibbonMeshBuilder`; the triangle-strip mesh carries the
+    ///   modulated width.
+    public var strokeWidthJitter: WidthJitter?
     
     // MARK: - Scribble Fill Options
     
@@ -234,6 +249,7 @@ public struct Options: Equatable, Hashable {
         hasher.combine(strokeOpacityAlongPath)
         hasher.combine(strokeEdgeSoftness)
         hasher.combine(brushTexture)
+        hasher.combine(strokeWidthJitter)
         return hasher.finalize()
     }
     
