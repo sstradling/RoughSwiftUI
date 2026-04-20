@@ -88,6 +88,12 @@ public struct Options: Equatable, Hashable {
     /// renderer's hard-edged look; higher values fade the alpha from the
     /// centerline to the boundary for an ink-like soft edge.
     public var strokeEdgeSoftness: StrokeEdgeSoftness = 0
+
+    /// Procedural texture style applied across the stroke ribbon.
+    /// Currently honored only by the Metal renderer; the SwiftUI renderer
+    /// treats every value as `.smooth`. See `BrushTexture` for the
+    /// available styles and their parameters. Default is `.smooth`.
+    public var brushTexture: BrushTexture = .smooth
     
     // MARK: - Scribble Fill Options
     
@@ -223,6 +229,7 @@ public struct Options: Equatable, Hashable {
         hasher.combine(strokeColorAlongPath)
         hasher.combine(strokeOpacityAlongPath)
         hasher.combine(strokeEdgeSoftness)
+        hasher.combine(brushTexture)
         return hasher.finalize()
     }
     
