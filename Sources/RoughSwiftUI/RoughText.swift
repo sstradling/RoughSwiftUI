@@ -190,6 +190,46 @@ public extension RoughText {
     func fill(_ value: Color) -> Self {
         RoughText(roughView: roughView.fill(value), textSize: textSize)
     }
+
+    // MARK: - Variable stroke appearance
+
+    /// Sets a linear color gradient along each stroke from `start` to
+    /// `end`. See `RoughView.strokeGradient(from:to:)` for renderer-support
+    /// notes.
+    func strokeGradient(from start: UIColor, to end: UIColor) -> Self {
+        RoughText(roughView: roughView.strokeGradient(from: start, to: end),
+                  textSize: textSize)
+    }
+
+    /// SwiftUI `Color` overload of `strokeGradient(from:to:)`.
+    func strokeGradient(from start: Color, to end: Color) -> Self {
+        RoughText(roughView: roughView.strokeGradient(from: start, to: end),
+                  textSize: textSize)
+    }
+
+    /// Sets the stroke color description directly.
+    func strokeColorAlongPath(_ value: ColorAlongPath?) -> Self {
+        RoughText(roughView: roughView.strokeColorAlongPath(value),
+                  textSize: textSize)
+    }
+
+    /// Sets a linear opacity envelope along each stroke.
+    func strokeOpacityTaper(from start: Float, to end: Float) -> Self {
+        RoughText(roughView: roughView.strokeOpacityTaper(from: start, to: end),
+                  textSize: textSize)
+    }
+
+    /// Sets the opacity description directly.
+    func strokeOpacityAlongPath(_ value: OpacityAlongPath?) -> Self {
+        RoughText(roughView: roughView.strokeOpacityAlongPath(value),
+                  textSize: textSize)
+    }
+
+    /// Sets the cross-stroke edge softness. See `RoughView.strokeEdgeSoftness(_:)`.
+    func strokeEdgeSoftness(_ value: StrokeEdgeSoftness) -> Self {
+        RoughText(roughView: roughView.strokeEdgeSoftness(value),
+                  textSize: textSize)
+    }
     
     /// Set the fill style (hachure, crossHatch, dots, etc.).
     func fillStyle(_ value: FillStyle) -> Self {

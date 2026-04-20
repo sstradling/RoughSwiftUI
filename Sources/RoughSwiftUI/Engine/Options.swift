@@ -64,6 +64,30 @@ public struct Options: Equatable, Hashable {
     public var dashOffset: Float = -1
     public var dashGap: Float = -1
     public var zigzagOffset: Float = -1
+
+    // MARK: - Variable stroke appearance
+
+    /// Optional along-path color description for the stroke. When `nil`
+    /// (the default), the stroke uses the single color set via `stroke`.
+    ///
+    /// Currently consumed by the Metal renderer
+    /// (`RoughView.metalAccelerated()`); the SwiftUI renderer ignores
+    /// this value for now and continues to render with the solid `stroke`
+    /// color. A future PR will add multi-segment fill emission to the
+    /// SwiftUI renderer for parity.
+    public var strokeColorAlongPath: ColorAlongPath?
+
+    /// Optional along-path opacity envelope for the stroke. When `nil`,
+    /// the stroke uses the single multiplier set via `strokeOpacity`.
+    ///
+    /// See `strokeColorAlongPath` for the renderer-support note.
+    public var strokeOpacityAlongPath: OpacityAlongPath?
+
+    /// Cross-stroke edge softness in `[0, 1]`, supported only by the
+    /// Metal renderer. `0` (the default) reproduces the SwiftUI
+    /// renderer's hard-edged look; higher values fade the alpha from the
+    /// centerline to the boundary for an ink-like soft edge.
+    public var strokeEdgeSoftness: StrokeEdgeSoftness = 0
     
     // MARK: - Scribble Fill Options
     
@@ -196,6 +220,9 @@ public struct Options: Equatable, Hashable {
         hasher.combine(scribbleCurvature)
         hasher.combine(scribbleUseBrushStroke)
         hasher.combine(scribbleTightnessPattern)
+        hasher.combine(strokeColorAlongPath)
+        hasher.combine(strokeOpacityAlongPath)
+        hasher.combine(strokeEdgeSoftness)
         return hasher.finalize()
     }
     
