@@ -221,6 +221,72 @@ public extension RoughView {
         v.options.strokeOpacity = max(0, min(100, value)) / 100.0
         return v
     }
+
+    // MARK: - Variable stroke appearance
+
+    /// Sets a linear color gradient along each stroke from `start` (at the
+    /// beginning of the stroke) to `end` (at the end).
+    ///
+    /// **Renderer support**: currently honored by the Metal renderer
+    /// (`RoughView.metalAccelerated()`) only. The default SwiftUI
+    /// renderer ignores this value and continues to use the solid `stroke`
+    /// color; a future PR will add segmented-fill emission to the SwiftUI
+    /// renderer for parity.
+    ///
+    /// - Parameters:
+    ///   - start: Color at the start of each stroke (`s = 0`).
+    ///   - end: Color at the end of each stroke (`s = 1`).
+    /// - Returns: The view with the gradient applied.
+    func strokeGradient(from start: UIColor, to end: UIColor) -> Self {
+        var v = self
+        v.options.strokeColorAlongPath = .gradient(from: start, to: end)
+        return v
+    }
+
+    /// SwiftUI `Color` overload of `strokeGradient(from:to:)`.
+    func strokeGradient(from start: Color, to end: Color) -> Self {
+        strokeGradient(from: UIColor(start), to: UIColor(end))
+    }
+
+    /// Sets the stroke color description directly. Use this when you want
+    /// finer control than the `strokeGradient` convenience.
+    func strokeColorAlongPath(_ value: ColorAlongPath?) -> Self {
+        var v = self
+        v.options.strokeColorAlongPath = value
+        return v
+    }
+
+    /// Sets a linear opacity envelope along each stroke from `start`
+    /// (at the beginning) to `end` (at the end). Values are clamped to
+    /// `[0, 1]`.
+    ///
+    /// **Renderer support**: currently honored by the Metal renderer only;
+    /// see `strokeGradient(from:to:)`.
+    func strokeOpacityTaper(from start: Float, to end: Float) -> Self {
+        var v = self
+        v.options.strokeOpacityAlongPath = .taper(
+            start: max(0, min(1, start)),
+            end: max(0, min(1, end))
+        )
+        return v
+    }
+
+    /// Sets the opacity description directly.
+    func strokeOpacityAlongPath(_ value: OpacityAlongPath?) -> Self {
+        var v = self
+        v.options.strokeOpacityAlongPath = value
+        return v
+    }
+
+    /// Sets the cross-stroke edge softness in `[0, 1]`. Currently honored
+    /// only by the Metal renderer; `0` (the default) reproduces the
+    /// SwiftUI renderer's hard-edge look. Higher values fade the alpha
+    /// toward the stroke boundary, producing an ink-like soft edge.
+    func strokeEdgeSoftness(_ value: StrokeEdgeSoftness) -> Self {
+        var v = self
+        v.options.strokeEdgeSoftness = max(0, min(1, value))
+        return v
+    }
     
     /// Set the fill opacity (transparency).
     ///
