@@ -25,13 +25,51 @@ public extension UIBezierPath {
 
 private extension UIBezierPath {
     func applyCommands(from svgPath: SVGPath) {
+        var currentPoint = CGPoint.zero
+        var subpathStartPoint: CGPoint?
+
         for command in svgPath.commands {
             switch command.type {
-            case .move: move(to: command.point)
-            case .line: addLine(to: command.point)
-            case .quadCurve: addQuadCurve(to: command.point, controlPoint: command.control1)
-            case .cubeCurve: addCurve(to: command.point, controlPoint1: command.control1, controlPoint2: command.control2)
-            case .close: close()
+            case .move:
+                move(to: command.point)
+                currentPoint = command.point
+                subpathStartPoint = command.point
+            case .line:
+                addLine(to: command.point)
+                currentPoint = command.point
+            case .quadCurve:
+                addQuadCurve(to: command.point, controlPoint: command.control1)
+                currentPoint = command.point
+            case .cubeCurve:
+                addCurve(to: command.point, controlPoint1: command.control1, controlPoint2: command.control2)
+                currentPoint = command.point
+            case .arc:
+                let curves = SVGArcConverter.cubicCurves(
+                    from: currentPoint,
+                    to: command.point,
+                    rx: command.rx,
+                    ry: command.ry,
+                    xAxisRotation: command.xAxisRotation,
+                    largeArc: command.largeArc,
+                    sweep: command.sweep
+                )
+                if curves.isEmpty {
+                    addLine(to: command.point)
+                } else {
+                    for curve in curves {
+                        addCurve(
+                            to: curve.point,
+                            controlPoint1: curve.control1,
+                            controlPoint2: curve.control2
+                        )
+                    }
+                }
+                currentPoint = command.point
+            case .close:
+                close()
+                if let subpathStartPoint {
+                    currentPoint = subpathStartPoint
+                }
             }
         }
     }
@@ -72,6 +110,8 @@ public class SVGPath {
             case "c": use(.relative, 6, cubeBroken)
             case "S": use(.absolute, 4, cubeSmooth)
             case "s": use(.relative, 4, cubeSmooth)
+            case "A": use(.absolute, 7, arc)
+            case "a": use(.relative, 7, arc)
             case "Z": use(.absolute, 0, close)
             case "z": use(.absolute, 0, close)
             default: numbers.append(char)
@@ -212,8 +252,24 @@ public struct SVGCommand {
         case line
         case cubeCurve
         case quadCurve
+        case arc
         case close
     }
+
+    /// Horizontal radius for elliptical arc commands.
+    public var rx: CGFloat
+
+    /// Vertical radius for elliptical arc commands.
+    public var ry: CGFloat
+
+    /// Arc x-axis rotation in degrees.
+    public var xAxisRotation: CGFloat
+
+    /// SVG large-arc flag.
+    public var largeArc: Bool
+
+    /// SVG sweep flag.
+    public var sweep: Bool
     
     public init () {
         let point = CGPoint()
@@ -239,10 +295,44 @@ public struct SVGCommand {
         self.control1 = control1
         self.control2 = control2
         self.type = type
+        self.rx = 0
+        self.ry = 0
+        self.xAxisRotation = 0
+        self.largeArc = false
+        self.sweep = false
+    }
+
+    public init(
+        rx: CGFloat,
+        ry: CGFloat,
+        xAxisRotation: CGFloat,
+        largeArc: Bool,
+        sweep: Bool,
+        point: CGPoint
+    ) {
+        self.point = point
+        self.control1 = .zero
+        self.control2 = .zero
+        self.type = .arc
+        self.rx = rx
+        self.ry = ry
+        self.xAxisRotation = xAxisRotation
+        self.largeArc = largeArc
+        self.sweep = sweep
     }
     
     fileprivate func relative (to other:SVGCommand?) -> SVGCommand {
         if let otherPoint = other?.point {
+            if type == .arc {
+                return SVGCommand(
+                    rx: rx,
+                    ry: ry,
+                    xAxisRotation: xAxisRotation,
+                    largeArc: largeArc,
+                    sweep: sweep,
+                    point: point + otherPoint
+                )
+            }
             return SVGCommand(control1 + otherPoint, control2 + otherPoint, point + otherPoint, type: type)
         }
         return self
@@ -275,7 +365,7 @@ private func take (_ numbers: [CGFloat], increment: Int, coords: Coordinates, la
     }
     
     let count = (numbers.count / increment) * increment
-    var nums:[CGFloat] = [0, 0, 0, 0, 0, 0];
+    var nums = [CGFloat](repeating: 0, count: max(increment, 1))
     
     for i in stride(from: 0, to: count, by: increment) {
         for j in 0 ..< increment {
@@ -354,8 +444,192 @@ private func cubeSmooth (_ numbers: [CGFloat], last: SVGCommand?, coords: Coordi
     return SVGCommand(control.x, control.y, numbers[0], numbers[1], numbers[2], numbers[3])
 }
 
+// MARK: Aa - Elliptical Arc To
+
+private func arc (_ numbers: [CGFloat], last: SVGCommand?, coords: Coordinates) -> SVGCommand {
+    SVGCommand(
+        rx: numbers[0],
+        ry: numbers[1],
+        xAxisRotation: numbers[2],
+        largeArc: numbers[3] != 0,
+        sweep: numbers[4] != 0,
+        point: CGPoint(x: numbers[5], y: numbers[6])
+    )
+}
+
 // MARK: Zz - Close Path
 
 private func close (_ numbers: [CGFloat], last: SVGCommand?, coords: Coordinates) -> SVGCommand {
     return SVGCommand()
+}
+
+// MARK: - SVG Elliptical Arc Conversion
+
+/// Converts SVG endpoint-parameterized elliptical arcs into cubic Bezier
+/// segments, following the SVG 1.1 implementation notes.
+///
+/// SVG stores arcs as: current point, `(rx, ry)`, x-axis rotation, large-arc
+/// flag, sweep flag, and endpoint. CoreGraphics and SwiftUI have no equivalent
+/// endpoint-arc path primitive, so we decompose each arc into one to four cubic
+/// Beziers (splitting at <=90° spans). This preserves curved geometry instead
+/// of approximating arcs with straight line segments.
+public enum SVGArcConverter {
+    public struct CubicCurve: Equatable {
+        public let control1: CGPoint
+        public let control2: CGPoint
+        public let point: CGPoint
+    }
+
+    public static func cubicCurves(
+        from start: CGPoint,
+        to end: CGPoint,
+        rx inputRx: CGFloat,
+        ry inputRy: CGFloat,
+        xAxisRotation: CGFloat,
+        largeArc: Bool,
+        sweep: Bool
+    ) -> [CubicCurve] {
+        guard start != end else { return [] }
+
+        var rx = abs(inputRx)
+        var ry = abs(inputRy)
+
+        guard rx > 0, ry > 0 else { return [] }
+
+        let phi = xAxisRotation * .pi / 180
+        let cosPhi = cos(phi)
+        let sinPhi = sin(phi)
+
+        let dx = (start.x - end.x) / 2
+        let dy = (start.y - end.y) / 2
+
+        let x1Prime = cosPhi * dx + sinPhi * dy
+        let y1Prime = -sinPhi * dx + cosPhi * dy
+
+        // Radii correction: if the requested radii are too small to connect
+        // the endpoints, scale them up uniformly (SVG 1.1 F.6.6.2).
+        let radiiScale = (x1Prime * x1Prime) / (rx * rx)
+            + (y1Prime * y1Prime) / (ry * ry)
+        if radiiScale > 1 {
+            let factor = sqrt(radiiScale)
+            rx *= factor
+            ry *= factor
+        }
+
+        let rx2 = rx * rx
+        let ry2 = ry * ry
+        let x1p2 = x1Prime * x1Prime
+        let y1p2 = y1Prime * y1Prime
+
+        let numerator = max(0, rx2 * ry2 - rx2 * y1p2 - ry2 * x1p2)
+        let denominator = rx2 * y1p2 + ry2 * x1p2
+        let sign: CGFloat = largeArc == sweep ? -1 : 1
+        let coefficient = denominator == 0 ? 0 : sign * sqrt(numerator / denominator)
+
+        let cxPrime = coefficient * (rx * y1Prime / ry)
+        let cyPrime = coefficient * (-ry * x1Prime / rx)
+
+        let center = CGPoint(
+            x: cosPhi * cxPrime - sinPhi * cyPrime + (start.x + end.x) / 2,
+            y: sinPhi * cxPrime + cosPhi * cyPrime + (start.y + end.y) / 2
+        )
+
+        let ux = (x1Prime - cxPrime) / rx
+        let uy = (y1Prime - cyPrime) / ry
+        let vx = (-x1Prime - cxPrime) / rx
+        let vy = (-y1Prime - cyPrime) / ry
+
+        let startAngle = vectorAngle(ux: 1, uy: 0, vx: ux, vy: uy)
+        var deltaAngle = vectorAngle(ux: ux, uy: uy, vx: vx, vy: vy)
+
+        if !sweep && deltaAngle > 0 {
+            deltaAngle -= 2 * .pi
+        } else if sweep && deltaAngle < 0 {
+            deltaAngle += 2 * .pi
+        }
+
+        let segmentCount = max(1, Int(ceil(abs(deltaAngle) / (.pi / 2))))
+        let segmentDelta = deltaAngle / CGFloat(segmentCount)
+
+        return (0..<segmentCount).map { segmentIndex in
+            let theta1 = startAngle + CGFloat(segmentIndex) * segmentDelta
+            let theta2 = theta1 + segmentDelta
+            return cubicCurve(
+                center: center,
+                rx: rx,
+                ry: ry,
+                phi: phi,
+                theta1: theta1,
+                theta2: theta2
+            )
+        }
+    }
+
+    private static func vectorAngle(ux: CGFloat, uy: CGFloat, vx: CGFloat, vy: CGFloat) -> CGFloat {
+        let dot = ux * vx + uy * vy
+        let length = sqrt((ux * ux + uy * uy) * (vx * vx + vy * vy))
+        guard length > 0 else { return 0 }
+
+        let clamped = max(-1, min(1, dot / length))
+        let sign: CGFloat = (ux * vy - uy * vx) < 0 ? -1 : 1
+        return sign * acos(clamped)
+    }
+
+    private static func cubicCurve(
+        center: CGPoint,
+        rx: CGFloat,
+        ry: CGFloat,
+        phi: CGFloat,
+        theta1: CGFloat,
+        theta2: CGFloat
+    ) -> CubicCurve {
+        let delta = theta2 - theta1
+        let alpha = (4 / 3) * tan(delta / 4)
+
+        let p1 = point(center: center, rx: rx, ry: ry, phi: phi, theta: theta1)
+        let p2 = point(center: center, rx: rx, ry: ry, phi: phi, theta: theta2)
+        let d1 = derivative(rx: rx, ry: ry, phi: phi, theta: theta1)
+        let d2 = derivative(rx: rx, ry: ry, phi: phi, theta: theta2)
+
+        return CubicCurve(
+            control1: CGPoint(x: p1.x + alpha * d1.x, y: p1.y + alpha * d1.y),
+            control2: CGPoint(x: p2.x - alpha * d2.x, y: p2.y - alpha * d2.y),
+            point: p2
+        )
+    }
+
+    private static func point(
+        center: CGPoint,
+        rx: CGFloat,
+        ry: CGFloat,
+        phi: CGFloat,
+        theta: CGFloat
+    ) -> CGPoint {
+        let cosPhi = cos(phi)
+        let sinPhi = sin(phi)
+        let cosTheta = cos(theta)
+        let sinTheta = sin(theta)
+
+        return CGPoint(
+            x: center.x + rx * cosTheta * cosPhi - ry * sinTheta * sinPhi,
+            y: center.y + rx * cosTheta * sinPhi + ry * sinTheta * cosPhi
+        )
+    }
+
+    private static func derivative(
+        rx: CGFloat,
+        ry: CGFloat,
+        phi: CGFloat,
+        theta: CGFloat
+    ) -> CGVector {
+        let cosPhi = cos(phi)
+        let sinPhi = sin(phi)
+        let cosTheta = cos(theta)
+        let sinTheta = sin(theta)
+
+        return CGVector(
+            dx: -rx * sinTheta * cosPhi - ry * cosTheta * sinPhi,
+            dy: -rx * sinTheta * sinPhi + ry * cosTheta * cosPhi
+        )
+    }
 }

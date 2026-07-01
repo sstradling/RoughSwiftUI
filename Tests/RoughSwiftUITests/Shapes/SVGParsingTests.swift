@@ -147,5 +147,33 @@ final class SVGParsingTests: XCTestCase {
         // Relative: (-30, -40) + (10, -20) = (-20, -60)
         XCTAssertEqual(path.commands[2].point, CGPoint(x: -20, y: -60))
     }
+
+    func testSVGPathParsesAbsoluteEllipticalArc() {
+        let path = SVGPath("M10 20 A30 40 45 1 0 100 120")
+
+        XCTAssertEqual(path.commands.count, 2)
+        XCTAssertEqual(path.commands[0].type, .move)
+        XCTAssertEqual(path.commands[1].type, .arc)
+        XCTAssertEqual(path.commands[1].rx, 30)
+        XCTAssertEqual(path.commands[1].ry, 40)
+        XCTAssertEqual(path.commands[1].xAxisRotation, 45)
+        XCTAssertTrue(path.commands[1].largeArc)
+        XCTAssertFalse(path.commands[1].sweep)
+        XCTAssertEqual(path.commands[1].point, CGPoint(x: 100, y: 120))
+    }
+
+    func testSVGPathParsesRelativeEllipticalArcEndpointOnly() {
+        let path = SVGPath("M10 20 a30 40 45 0 1 100 120")
+
+        XCTAssertEqual(path.commands.count, 2)
+        XCTAssertEqual(path.commands[1].type, .arc)
+        XCTAssertEqual(path.commands[1].rx, 30)
+        XCTAssertEqual(path.commands[1].ry, 40)
+        XCTAssertEqual(path.commands[1].xAxisRotation, 45)
+        XCTAssertFalse(path.commands[1].largeArc)
+        XCTAssertTrue(path.commands[1].sweep)
+        // Only the endpoint is relative; radii/rotation/flags are unchanged.
+        XCTAssertEqual(path.commands[1].point, CGPoint(x: 110, y: 140))
+    }
     
 }
