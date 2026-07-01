@@ -583,7 +583,8 @@ extension RoughRenderCommand {
             clipPath: variedClipPath,
             inverseClip: inverseClip,
             cap: cap,
-            join: join
+            join: join,
+            miterLimit: miterLimit
         )
     }
     
@@ -609,7 +610,8 @@ extension RoughRenderCommand {
                 clipPath: variedClipPath,
                 inverseClip: inverseClip,
                 cap: cap,
-                join: join
+                join: join,
+                miterLimit: miterLimit
             )
         }
     }
@@ -639,6 +641,9 @@ struct PrecomputedCommandVariance {
     
     /// Stroke join style.
     let join: BrushJoin
+
+    /// Miter limit for miter joins.
+    let miterLimit: CGFloat
     
     /// Number of animation steps.
     var stepCount: Int { pathVariance.stepCount }
@@ -653,6 +658,7 @@ struct PrecomputedCommandVariance {
         self.inverseClip = command.inverseClip
         self.cap = command.cap
         self.join = command.join
+        self.miterLimit = command.miterLimit
     }
     
     /// Builds the command for a specific animation step.
@@ -669,7 +675,8 @@ struct PrecomputedCommandVariance {
             clipPath: variedClipPath,
             inverseClip: inverseClip,
             cap: cap,
-            join: join
+            join: join,
+            miterLimit: miterLimit
         )
     }
 }

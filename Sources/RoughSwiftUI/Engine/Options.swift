@@ -40,6 +40,13 @@ public struct Options: Equatable, Hashable {
     public var fillOpacity: Float = 1.0
 
     public var strokeWidth: Float = 1
+    /// Maximum miter length divided by stroke width before miter joins fall
+    /// back to bevel joins. Used by native SwiftUI/CoreGraphics stroke
+    /// rendering for `.strokeJoin(.miter)`.
+    ///
+    /// Default is `10`, matching CoreGraphics' conventional default. Values
+    /// are clamped to `>= 1` by view modifiers/renderers.
+    public var strokeMiterLimit: CGFloat = 10
     public var curveTightness: Float = 0
     public var curveStepCount: Float = 9
     public var fillStyle: FillStyle = .hachure
@@ -181,6 +188,7 @@ public struct Options: Equatable, Hashable {
         hasher.combine(roughness)
         hasher.combine(bowing)
         hasher.combine(strokeWidth)
+        hasher.combine(strokeMiterLimit)
         hasher.combine(curveTightness)
         hasher.combine(curveStepCount)
         hasher.combine(fillStyle)

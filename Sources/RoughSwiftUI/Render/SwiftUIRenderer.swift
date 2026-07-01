@@ -34,6 +34,9 @@ public struct RoughRenderCommand {
     /// Line join style for strokes.
     public let join: BrushJoin
 
+    /// Miter limit used when `join == .miter`.
+    public let miterLimit: CGFloat
+
     /// Description of stroke or fill styling.
     public enum Style {
         /// Stroke path with a color and line width.
@@ -48,7 +51,8 @@ public struct RoughRenderCommand {
         clipPath: SwiftUI.Path? = nil,
         inverseClip: Bool = false,
         cap: BrushCap = .round,
-        join: BrushJoin = .round
+        join: BrushJoin = .round,
+        miterLimit: CGFloat = 10
     ) {
         self.path = path
         self.style = style
@@ -56,6 +60,7 @@ public struct RoughRenderCommand {
         self.inverseClip = inverseClip
         self.cap = cap
         self.join = join
+        self.miterLimit = max(1, miterLimit)
     }
 }
 
@@ -157,7 +162,8 @@ public struct SwiftUIRenderer {
             let strokeStyle = StrokeStyle(
                 lineWidth: lineWidth,
                 lineCap: command.cap.cgLineCap,
-                lineJoin: command.join.cgLineJoin
+                lineJoin: command.join.cgLineJoin,
+                miterLimit: command.miterLimit
             )
             context.stroke(
                 command.path,
@@ -240,7 +246,8 @@ private extension SwiftUIRenderer {
                         path: path,
                         style: .stroke(strokeColor, lineWidth: CGFloat(strokeWidth)),
                         cap: options.strokeCap,
-                        join: options.strokeJoin
+                        join: options.strokeJoin,
+                        miterLimit: options.strokeMiterLimit
                     )
                 ]
             }
@@ -266,7 +273,8 @@ private extension SwiftUIRenderer {
                     clipPath: clipPath,
                     inverseClip: inverseClip,
                     cap: options.strokeCap,
-                    join: options.strokeJoin
+                    join: options.strokeJoin,
+                    miterLimit: options.strokeMiterLimit
                 )
             ]
 
@@ -341,7 +349,8 @@ private extension SwiftUIRenderer {
                         clipPath: shapePath,
                         inverseClip: false,
                         cap: options.strokeCap,
-                        join: options.strokeJoin
+                        join: options.strokeJoin,
+                        miterLimit: options.strokeMiterLimit
                     )
                 ]
             } else {
@@ -353,7 +362,8 @@ private extension SwiftUIRenderer {
                         clipPath: clipPath,
                         inverseClip: inverseClip,
                         cap: options.strokeCap,
-                        join: options.strokeJoin
+                        join: options.strokeJoin,
+                        miterLimit: options.strokeMiterLimit
                     )
                 ]
             }
@@ -425,7 +435,8 @@ private extension SwiftUIRenderer {
                         clipPath: clipPath,
                         inverseClip: false,
                         cap: options.strokeCap,
-                        join: options.strokeJoin
+                        join: options.strokeJoin,
+                        miterLimit: options.strokeMiterLimit
                     )
                 ]
             }

@@ -118,6 +118,21 @@ public extension RoughView {
         return v
     }
 
+    /// Set the miter limit used when `strokeJoin(.miter)` is active.
+    ///
+    /// The miter limit is the maximum ratio of miter length to stroke width
+    /// before the renderer falls back to a bevel join. Lower values clamp
+    /// sharp corners sooner; higher values allow longer pointed joins.
+    ///
+    /// - Parameter value: Miter limit. Values below `1` are clamped to `1`.
+    ///   Default is `10`.
+    /// - Returns: The view with updated miter-limit behavior.
+    func strokeMiterLimit(_ value: CGFloat) -> Self {
+        var v = self
+        v.options.strokeMiterLimit = max(1, value)
+        return v
+    }
+
     func fillWeight(_ value: Float) -> Self {
         var v = self
         v.options.fillWeight = value

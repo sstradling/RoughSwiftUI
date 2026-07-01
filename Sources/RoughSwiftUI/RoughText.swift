@@ -125,6 +125,12 @@ public extension RoughText {
     func strokeWidth(_ value: Float) -> Self {
         RoughText(roughView: roughView.strokeWidth(value), textSize: textSize)
     }
+
+    /// Set the miter limit used when `strokeJoin(.miter)` is active.
+    /// See `RoughView.strokeMiterLimit(_:)` for details.
+    func strokeMiterLimit(_ value: CGFloat) -> Self {
+        RoughText(roughView: roughView.strokeMiterLimit(value), textSize: textSize)
+    }
     
     /// Set the fill pattern line weight.
     func fillWeight(_ value: Float) -> Self {
