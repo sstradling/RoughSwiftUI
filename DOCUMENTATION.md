@@ -808,6 +808,50 @@ per-pixel along-path effects (gradient color, opacity envelopes,
 procedural grain) that are layered on top of the same triangle-strip mesh
 in future work.
 
+### AnimatedMetalRoughView
+
+Use `.metalAnimated(...)` when you want `AnimatedRoughView`-style jitter
+with the Metal renderer's shader-driven stroke effects:
+
+```swift
+RoughView()
+    .strokeGradient(from: .red, to: .blue)
+    .strokeWidth(5)
+    .circle()
+    .metalAnimated(steps: 6, speed: .medium, variance: .low)
+    .frame(width: 200, height: 200)
+
+RoughText("Hello", font: .systemFont(ofSize: 64, weight: .bold))
+    .stroke(.black)
+    .pencilTexture()
+    .metalAnimated(config: .default)
+```
+
+`AnimatedMetalRoughView` follows the same performance shape as
+`AnimatedRoughView`: it generates fallback commands and Metal ribbon draw
+lists when the size changes, precomputes all variance-applied frames, and
+then playback is just an indexed frame lookup. Fills animate on SwiftUI
+`Canvas`; stroke ribbons animate through precomputed Metal meshes.
+
+Reference:
+
+```swift
+public struct AnimatedMetalRoughView: View {
+    public init(config: AnimationConfig = .default, roughView: RoughView)
+    public init(steps: Int = 4, speed: AnimationSpeed = .medium, variance: AnimationVariance = .medium, roughView: RoughView)
+}
+
+public extension RoughView {
+    func metalAnimated(config: AnimationConfig = .default) -> AnimatedMetalRoughView
+    func metalAnimated(steps: Int = 4, speed: AnimationSpeed = .medium, variance: AnimationVariance = .medium) -> AnimatedMetalRoughView
+}
+
+public extension RoughText {
+    func metalAnimated(config: AnimationConfig = .default) -> some View
+    func metalAnimated(steps: Int = 4, speed: AnimationSpeed = .medium, variance: AnimationVariance = .medium) -> some View
+}
+```
+
 #### Tradeoffs
 
 - **Loss of SwiftUI compositing on the stroke layer.** The Metal layer is
