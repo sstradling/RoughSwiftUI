@@ -35,5 +35,42 @@ final class SVGPathRendererTests: XCTestCase {
         
         XCTAssertGreaterThan(ops.count, 2, "Should produce operations for quad curve")
     }
+
+    func testSVGPathRendererEllipticalArc() {
+        var options = Options()
+        options.roughness = 0
+
+        let svgPath = "M 0 0 A 50 50 0 0 1 50 50"
+        let ops = SVGPathRenderer.pathOps(svgPath: svgPath, options: options)
+
+        // Two rough passes. Each pass should contain Move + one cubic Bezier.
+        XCTAssertEqual(ops.filter { $0 is Move }.count, 2)
+        XCTAssertEqual(ops.filter { $0 is BezierCurveTo }.count, 2)
+        XCTAssertEqual(ops.filter { $0 is LineTo }.count, 0)
+    }
+
+    func testSVGPathRendererLargeEllipticalArcSplitsIntoMultipleCubics() {
+        var options = Options()
+        options.roughness = 0
+
+        let svgPath = "M 0 0 A 50 50 0 1 1 100 0"
+        let ops = SVGPathRenderer.pathOps(svgPath: svgPath, options: options)
+
+        // A 180° arc is split into 2 cubic segments per pass.
+        XCTAssertEqual(ops.filter { $0 is Move }.count, 2)
+        XCTAssertEqual(ops.filter { $0 is BezierCurveTo }.count, 4)
+    }
+
+    func testSVGPathRendererZeroRadiusArcFallsBackToLine() {
+        var options = Options()
+        options.roughness = 0
+
+        let svgPath = "M 0 0 A 0 50 0 0 1 100 0"
+        let ops = SVGPathRenderer.pathOps(svgPath: svgPath, options: options)
+
+        XCTAssertEqual(ops.filter { $0 is Move }.count, 2)
+        XCTAssertEqual(ops.filter { $0 is LineTo }.count, 2)
+        XCTAssertEqual(ops.filter { $0 is BezierCurveTo }.count, 0)
+    }
     
 }
