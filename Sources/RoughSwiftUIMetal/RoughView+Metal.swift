@@ -38,6 +38,23 @@ public extension RoughText {
             .metalAccelerated()
             .frame(width: typographicSize.width, height: typographicSize.height)
     }
+
+    /// Wraps this `RoughText` in an animated Metal-accelerated host view.
+    /// The returned view preserves this text's typographic size.
+    func metalAnimated(config: AnimationConfig = .default) -> some View {
+        underlyingRoughView
+            .metalAnimated(config: config)
+            .frame(width: typographicSize.width, height: typographicSize.height)
+    }
+
+    /// Convenience overload for animated Metal text.
+    func metalAnimated(
+        steps: Int = 4,
+        speed: AnimationSpeed = .medium,
+        variance: AnimationVariance = .medium
+    ) -> some View {
+        metalAnimated(config: AnimationConfig(steps: steps, speed: speed, variance: variance))
+    }
 }
 
 public extension RoughView {
@@ -66,5 +83,24 @@ public extension RoughView {
     /// - Returns: A `MetalRoughView` rendering this configuration.
     func metalAccelerated() -> MetalRoughView {
         MetalRoughView(self)
+    }
+
+    /// Wraps this `RoughView` in an animated Metal-accelerated host view.
+    /// Fills are animated on SwiftUI Canvas; stroke ribbons are animated
+    /// through precomputed Metal ribbon meshes.
+    func metalAnimated(config: AnimationConfig = .default) -> AnimatedMetalRoughView {
+        AnimatedMetalRoughView(config: config, roughView: self)
+    }
+
+    /// Convenience overload for animated Metal rendering.
+    func metalAnimated(
+        steps: Int = 4,
+        speed: AnimationSpeed = .medium,
+        variance: AnimationVariance = .medium
+    ) -> AnimatedMetalRoughView {
+        AnimatedMetalRoughView(
+            config: AnimationConfig(steps: steps, speed: speed, variance: variance),
+            roughView: self
+        )
     }
 }
