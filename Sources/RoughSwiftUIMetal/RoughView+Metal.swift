@@ -57,10 +57,9 @@ public extension RoughView {
     ///   `.mask` applied *outside* this view operate on the rasterized
     ///   contents, not on the underlying paths.
     ///   For full SwiftUI compositing fidelity, omit `.metalAccelerated()`.
-    /// - `ImageRenderer`-based snapshotting captures the SwiftUI fill layer
-    ///   but may miss the Metal stroke layer depending on platform version;
-    ///   prefer `UIGraphicsImageRenderer` when snapshotting Metal-accelerated
-    ///   views.
+    /// - `ImageRenderer`-based snapshotting may miss the hosted Metal stroke
+    ///   layer depending on platform version. Use `metalSnapshot(...)` or
+    ///   `MetalRoughSnapshotRenderer.image(...)` for exports/share sheets.
     /// - The Metal renderer requires a Metal-capable device; on devices
     ///   without one, the stroke layer is a no-op (fills still render).
     ///
