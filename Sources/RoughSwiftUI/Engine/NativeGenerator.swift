@@ -449,6 +449,8 @@ struct SVGPathRenderer {
     private class PathState {
         var position: (x: Float, y: Float) = (0, 0)
         var first: (x: Float, y: Float)?
+        var sourcePosition: CGPoint = .zero
+        var firstSource: CGPoint?
         var bezierReflection: (x: Float, y: Float)?
         var quadReflection: (x: Float, y: Float)?
         
@@ -456,6 +458,13 @@ struct SVGPathRenderer {
             position = (x, y)
             if first == nil {
                 first = (x, y)
+            }
+        }
+
+        func setSourcePosition(_ point: CGPoint) {
+            sourcePosition = point
+            if firstSource == nil {
+                firstSource = point
             }
         }
     }
@@ -539,6 +548,7 @@ struct SVGPathRenderer {
             let x = Float(cmd.point.x) + RoughMath.randOffset(offsetScale, options: options)
             let y = Float(cmd.point.y) + RoughMath.randOffset(offsetScale, options: options)
             state.setPosition(x, y)
+            state.setSourcePosition(cmd.point)
             // Always emit Move for the start of a contour
             ops.append(Move(data: [x, y]))
             
@@ -547,6 +557,7 @@ struct SVGPathRenderer {
             let y = Float(cmd.point.y) + RoughMath.randOffset(offsetScale, options: options)
             ops.append(LineTo(data: [x, y]))
             state.setPosition(x, y)
+            state.setSourcePosition(cmd.point)
             
         case .cubeCurve:
             let cp1x = Float(cmd.control1.x) + RoughMath.randOffset(offsetScale, options: options)
@@ -560,6 +571,7 @@ struct SVGPathRenderer {
             
             state.bezierReflection = (x + (x - cp2x), y + (y - cp2y))
             state.setPosition(x, y)
+            state.setSourcePosition(cmd.point)
             
         case .quadCurve:
             let cpx = Float(cmd.control1.x) + RoughMath.randOffset(offsetScale, options: options)
@@ -571,12 +583,51 @@ struct SVGPathRenderer {
             
             state.quadReflection = (x + (x - cpx), y + (y - cpy))
             state.setPosition(x, y)
+            state.setSourcePosition(cmd.point)
+
+        case .arc:
+            let start = state.sourcePosition
+            let curves = SVGArcConverter.cubicCurves(
+                from: start,
+                to: cmd.point,
+                rx: cmd.rx,
+                ry: cmd.ry,
+                xAxisRotation: cmd.xAxisRotation,
+                largeArc: cmd.largeArc,
+                sweep: cmd.sweep
+            )
+
+            if curves.isEmpty {
+                let x = Float(cmd.point.x) + RoughMath.randOffset(offsetScale, options: options)
+                let y = Float(cmd.point.y) + RoughMath.randOffset(offsetScale, options: options)
+                ops.append(LineTo(data: [x, y]))
+                state.setPosition(x, y)
+                state.setSourcePosition(cmd.point)
+            } else {
+                for curve in curves {
+                    let cp1x = Float(curve.control1.x) + RoughMath.randOffset(offsetScale, options: options)
+                    let cp1y = Float(curve.control1.y) + RoughMath.randOffset(offsetScale, options: options)
+                    let cp2x = Float(curve.control2.x) + RoughMath.randOffset(offsetScale, options: options)
+                    let cp2y = Float(curve.control2.y) + RoughMath.randOffset(offsetScale, options: options)
+                    let x = Float(curve.point.x) + RoughMath.randOffset(offsetScale, options: options)
+                    let y = Float(curve.point.y) + RoughMath.randOffset(offsetScale, options: options)
+
+                    ops.append(BezierCurveTo(data: [cp1x, cp1y, cp2x, cp2y, x, y]))
+                    state.bezierReflection = (x + (x - cp2x), y + (y - cp2y))
+                    state.setPosition(x, y)
+                }
+                state.setSourcePosition(cmd.point)
+            }
             
         case .close:
             // Close the subpath - this draws a line back to the start point
             // and marks the path as closed for proper fill rendering
             ops.append(Close())
             state.first = nil
+            if let firstSource = state.firstSource {
+                state.sourcePosition = firstSource
+            }
+            state.firstSource = nil
         }
         
         return ops
