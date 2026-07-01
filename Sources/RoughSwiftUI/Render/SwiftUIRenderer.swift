@@ -375,9 +375,15 @@ private extension SwiftUIRenderer {
             return []
         }
         
-        // Only use clip path for SVG paths (which may be concave shapes like stars)
-        // Simple shapes like rectangles and circles don't need clipping
-        let clipPath: SwiftPath? = isSVGPath ? SwiftPath(shapePath) : nil
+        // Clip scribble fills for SVG and native polygons. SVG paths and
+        // polygons may be concave (stars, arrows, custom silhouettes), and
+        // the continuous zig-zag scribble can otherwise bridge across
+        // concave notches between valid ray intersections. Simple native
+        // primitives (rectangles, circles, ellipses) do not need clipping
+        // because their generated scribble segments already stay inside.
+        let clipPath: SwiftPath? = shouldClipScribbleFill(drawing: drawing, isSVGPath: isSVGPath)
+            ? SwiftPath(shapePath)
+            : nil
         
         // Generate scribble fill operation sets
         let scribbleSets = ScribbleFillGenerator.generate(for: shapePath, options: options)
@@ -430,6 +436,16 @@ private extension SwiftUIRenderer {
                 ]
             }
         }
+    }
+
+    /// Returns whether scribble-fill strokes should be clipped to the shape
+    /// path. Clipping is required for potentially concave outlines where a
+    /// continuous scribble can cross outside the shape between ray-cast
+    /// intersections. Native polygons are the primary non-SVG case; SVG paths
+    /// are always clipped because they can encode arbitrary concave geometry
+    /// and holes.
+    func shouldClipScribbleFill(drawing: Drawing, isSVGPath: Bool) -> Bool {
+        isSVGPath || drawing.shape == "polygon"
     }
     
     /// Extracts the shape path from a drawing for scribble fill generation.

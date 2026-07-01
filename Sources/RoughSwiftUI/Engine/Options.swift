@@ -69,13 +69,12 @@ public struct Options: Equatable, Hashable {
     /// generation for native curved shapes (circle, ellipse, arc, egg,
     /// rounded-rectangle corners, polygons, lines).
     ///
-    /// Default is `.legacy` so existing visual snapshots and downstream
-    /// tests are unaffected. Opt in per-view with
-    /// `RoughView.strokeContinuity(.continuous)` to render true cubic
-    /// Bezier curves instead of point-sampled approximations.
+    /// Default is `.continuous`, producing true cubic Bezier curves
+    /// instead of point-sampled approximations. Use `.legacy` only when
+    /// you specifically need rough.js-compatible sampled outlines.
     ///
     /// See `StrokeContinuity` for a full discussion of the tradeoffs.
-    public var strokeContinuity: StrokeContinuity = .legacy
+    public var strokeContinuity: StrokeContinuity = .continuous
     
     // MARK: - Scribble Fill Options
     

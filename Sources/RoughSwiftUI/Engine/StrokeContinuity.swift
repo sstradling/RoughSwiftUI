@@ -33,10 +33,10 @@ import Foundation
 ///
 /// ## Defaults and migration
 ///
-/// Default is `.legacy` so this PR introduces no visual change to existing
-/// snapshots, fixtures, or downstream tests. Opt in per-view with
-/// `RoughView.strokeContinuity(.continuous)`. A future PR will flip the
-/// default after side-by-side visual review.
+/// Default is `.continuous`, because RoughSwiftUI is expected to favor
+/// continuous hand-drawn borders over sampled-point curve approximations.
+/// Use `.legacy` only when you specifically need the original rough.js-style
+/// sampled outlines.
 public enum StrokeContinuity: Equatable, Hashable, Sendable {
     /// Original behavior: sample `curveStepCount` points around curved
     /// outlines and Catmull-Rom-stitch them with per-sample jitter.
