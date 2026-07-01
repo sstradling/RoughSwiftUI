@@ -384,7 +384,8 @@ public struct AnimatedRoughView: View {
             let strokeStyle = StrokeStyle(
                 lineWidth: lineWidth,
                 lineCap: command.cap.cgLineCap,
-                lineJoin: command.join.cgLineJoin
+                lineJoin: command.join.cgLineJoin,
+                miterLimit: command.miterLimit
             )
             context.stroke(
                 command.path,

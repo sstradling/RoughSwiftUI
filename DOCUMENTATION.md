@@ -126,6 +126,7 @@ Pass any `Drawable` type for precise positioning.
 | `.strokeWidth(_ value:)` | `Float` | 1 | Line width in points |
 | `.strokeCap(_ cap:)` | `BrushCap` | `.round` | Line ending style |
 | `.strokeJoin(_ join:)` | `BrushJoin` | `.round` | Corner style |
+| `.strokeMiterLimit(_ value:)` | `CGFloat` | 10 | Maximum miter spike ratio before bevel fallback |
 
 ### Roughness Modifiers
 
@@ -609,6 +610,45 @@ public enum BrushJoin: Equatable, Hashable, Sendable {
     case bevel   // Flat corner
 }
 ```
+
+Use `.strokeMiterLimit(_:)` with `.strokeJoin(.miter)` to control how far
+sharp corners may extend before falling back to a bevel join. Lower values
+clamp spikes sooner; higher values allow longer pointed corners.
+
+```swift
+RoughView()
+    .strokeJoin(.miter)
+    .strokeMiterLimit(2)
+    .draw(Polygon(points: points))
+```
+
+### NativeStrokeOutline
+
+```swift
+public enum NativeStrokeOutline {
+    public static func path(
+        from path: SwiftUI.Path,
+        width: CGFloat,
+        cap: BrushCap,
+        join: BrushJoin,
+        miterLimit: CGFloat = 10
+    ) -> SwiftUI.Path
+
+    public static func path(
+        operations: [Operation],
+        width: CGFloat,
+        cap: BrushCap,
+        join: BrushJoin,
+        miterLimit: CGFloat = 10
+    ) -> SwiftUI.Path
+}
+```
+
+`NativeStrokeOutline` asks CoreGraphics to convert a uniform-width stroke
+into a filled outline while preserving native cap, join, and miter-limit
+semantics. Use it when you need a filled path for clipping/compositing but
+want native-quality joins. Variable-width effects (taper, calligraphic brush
+tips, width jitter) still require `StrokeToFillConverter`.
 
 ### BrushProfile
 
