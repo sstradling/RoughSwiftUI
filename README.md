@@ -8,6 +8,8 @@
 
 RoughSwiftUI allows you to easily create shapes in a hand-drawn, sketchy, comic style in SwiftUI. This library provides a native Swift implementation of rough.js-style rendering, optimized for iOS and tvOS.
 
+> RoughSwiftUI is an independent, actively maintained project. It began as a fork of [RoughSwift](https://github.com/onmyway133/RoughSwift) but has since been fully rewritten — including a native Swift generator engine (no JavaScript bridge) — with substantial new functionality. See [Credits](#credits) for attribution.
+
 - [x] Support iOS, tvOS
 - [x] Support all shapes: line, rectangle, circle, ellipse, linear path, arc, curve, polygon, SVG path, text
 - [x] **Native Swift rendering engine** - no JavaScript bridge required
