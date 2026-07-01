@@ -28,10 +28,10 @@ final class StrokeContinuityIntegrationTests: XCTestCase {
 
     // MARK: - Defaults
 
-    func testDefaultIsLegacyForBackwardsCompatibility() {
+    func testDefaultIsContinuous() {
         let o = Options()
-        XCTAssertEqual(o.strokeContinuity, .legacy,
-                       "Default must remain .legacy so existing snapshots are unaffected")
+        XCTAssertEqual(o.strokeContinuity, .continuous,
+                       "Default should favor continuous-Bezier stroke generation")
     }
 
     // MARK: - Circle dispatch
@@ -129,18 +129,18 @@ final class StrokeContinuityIntegrationTests: XCTestCase {
         var b = Options()
         XCTAssertEqual(a, b)
 
-        a.strokeContinuity = .continuous
+        a.strokeContinuity = .legacy
         XCTAssertNotEqual(a, b,
                           "Options equality must distinguish between continuity modes")
 
-        b.strokeContinuity = .continuous
+        b.strokeContinuity = .legacy
         XCTAssertEqual(a, b)
     }
 
     // MARK: - Modifier API
 
     func testRoughViewModifierSetsStrokeContinuity() {
-        let view = RoughView().strokeContinuity(.continuous)
-        XCTAssertEqual(view.options.strokeContinuity, .continuous)
+        let view = RoughView().strokeContinuity(.legacy)
+        XCTAssertEqual(view.options.strokeContinuity, .legacy)
     }
 }

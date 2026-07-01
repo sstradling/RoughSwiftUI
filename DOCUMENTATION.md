@@ -501,6 +501,10 @@ RoughView().fill(.purple).fillStyle(.dots).circle()
 RoughView().fill(.orange).fillStyle(.scribble).scribbleTightness(15).circle()
 ```
 
+Scribble fills are clipped for potentially concave outlines: SVG paths
+and native `Polygon` drawables. This prevents the continuous zig-zag line
+from leaking across concave notches between ray intersections.
+
 ---
 
 ## Text Rendering
@@ -758,19 +762,19 @@ corners, polygons, lines) can be generated in one of two modes:
 
 | Mode | How outlines are built |
 |---|---|
-| `.legacy` (default) | Sample `curveStepCount` points around the perimeter and stitch them with Catmull-Rom→Bezier conversion. Each "step" becomes its own short cubic — increasing `curveStepCount` for smoothness produces *more* visible polygon facets. |
-| `.continuous` | Emit a small fixed number of true cubic Beziers that match the underlying parametric shape. A circle is 4 cubics per pass; polygon edges share endpoints with their neighbors so a closed shape is one continuous subpath. |
+| `.continuous` (default) | Emit a small fixed number of true cubic Beziers that match the underlying parametric shape. A circle is 4 cubics per pass; polygon edges share endpoints with their neighbors so a closed shape is one continuous subpath. |
+| `.legacy` | Sample `curveStepCount` points around the perimeter and stitch them with Catmull-Rom→Bezier conversion. Each "step" becomes its own short cubic — increasing `curveStepCount` for smoothness produces *more* visible polygon facets. |
 
-The default is `.legacy` so existing visual snapshots and downstream
-tests are unaffected. Opt in per-view with `RoughView.strokeContinuity(_:)`.
+The default is `.continuous`. Use `RoughView.strokeContinuity(.legacy)`
+only when you specifically need rough.js-compatible sampled outlines.
 
-### When to use `.continuous`
+### Why `.continuous` is the default
 
 - Drawing large curved shapes where polygonal facets become visible.
 - Wanting a closed subpath (one `Move` + cubics + `Close`) for downstream
   consumers like `StrokeToFillConverter` or the Metal `RibbonMeshBuilder`.
 - Reducing the number of operations in cached drawings (a `.continuous`
-  circle uses ~8 cubics vs. ~18 for `.legacy` defaults — smaller cache
+  circle uses ~8 cubics vs. ~18 for `.legacy` — smaller cache
   entries and faster path-element iteration during animation).
 
 ### Scope
@@ -790,9 +794,15 @@ API parity but has no effect on glyph rendering.
 RoughView()
     .stroke(.systemTeal)
     .strokeWidth(3)
-    .strokeContinuity(.continuous)        // opt in
     .circle()
     .frame(width: 200, height: 200)
+```
+
+Legacy compatibility:
+```swift
+RoughView()
+    .strokeContinuity(.legacy)
+    .circle()
 ```
 
 ### Reference

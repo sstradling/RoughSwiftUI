@@ -23,7 +23,7 @@ RoughSwiftUI allows you to easily create shapes in a hand-drawn, sketchy, comic 
 - [x] Custom brush profiles for calligraphic effects
 - [x] Text rendering with rough styling
 - [x] Scribble fill pattern for continuous zig-zag fills
-- [x] Continuous-Bezier stroke generation (opt-in via `strokeContinuity(.continuous)`)
+- [x] Continuous-Bezier stroke generation by default (`strokeContinuity(.legacy)` remains available)
 - [ ] SVG elliptical arc
 
 ## Basic
@@ -229,6 +229,10 @@ RoughView()
     )
     .circle()
 ```
+
+For concave SVG paths and native polygons, scribble strokes are clipped
+to the shape outline so the continuous line cannot leak across notches or
+holes between ray intersections.
 
 Here's how to draw circles in different fill styles. The default fill style is hachure:
 
@@ -860,26 +864,29 @@ Based on signpost data, common bottlenecks include:
 ## Continuous stroke borders
 
 By default, native curved shapes (circles, ellipses, arcs, eggs,
-rounded-rectangle corners) are sampled at `curveStepCount` points and
-stitched together with Catmull-Rom→Bezier conversion. This is
-rough.js-compatible but produces visible polygon facets at large sizes.
-
-Opt in to true cubic Bezier construction with `.strokeContinuity(.continuous)`:
+rounded-rectangle corners) render with true cubic Bezier construction.
+This avoids the visible facets that come from sampling a curve at
+`curveStepCount` points and stitching those samples together.
 
 ```swift
 RoughView()
     .stroke(.black)
     .strokeWidth(3)
-    .strokeContinuity(.continuous)   // 4 cubics per pass instead of N short segments
     .circle()
     .frame(width: 240, height: 240)
 ```
 
 Affects `line`, `rectangle`, `ellipse`, `circle`, `linearPath`, `polygon`,
-`arc`, `roundedRectangle`, and `egg`. Default remains `.legacy` so this
-setting cannot regress existing visual snapshots — flip it on per view as
-needed. See the *Stroke Continuity* section in `DOCUMENTATION.md` for
-details.
+`arc`, `roundedRectangle`, and `egg`. If you need rough.js-compatible
+sampled outlines, opt back into the legacy generator:
+
+```swift
+RoughView()
+    .strokeContinuity(.legacy)
+    .circle()
+```
+
+See the *Stroke Continuity* section in `DOCUMENTATION.md` for details.
 
 ## Installation
 
