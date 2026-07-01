@@ -1,4 +1,4 @@
-# RoughSwiftUI Cursor Rules
+# Sketchy Cursor Rules
 
 ## Documentation Requirements
 
@@ -57,7 +57,7 @@
 
 ### Test Organization
 
-Tests are organized in `Tests/RoughSwiftUITests/` by category:
+Tests are organized in `Tests/SketchyTests/` by category:
 
 | Directory | Purpose |
 |-----------|---------|
@@ -82,7 +82,7 @@ After making code changes, run relevant tests using:
 ```swift
 mcp_XcodeBuildMCP_test_sim({
   workspacePath: ".swiftpm/xcode/package.xcworkspace",
-  scheme: "RoughSwiftUI",
+  scheme: "Sketchy",
   simulatorId: "034A5CD0-4A30-4742-9327-11C12F6CF75D"
 })
 ```
@@ -95,7 +95,7 @@ Or run specific test files by adding a filter parameter.
 
 ### iOS Simulator Tests
 
-To run unit tests for the RoughSwiftUI package on iOS:
+To run unit tests for the Sketchy package on iOS:
 
 1. **List available simulators:**
    ```
@@ -107,9 +107,9 @@ To run unit tests for the RoughSwiftUI package on iOS:
    ```bash
    xcodebuild test \
      -workspace .swiftpm/xcode/package.xcworkspace \
-     -scheme RoughSwiftUI \
+     -scheme Sketchy \
      -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=latest' \
-     -only-testing:RoughSwiftUITests
+     -only-testing:SketchyTests
    ```
 
 3. **Using MCP tools (recommended):**
@@ -117,7 +117,7 @@ To run unit tests for the RoughSwiftUI package on iOS:
    - List schemes: `mcp_XcodeBuildMCP_list_schemes` with workspacePath `.swiftpm/xcode/package.xcworkspace`
    - Run tests: `mcp_XcodeBuildMCP_test_sim` with:
      - `workspacePath`: `.swiftpm/xcode/package.xcworkspace`
-     - `scheme`: `RoughSwiftUI`
+     - `scheme`: `Sketchy`
      - `simulatorId`: UUID of an available iOS simulator
 
 ### Example Test Run Command
@@ -126,14 +126,14 @@ To run unit tests for the RoughSwiftUI package on iOS:
 # Using xcodebuild directly:
 xcodebuild test \
   -workspace .swiftpm/xcode/package.xcworkspace \
-  -scheme RoughSwiftUI \
+  -scheme Sketchy \
   -destination 'platform=iOS Simulator,id=034A5CD0-4A30-4742-9327-11C12F6CF75D' \
-  -only-testing:RoughSwiftUITests
+  -only-testing:SketchyTests
 
 # Or using MCP tool:
 mcp_XcodeBuildMCP_test_sim({
   workspacePath: ".swiftpm/xcode/package.xcworkspace",
-  scheme: "RoughSwiftUI",
+  scheme: "Sketchy",
   simulatorId: "034A5CD0-4A30-4742-9327-11C12F6CF75D"
 })
 ```
@@ -142,6 +142,6 @@ mcp_XcodeBuildMCP_test_sim({
 
 - The package is iOS-only (iOS 17+), so tests must run on an iOS simulator
 - The Swift Package workspace is located at `.swiftpm/xcode/package.xcworkspace`
-- The test scheme is `RoughSwiftUI`
+- The test scheme is `Sketchy`
 - All 316 tests should pass when run correctly
 

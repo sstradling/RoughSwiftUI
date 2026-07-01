@@ -1,0 +1,631 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 60;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		BA129A6E2EFDEDAD0024F01F /* Fredoka-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A512EFDEDAD0024F01F /* Fredoka-Regular.ttf */; };
+		BA129A6F2EFDEDAD0024F01F /* Nunito-VariableFont_wght.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A6A2EFDEDAD0024F01F /* Nunito-VariableFont_wght.ttf */; };
+		BA129A702EFDEDAD0024F01F /* Fredoka_Expanded-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A422EFDEDAD0024F01F /* Fredoka_Expanded-Regular.ttf */; };
+		BA129A712EFDEDAD0024F01F /* Nunito-MediumItalic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A642EFDEDAD0024F01F /* Nunito-MediumItalic.ttf */; };
+		BA129A722EFDEDAD0024F01F /* Nunito-ExtraBoldItalic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A5D2EFDEDAD0024F01F /* Nunito-ExtraBoldItalic.ttf */; };
+		BA129A732EFDEDAD0024F01F /* Fredoka-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A502EFDEDAD0024F01F /* Fredoka-Medium.ttf */; };
+		BA129A742EFDEDAD0024F01F /* Fredoka_SemiExpanded-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A4B2EFDEDAD0024F01F /* Fredoka_SemiExpanded-Medium.ttf */; };
+		BA129A752EFDEDAD0024F01F /* Nunito-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A662EFDEDAD0024F01F /* Nunito-SemiBold.ttf */; };
+		BA129A762EFDEDAD0024F01F /* Fredoka_Expanded-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A3F2EFDEDAD0024F01F /* Fredoka_Expanded-Bold.ttf */; };
+		BA129A782EFDEDAD0024F01F /* Nunito-LightItalic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A622EFDEDAD0024F01F /* Nunito-LightItalic.ttf */; };
+		BA129A792EFDEDAD0024F01F /* Fredoka_Condensed-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A3A2EFDEDAD0024F01F /* Fredoka_Condensed-Bold.ttf */; };
+		BA129A7B2EFDEDAD0024F01F /* Nunito-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A5A2EFDEDAD0024F01F /* Nunito-Bold.ttf */; };
+		BA129A7C2EFDEDAD0024F01F /* Fredoka_Expanded-Light.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A402EFDEDAD0024F01F /* Fredoka_Expanded-Light.ttf */; };
+		BA129A7D2EFDEDAD0024F01F /* Fredoka_SemiCondensed-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A462EFDEDAD0024F01F /* Fredoka_SemiCondensed-Medium.ttf */; };
+		BA129A7E2EFDEDAD0024F01F /* Nunito-BlackItalic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A592EFDEDAD0024F01F /* Nunito-BlackItalic.ttf */; };
+		BA129A802EFDEDAD0024F01F /* Fredoka_SemiCondensed-Light.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A452EFDEDAD0024F01F /* Fredoka_SemiCondensed-Light.ttf */; };
+		BA129A812EFDEDAD0024F01F /* Nunito-Italic-VariableFont_wght.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A692EFDEDAD0024F01F /* Nunito-Italic-VariableFont_wght.ttf */; };
+		BA129A822EFDEDAD0024F01F /* Fredoka_Expanded-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A432EFDEDAD0024F01F /* Fredoka_Expanded-SemiBold.ttf */; };
+		BA129A832EFDEDAD0024F01F /* Nunito-Italic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A602EFDEDAD0024F01F /* Nunito-Italic.ttf */; };
+		BA129A842EFDEDAD0024F01F /* Fredoka_SemiCondensed-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A442EFDEDAD0024F01F /* Fredoka_SemiCondensed-Bold.ttf */; };
+		BA129A852EFDEDAD0024F01F /* Nunito-ExtraLightItalic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A5F2EFDEDAD0024F01F /* Nunito-ExtraLightItalic.ttf */; };
+		BA129A862EFDEDAD0024F01F /* Fredoka_Expanded-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A412EFDEDAD0024F01F /* Fredoka_Expanded-Medium.ttf */; };
+		BA129A872EFDEDAD0024F01F /* Fredoka-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A522EFDEDAD0024F01F /* Fredoka-SemiBold.ttf */; };
+		BA129A882EFDEDAD0024F01F /* Nunito-Light.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A612EFDEDAD0024F01F /* Nunito-Light.ttf */; };
+		BA129A892EFDEDAD0024F01F /* Fredoka_SemiExpanded-Light.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A4A2EFDEDAD0024F01F /* Fredoka_SemiExpanded-Light.ttf */; };
+		BA129A8A2EFDEDAD0024F01F /* Fredoka_SemiExpanded-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A4C2EFDEDAD0024F01F /* Fredoka_SemiExpanded-Regular.ttf */; };
+		BA129A8B2EFDEDAD0024F01F /* Fredoka_SemiExpanded-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A492EFDEDAD0024F01F /* Fredoka_SemiExpanded-Bold.ttf */; };
+		BA129A8C2EFDEDAD0024F01F /* Fredoka_Condensed-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A3E2EFDEDAD0024F01F /* Fredoka_Condensed-SemiBold.ttf */; };
+		BA129A8D2EFDEDAD0024F01F /* Fredoka_Condensed-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A3C2EFDEDAD0024F01F /* Fredoka_Condensed-Medium.ttf */; };
+		BA129A8E2EFDEDAD0024F01F /* Fredoka_SemiCondensed-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A472EFDEDAD0024F01F /* Fredoka_SemiCondensed-Regular.ttf */; };
+		BA129A8F2EFDEDAD0024F01F /* Nunito-SemiBoldItalic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A672EFDEDAD0024F01F /* Nunito-SemiBoldItalic.ttf */; };
+		BA129A902EFDEDAD0024F01F /* Nunito-ExtraLight.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A5E2EFDEDAD0024F01F /* Nunito-ExtraLight.ttf */; };
+		BA129A922EFDEDAD0024F01F /* Fredoka_SemiCondensed-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A482EFDEDAD0024F01F /* Fredoka_SemiCondensed-SemiBold.ttf */; };
+		BA129A932EFDEDAD0024F01F /* Nunito-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A652EFDEDAD0024F01F /* Nunito-Regular.ttf */; };
+		BA129A942EFDEDAD0024F01F /* Fredoka-VariableFont_wdth,wght.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A542EFDEDAD0024F01F /* Fredoka-VariableFont_wdth,wght.ttf */; };
+		BA129A952EFDEDAD0024F01F /* Fredoka-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A4E2EFDEDAD0024F01F /* Fredoka-Bold.ttf */; };
+		BA129A962EFDEDAD0024F01F /* Fredoka_Condensed-Light.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A3B2EFDEDAD0024F01F /* Fredoka_Condensed-Light.ttf */; };
+		BA129A972EFDEDAD0024F01F /* Nunito-Black.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A582EFDEDAD0024F01F /* Nunito-Black.ttf */; };
+		BA129A982EFDEDAD0024F01F /* Fredoka_SemiExpanded-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A4D2EFDEDAD0024F01F /* Fredoka_SemiExpanded-SemiBold.ttf */; };
+		BA129A992EFDEDAD0024F01F /* Nunito-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A632EFDEDAD0024F01F /* Nunito-Medium.ttf */; };
+		BA129A9A2EFDEDAD0024F01F /* Nunito-ExtraBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A5C2EFDEDAD0024F01F /* Nunito-ExtraBold.ttf */; };
+		BA129A9B2EFDEDAD0024F01F /* Fredoka_Condensed-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A3D2EFDEDAD0024F01F /* Fredoka_Condensed-Regular.ttf */; };
+		BA129A9C2EFDEDAD0024F01F /* Nunito-BoldItalic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A5B2EFDEDAD0024F01F /* Nunito-BoldItalic.ttf */; };
+		BA129A9D2EFDEDAD0024F01F /* Fredoka-Light.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A4F2EFDEDAD0024F01F /* Fredoka-Light.ttf */; };
+		BA15ADD22EE3CB9200421BAF /* Sketchy in Frameworks */ = {isa = PBXBuildFile; productRef = BA15ADD12EE3CB9200421BAF /* Sketchy */; };
+		BAE275012EFD000000000001 /* PrimitivesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAE275032EFD000000000001 /* PrimitivesView.swift */; };
+		BAE275022EFD000000000001 /* OptionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAE275042EFD000000000001 /* OptionsView.swift */; };
+		BACB84922EDE7B8D00878DDE /* Inject in Frameworks */ = {isa = PBXBuildFile; productRef = BACB84912EDE7B8D00878DDE /* Inject */; };
+		BAEF0FA72EDE5CD800C46DE6 /* Sketchy in Frameworks */ = {isa = PBXBuildFile; productRef = BAEF0FA62EDE5CD800C46DE6 /* Sketchy */; };
+		D2C5CBF127EF63D200BBE97D /* SketchyDemoApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2C5CBF027EF63D200BBE97D /* SketchyDemoApp.swift */; };
+		D2C5CBF327EF63D300BBE97D /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2C5CBF227EF63D200BBE97D /* ContentView.swift */; };
+		D2C5CBF527EF63D500BBE97D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D2C5CBF427EF63D500BBE97D /* Assets.xcassets */; };
+		D2C5CBF827EF63D500BBE97D /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D2C5CBF727EF63D500BBE97D /* Preview Assets.xcassets */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		BA129A3A2EFDEDAD0024F01F /* Fredoka_Condensed-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Fredoka_Condensed-Bold.ttf"; sourceTree = "<group>"; };
+		BA129A3B2EFDEDAD0024F01F /* Fredoka_Condensed-Light.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Fredoka_Condensed-Light.ttf"; sourceTree = "<group>"; };
+		BA129A3C2EFDEDAD0024F01F /* Fredoka_Condensed-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Fredoka_Condensed-Medium.ttf"; sourceTree = "<group>"; };
+		BA129A3D2EFDEDAD0024F01F /* Fredoka_Condensed-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Fredoka_Condensed-Regular.ttf"; sourceTree = "<group>"; };
+		BA129A3E2EFDEDAD0024F01F /* Fredoka_Condensed-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Fredoka_Condensed-SemiBold.ttf"; sourceTree = "<group>"; };
+		BA129A3F2EFDEDAD0024F01F /* Fredoka_Expanded-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Fredoka_Expanded-Bold.ttf"; sourceTree = "<group>"; };
+		BA129A402EFDEDAD0024F01F /* Fredoka_Expanded-Light.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Fredoka_Expanded-Light.ttf"; sourceTree = "<group>"; };
+		BA129A412EFDEDAD0024F01F /* Fredoka_Expanded-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Fredoka_Expanded-Medium.ttf"; sourceTree = "<group>"; };
+		BA129A422EFDEDAD0024F01F /* Fredoka_Expanded-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Fredoka_Expanded-Regular.ttf"; sourceTree = "<group>"; };
+		BA129A432EFDEDAD0024F01F /* Fredoka_Expanded-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Fredoka_Expanded-SemiBold.ttf"; sourceTree = "<group>"; };
+		BA129A442EFDEDAD0024F01F /* Fredoka_SemiCondensed-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Fredoka_SemiCondensed-Bold.ttf"; sourceTree = "<group>"; };
+		BA129A452EFDEDAD0024F01F /* Fredoka_SemiCondensed-Light.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Fredoka_SemiCondensed-Light.ttf"; sourceTree = "<group>"; };
+		BA129A462EFDEDAD0024F01F /* Fredoka_SemiCondensed-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Fredoka_SemiCondensed-Medium.ttf"; sourceTree = "<group>"; };
+		BA129A472EFDEDAD0024F01F /* Fredoka_SemiCondensed-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Fredoka_SemiCondensed-Regular.ttf"; sourceTree = "<group>"; };
+		BA129A482EFDEDAD0024F01F /* Fredoka_SemiCondensed-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Fredoka_SemiCondensed-SemiBold.ttf"; sourceTree = "<group>"; };
+		BA129A492EFDEDAD0024F01F /* Fredoka_SemiExpanded-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Fredoka_SemiExpanded-Bold.ttf"; sourceTree = "<group>"; };
+		BA129A4A2EFDEDAD0024F01F /* Fredoka_SemiExpanded-Light.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Fredoka_SemiExpanded-Light.ttf"; sourceTree = "<group>"; };
+		BA129A4B2EFDEDAD0024F01F /* Fredoka_SemiExpanded-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Fredoka_SemiExpanded-Medium.ttf"; sourceTree = "<group>"; };
+		BA129A4C2EFDEDAD0024F01F /* Fredoka_SemiExpanded-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Fredoka_SemiExpanded-Regular.ttf"; sourceTree = "<group>"; };
+		BA129A4D2EFDEDAD0024F01F /* Fredoka_SemiExpanded-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Fredoka_SemiExpanded-SemiBold.ttf"; sourceTree = "<group>"; };
+		BA129A4E2EFDEDAD0024F01F /* Fredoka-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Fredoka-Bold.ttf"; sourceTree = "<group>"; };
+		BA129A4F2EFDEDAD0024F01F /* Fredoka-Light.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Fredoka-Light.ttf"; sourceTree = "<group>"; };
+		BA129A502EFDEDAD0024F01F /* Fredoka-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Fredoka-Medium.ttf"; sourceTree = "<group>"; };
+		BA129A512EFDEDAD0024F01F /* Fredoka-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Fredoka-Regular.ttf"; sourceTree = "<group>"; };
+		BA129A522EFDEDAD0024F01F /* Fredoka-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Fredoka-SemiBold.ttf"; sourceTree = "<group>"; };
+		BA129A542EFDEDAD0024F01F /* Fredoka-VariableFont_wdth,wght.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Fredoka-VariableFont_wdth,wght.ttf"; sourceTree = "<group>"; };
+		BA129A582EFDEDAD0024F01F /* Nunito-Black.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Nunito-Black.ttf"; sourceTree = "<group>"; };
+		BA129A592EFDEDAD0024F01F /* Nunito-BlackItalic.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Nunito-BlackItalic.ttf"; sourceTree = "<group>"; };
+		BA129A5A2EFDEDAD0024F01F /* Nunito-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Nunito-Bold.ttf"; sourceTree = "<group>"; };
+		BA129A5B2EFDEDAD0024F01F /* Nunito-BoldItalic.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Nunito-BoldItalic.ttf"; sourceTree = "<group>"; };
+		BA129A5C2EFDEDAD0024F01F /* Nunito-ExtraBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Nunito-ExtraBold.ttf"; sourceTree = "<group>"; };
+		BA129A5D2EFDEDAD0024F01F /* Nunito-ExtraBoldItalic.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Nunito-ExtraBoldItalic.ttf"; sourceTree = "<group>"; };
+		BA129A5E2EFDEDAD0024F01F /* Nunito-ExtraLight.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Nunito-ExtraLight.ttf"; sourceTree = "<group>"; };
+		BA129A5F2EFDEDAD0024F01F /* Nunito-ExtraLightItalic.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Nunito-ExtraLightItalic.ttf"; sourceTree = "<group>"; };
+		BA129A602EFDEDAD0024F01F /* Nunito-Italic.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Nunito-Italic.ttf"; sourceTree = "<group>"; };
+		BA129A612EFDEDAD0024F01F /* Nunito-Light.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Nunito-Light.ttf"; sourceTree = "<group>"; };
+		BA129A622EFDEDAD0024F01F /* Nunito-LightItalic.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Nunito-LightItalic.ttf"; sourceTree = "<group>"; };
+		BA129A632EFDEDAD0024F01F /* Nunito-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Nunito-Medium.ttf"; sourceTree = "<group>"; };
+		BA129A642EFDEDAD0024F01F /* Nunito-MediumItalic.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Nunito-MediumItalic.ttf"; sourceTree = "<group>"; };
+		BA129A652EFDEDAD0024F01F /* Nunito-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Nunito-Regular.ttf"; sourceTree = "<group>"; };
+		BA129A662EFDEDAD0024F01F /* Nunito-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Nunito-SemiBold.ttf"; sourceTree = "<group>"; };
+		BA129A672EFDEDAD0024F01F /* Nunito-SemiBoldItalic.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Nunito-SemiBoldItalic.ttf"; sourceTree = "<group>"; };
+		BA129A692EFDEDAD0024F01F /* Nunito-Italic-VariableFont_wght.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Nunito-Italic-VariableFont_wght.ttf"; sourceTree = "<group>"; };
+		BA129A6A2EFDEDAD0024F01F /* Nunito-VariableFont_wght.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Nunito-VariableFont_wght.ttf"; sourceTree = "<group>"; };
+		BA129A9E2EFDEDF10024F01F /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		BAE275032EFD000000000001 /* PrimitivesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrimitivesView.swift; sourceTree = "<group>"; };
+		BAE275042EFD000000000001 /* OptionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OptionsView.swift; sourceTree = "<group>"; };
+		D2C5CBED27EF63D200BBE97D /* SketchyDemo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SketchyDemo.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		D2C5CBF027EF63D200BBE97D /* SketchyDemoApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SketchyDemoApp.swift; sourceTree = "<group>"; };
+		D2C5CBF227EF63D200BBE97D /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		D2C5CBF427EF63D500BBE97D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		D2C5CBF727EF63D500BBE97D /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		D2C5CBEA27EF63D200BBE97D /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BA15ADD22EE3CB9200421BAF /* Sketchy in Frameworks */,
+				BAEF0FA72EDE5CD800C46DE6 /* Sketchy in Frameworks */,
+				BACB84922EDE7B8D00878DDE /* Inject in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		BA129A532EFDEDAD0024F01F /* static */ = {
+			isa = PBXGroup;
+			children = (
+				BA129A3A2EFDEDAD0024F01F /* Fredoka_Condensed-Bold.ttf */,
+				BA129A3B2EFDEDAD0024F01F /* Fredoka_Condensed-Light.ttf */,
+				BA129A3C2EFDEDAD0024F01F /* Fredoka_Condensed-Medium.ttf */,
+				BA129A3D2EFDEDAD0024F01F /* Fredoka_Condensed-Regular.ttf */,
+				BA129A3E2EFDEDAD0024F01F /* Fredoka_Condensed-SemiBold.ttf */,
+				BA129A3F2EFDEDAD0024F01F /* Fredoka_Expanded-Bold.ttf */,
+				BA129A402EFDEDAD0024F01F /* Fredoka_Expanded-Light.ttf */,
+				BA129A412EFDEDAD0024F01F /* Fredoka_Expanded-Medium.ttf */,
+				BA129A422EFDEDAD0024F01F /* Fredoka_Expanded-Regular.ttf */,
+				BA129A432EFDEDAD0024F01F /* Fredoka_Expanded-SemiBold.ttf */,
+				BA129A442EFDEDAD0024F01F /* Fredoka_SemiCondensed-Bold.ttf */,
+				BA129A452EFDEDAD0024F01F /* Fredoka_SemiCondensed-Light.ttf */,
+				BA129A462EFDEDAD0024F01F /* Fredoka_SemiCondensed-Medium.ttf */,
+				BA129A472EFDEDAD0024F01F /* Fredoka_SemiCondensed-Regular.ttf */,
+				BA129A482EFDEDAD0024F01F /* Fredoka_SemiCondensed-SemiBold.ttf */,
+				BA129A492EFDEDAD0024F01F /* Fredoka_SemiExpanded-Bold.ttf */,
+				BA129A4A2EFDEDAD0024F01F /* Fredoka_SemiExpanded-Light.ttf */,
+				BA129A4B2EFDEDAD0024F01F /* Fredoka_SemiExpanded-Medium.ttf */,
+				BA129A4C2EFDEDAD0024F01F /* Fredoka_SemiExpanded-Regular.ttf */,
+				BA129A4D2EFDEDAD0024F01F /* Fredoka_SemiExpanded-SemiBold.ttf */,
+				BA129A4E2EFDEDAD0024F01F /* Fredoka-Bold.ttf */,
+				BA129A4F2EFDEDAD0024F01F /* Fredoka-Light.ttf */,
+				BA129A502EFDEDAD0024F01F /* Fredoka-Medium.ttf */,
+				BA129A512EFDEDAD0024F01F /* Fredoka-Regular.ttf */,
+				BA129A522EFDEDAD0024F01F /* Fredoka-SemiBold.ttf */,
+			);
+			path = static;
+			sourceTree = "<group>";
+		};
+		BA129A572EFDEDAD0024F01F /* Fredoka */ = {
+			isa = PBXGroup;
+			children = (
+				BA129A532EFDEDAD0024F01F /* static */,
+				BA129A542EFDEDAD0024F01F /* Fredoka-VariableFont_wdth,wght.ttf */,
+			);
+			path = Fredoka;
+			sourceTree = "<group>";
+		};
+		BA129A682EFDEDAD0024F01F /* static */ = {
+			isa = PBXGroup;
+			children = (
+				BA129A582EFDEDAD0024F01F /* Nunito-Black.ttf */,
+				BA129A592EFDEDAD0024F01F /* Nunito-BlackItalic.ttf */,
+				BA129A5A2EFDEDAD0024F01F /* Nunito-Bold.ttf */,
+				BA129A5B2EFDEDAD0024F01F /* Nunito-BoldItalic.ttf */,
+				BA129A5C2EFDEDAD0024F01F /* Nunito-ExtraBold.ttf */,
+				BA129A5D2EFDEDAD0024F01F /* Nunito-ExtraBoldItalic.ttf */,
+				BA129A5E2EFDEDAD0024F01F /* Nunito-ExtraLight.ttf */,
+				BA129A5F2EFDEDAD0024F01F /* Nunito-ExtraLightItalic.ttf */,
+				BA129A602EFDEDAD0024F01F /* Nunito-Italic.ttf */,
+				BA129A612EFDEDAD0024F01F /* Nunito-Light.ttf */,
+				BA129A622EFDEDAD0024F01F /* Nunito-LightItalic.ttf */,
+				BA129A632EFDEDAD0024F01F /* Nunito-Medium.ttf */,
+				BA129A642EFDEDAD0024F01F /* Nunito-MediumItalic.ttf */,
+				BA129A652EFDEDAD0024F01F /* Nunito-Regular.ttf */,
+				BA129A662EFDEDAD0024F01F /* Nunito-SemiBold.ttf */,
+				BA129A672EFDEDAD0024F01F /* Nunito-SemiBoldItalic.ttf */,
+			);
+			path = static;
+			sourceTree = "<group>";
+		};
+		BA129A6D2EFDEDAD0024F01F /* Nunito */ = {
+			isa = PBXGroup;
+			children = (
+				BA129A682EFDEDAD0024F01F /* static */,
+				BA129A692EFDEDAD0024F01F /* Nunito-Italic-VariableFont_wght.ttf */,
+				BA129A6A2EFDEDAD0024F01F /* Nunito-VariableFont_wght.ttf */,
+			);
+			path = Nunito;
+			sourceTree = "<group>";
+		};
+		D2C5CBE427EF63D200BBE97D = {
+			isa = PBXGroup;
+			children = (
+				D2C5CBFE27EF63E900BBE97D /* Packages */,
+				D2C5CBEF27EF63D200BBE97D /* SketchyDemo */,
+				D2C5CBEE27EF63D200BBE97D /* Products */,
+				D2C5CC0027EFABEB00BBE97D /* Frameworks */,
+			);
+			sourceTree = "<group>";
+		};
+		D2C5CBEE27EF63D200BBE97D /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				D2C5CBED27EF63D200BBE97D /* SketchyDemo.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		D2C5CBEF27EF63D200BBE97D /* SketchyDemo */ = {
+			isa = PBXGroup;
+			children = (
+				BA129A9E2EFDEDF10024F01F /* Info.plist */,
+				D2C5CBF027EF63D200BBE97D /* SketchyDemoApp.swift */,
+				D2C5CBF227EF63D200BBE97D /* ContentView.swift */,
+				BAE275032EFD000000000001 /* PrimitivesView.swift */,
+				BAE275042EFD000000000001 /* OptionsView.swift */,
+				BA129A572EFDEDAD0024F01F /* Fredoka */,
+				BA129A6D2EFDEDAD0024F01F /* Nunito */,
+				D2C5CBF427EF63D500BBE97D /* Assets.xcassets */,
+				D2C5CBF627EF63D500BBE97D /* Preview Content */,
+			);
+			path = SketchyDemo;
+			sourceTree = "<group>";
+		};
+		D2C5CBF627EF63D500BBE97D /* Preview Content */ = {
+			isa = PBXGroup;
+			children = (
+				D2C5CBF727EF63D500BBE97D /* Preview Assets.xcassets */,
+			);
+			path = "Preview Content";
+			sourceTree = "<group>";
+		};
+		D2C5CBFE27EF63E900BBE97D /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Packages;
+			sourceTree = "<group>";
+		};
+		D2C5CC0027EFABEB00BBE97D /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		D2C5CBEC27EF63D200BBE97D /* SketchyDemo */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D2C5CBFB27EF63D500BBE97D /* Build configuration list for PBXNativeTarget "SketchyDemo" */;
+			buildPhases = (
+				D2C5CBE927EF63D200BBE97D /* Sources */,
+				D2C5CBEA27EF63D200BBE97D /* Frameworks */,
+				D2C5CBEB27EF63D200BBE97D /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = SketchyDemo;
+			packageProductDependencies = (
+				BAEF0FA62EDE5CD800C46DE6 /* Sketchy */,
+				BACB84912EDE7B8D00878DDE /* Inject */,
+				BA15ADD12EE3CB9200421BAF /* Sketchy */,
+			);
+			productName = SketchyDemo;
+			productReference = D2C5CBED27EF63D200BBE97D /* SketchyDemo.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		D2C5CBE527EF63D200BBE97D /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1330;
+				LastUpgradeCheck = 1330;
+				TargetAttributes = {
+					D2C5CBEC27EF63D200BBE97D = {
+						CreatedOnToolsVersion = 13.3;
+					};
+				};
+			};
+			buildConfigurationList = D2C5CBE827EF63D200BBE97D /* Build configuration list for PBXProject "SketchyDemo" */;
+			compatibilityVersion = "Xcode 13.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = D2C5CBE427EF63D200BBE97D;
+			packageReferences = (
+				BACB84902EDE7B8D00878DDE /* XCRemoteSwiftPackageReference "Inject" */,
+				BA15ADD02EE3CB9200421BAF /* XCLocalSwiftPackageReference "../.." */,
+			);
+			productRefGroup = D2C5CBEE27EF63D200BBE97D /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				D2C5CBEC27EF63D200BBE97D /* SketchyDemo */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		D2C5CBEB27EF63D200BBE97D /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BA129A6E2EFDEDAD0024F01F /* Fredoka-Regular.ttf in Resources */,
+				BA129A6F2EFDEDAD0024F01F /* Nunito-VariableFont_wght.ttf in Resources */,
+				BA129A702EFDEDAD0024F01F /* Fredoka_Expanded-Regular.ttf in Resources */,
+				BA129A712EFDEDAD0024F01F /* Nunito-MediumItalic.ttf in Resources */,
+				BA129A722EFDEDAD0024F01F /* Nunito-ExtraBoldItalic.ttf in Resources */,
+				BA129A732EFDEDAD0024F01F /* Fredoka-Medium.ttf in Resources */,
+				BA129A742EFDEDAD0024F01F /* Fredoka_SemiExpanded-Medium.ttf in Resources */,
+				BA129A752EFDEDAD0024F01F /* Nunito-SemiBold.ttf in Resources */,
+				BA129A762EFDEDAD0024F01F /* Fredoka_Expanded-Bold.ttf in Resources */,
+				BA129A782EFDEDAD0024F01F /* Nunito-LightItalic.ttf in Resources */,
+				BA129A792EFDEDAD0024F01F /* Fredoka_Condensed-Bold.ttf in Resources */,
+				BA129A7B2EFDEDAD0024F01F /* Nunito-Bold.ttf in Resources */,
+				BA129A7C2EFDEDAD0024F01F /* Fredoka_Expanded-Light.ttf in Resources */,
+				BA129A7D2EFDEDAD0024F01F /* Fredoka_SemiCondensed-Medium.ttf in Resources */,
+				BA129A7E2EFDEDAD0024F01F /* Nunito-BlackItalic.ttf in Resources */,
+				BA129A802EFDEDAD0024F01F /* Fredoka_SemiCondensed-Light.ttf in Resources */,
+				BA129A812EFDEDAD0024F01F /* Nunito-Italic-VariableFont_wght.ttf in Resources */,
+				BA129A822EFDEDAD0024F01F /* Fredoka_Expanded-SemiBold.ttf in Resources */,
+				BA129A832EFDEDAD0024F01F /* Nunito-Italic.ttf in Resources */,
+				BA129A842EFDEDAD0024F01F /* Fredoka_SemiCondensed-Bold.ttf in Resources */,
+				BA129A852EFDEDAD0024F01F /* Nunito-ExtraLightItalic.ttf in Resources */,
+				BA129A862EFDEDAD0024F01F /* Fredoka_Expanded-Medium.ttf in Resources */,
+				BA129A872EFDEDAD0024F01F /* Fredoka-SemiBold.ttf in Resources */,
+				BA129A882EFDEDAD0024F01F /* Nunito-Light.ttf in Resources */,
+				BA129A892EFDEDAD0024F01F /* Fredoka_SemiExpanded-Light.ttf in Resources */,
+				BA129A8A2EFDEDAD0024F01F /* Fredoka_SemiExpanded-Regular.ttf in Resources */,
+				BA129A8B2EFDEDAD0024F01F /* Fredoka_SemiExpanded-Bold.ttf in Resources */,
+				BA129A8C2EFDEDAD0024F01F /* Fredoka_Condensed-SemiBold.ttf in Resources */,
+				BA129A8D2EFDEDAD0024F01F /* Fredoka_Condensed-Medium.ttf in Resources */,
+				BA129A8E2EFDEDAD0024F01F /* Fredoka_SemiCondensed-Regular.ttf in Resources */,
+				BA129A8F2EFDEDAD0024F01F /* Nunito-SemiBoldItalic.ttf in Resources */,
+				BA129A902EFDEDAD0024F01F /* Nunito-ExtraLight.ttf in Resources */,
+				BA129A922EFDEDAD0024F01F /* Fredoka_SemiCondensed-SemiBold.ttf in Resources */,
+				BA129A932EFDEDAD0024F01F /* Nunito-Regular.ttf in Resources */,
+				BA129A942EFDEDAD0024F01F /* Fredoka-VariableFont_wdth,wght.ttf in Resources */,
+				BA129A952EFDEDAD0024F01F /* Fredoka-Bold.ttf in Resources */,
+				BA129A962EFDEDAD0024F01F /* Fredoka_Condensed-Light.ttf in Resources */,
+				BA129A972EFDEDAD0024F01F /* Nunito-Black.ttf in Resources */,
+				BA129A982EFDEDAD0024F01F /* Fredoka_SemiExpanded-SemiBold.ttf in Resources */,
+				BA129A992EFDEDAD0024F01F /* Nunito-Medium.ttf in Resources */,
+				BA129A9A2EFDEDAD0024F01F /* Nunito-ExtraBold.ttf in Resources */,
+				BA129A9B2EFDEDAD0024F01F /* Fredoka_Condensed-Regular.ttf in Resources */,
+				BA129A9C2EFDEDAD0024F01F /* Nunito-BoldItalic.ttf in Resources */,
+				BA129A9D2EFDEDAD0024F01F /* Fredoka-Light.ttf in Resources */,
+				D2C5CBF827EF63D500BBE97D /* Preview Assets.xcassets in Resources */,
+				D2C5CBF527EF63D500BBE97D /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		D2C5CBE927EF63D200BBE97D /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BAE275012EFD000000000001 /* PrimitivesView.swift in Sources */,
+				BAE275022EFD000000000001 /* OptionsView.swift in Sources */,
+				D2C5CBF327EF63D300BBE97D /* ContentView.swift in Sources */,
+				D2C5CBF127EF63D200BBE97D /* SketchyDemoApp.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		D2C5CBF927EF63D500BBE97D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++17";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		D2C5CBFA27EF63D500BBE97D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++17";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		D2C5CBFC27EF63D500BBE97D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "\"SketchyDemo/Preview Content\"";
+				DEVELOPMENT_TEAM = 949D6SDPYY;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = SketchyDemo/Info.plist;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.sstradling.SketchyDemo;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		D2C5CBFD27EF63D500BBE97D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "\"SketchyDemo/Preview Content\"";
+				DEVELOPMENT_TEAM = 949D6SDPYY;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = SketchyDemo/Info.plist;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.sstradling.SketchyDemo;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		D2C5CBE827EF63D200BBE97D /* Build configuration list for PBXProject "SketchyDemo" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D2C5CBF927EF63D500BBE97D /* Debug */,
+				D2C5CBFA27EF63D500BBE97D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		D2C5CBFB27EF63D500BBE97D /* Build configuration list for PBXNativeTarget "SketchyDemo" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D2C5CBFC27EF63D500BBE97D /* Debug */,
+				D2C5CBFD27EF63D500BBE97D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		BA15ADD02EE3CB9200421BAF /* XCLocalSwiftPackageReference "../.." */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../..;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		BACB84902EDE7B8D00878DDE /* XCRemoteSwiftPackageReference "Inject" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/krzysztofzablocki/Inject.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.5.2;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		BA15ADD12EE3CB9200421BAF /* Sketchy */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Sketchy;
+		};
+		BACB84912EDE7B8D00878DDE /* Inject */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = BACB84902EDE7B8D00878DDE /* XCRemoteSwiftPackageReference "Inject" */;
+			productName = Inject;
+		};
+		BAEF0FA62EDE5CD800C46DE6 /* Sketchy */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Sketchy;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = D2C5CBE527EF63D200BBE97D /* Project object */;
+}
