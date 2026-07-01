@@ -817,11 +817,13 @@ in future work.
   for predictable behavior, or omit `.metalAccelerated()` entirely for full
   fidelity.
 - **`ImageRenderer` snapshot fidelity.** SwiftUI's `ImageRenderer` may not
-  capture the Metal stroke layer on all platforms. Prefer
-  `UIGraphicsImageRenderer` for snapshotting Metal-accelerated views.
-- **No GPU device, no GPU output.** Devices without Metal silently fall
-  back to fills only (strokes do not render). This is rare on real iOS
-  hardware but can occur in some CI simulator configurations.
+  capture the hosted Metal stroke layer on all platforms. Use
+  `metalSnapshot(...)` / `MetalRoughSnapshotRenderer` for exports and share
+  sheets that need the shader-rendered stroke layer.
+- **No GPU device.** On-screen Metal rendering silently falls back to fills
+  only if no Metal device is available. Snapshot rendering falls back to the
+  full SwiftUI renderer so exported images still contain strokes (without
+  Metal-only shader effects).
 - **Two renderers, two test surfaces.** Behavior is exercised by
   `RoughSwiftUITests` (SwiftUI) and `RoughSwiftUIMetalTests` (Metal mesh
   builder + renderer split). The Metal pipeline state itself requires a
@@ -834,7 +836,62 @@ in future work.
 | Default look, full SwiftUI integration | `RoughView` (no opt-in) |
 | Per-pixel along-path color/opacity gradients on strokes | `.metalAccelerated()` |
 | Hundreds of stroked shapes per frame (charts, dense diagrams) | `.metalAccelerated()` |
+| Snapshot/export of Metal-accelerated content | `metalSnapshot(...)` |
 | Snapshot via `ImageRenderer`, accessibility-first content | `RoughView` (no opt-in) |
+
+#### Snapshotting Metal-accelerated views
+
+`MetalRoughView` hosts an `MTKView`, which may be omitted by SwiftUI
+`ImageRenderer`. Use the snapshot helper APIs instead:
+
+```swift
+let image = try await RoughView()
+    .strokeGradient(from: .red, to: .blue)
+    .strokeWidth(6)
+    .circle()
+    .metalSnapshot(size: CGSize(width: 200, height: 200), scale: 2)
+
+let hosted = RoughView()
+    .pencilTexture()
+    .circle()
+    .metalAccelerated()
+
+let hostedImage = try await hosted.snapshot(
+    size: CGSize(width: 200, height: 200),
+    scale: 2,
+    backgroundColor: .white
+)
+
+let textImage = try await RoughText("Hello", font: .systemFont(ofSize: 64))
+    .stroke(.black)
+    .pencilTexture()
+    .metalSnapshot(scale: 2)
+```
+
+Reference:
+
+```swift
+public enum MetalRoughSnapshotRenderer {
+    public static func image(
+        for roughView: RoughView,
+        size: CGSize,
+        scale: CGFloat = 0,
+        backgroundColor: UIColor? = nil
+    ) async throws -> UIImage
+}
+
+public extension RoughView {
+    func metalSnapshot(size: CGSize, scale: CGFloat = 0, backgroundColor: UIColor? = nil) async throws -> UIImage
+}
+
+public extension MetalRoughView {
+    func snapshot(size: CGSize, scale: CGFloat = 0, backgroundColor: UIColor? = nil) async throws -> UIImage
+}
+
+public extension RoughText {
+    func metalSnapshot(scale: CGFloat = 0, backgroundColor: UIColor? = nil) async throws -> UIImage
+}
+```
 
 ### Variable stroke appearance
 

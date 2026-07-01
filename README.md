@@ -921,8 +921,24 @@ stroke edges, and procedural pencil / chalk / ink / watercolor textures.
 **When to opt in:** dense scenes (hundreds of stroked shapes per frame),
 or when you want shader-driven per-pixel stroke effects. **When to skip:**
 when you rely on SwiftUI compositing (`.opacity`, `.blur`, `.mask`,
-`ImageRenderer` snapshotting) being applied to the stroke output — those
+`ImageRenderer` capture) being applied to the stroke output — those
 operate on the rasterized Metal layer rather than the underlying paths.
+
+For snapshots of Metal-accelerated content, use the helper API instead of
+SwiftUI `ImageRenderer`:
+
+```swift
+let image = try await RoughView()
+    .strokeGradient(from: .red, to: .blue)
+    .strokeWidth(6)
+    .circle()
+    .metalSnapshot(size: CGSize(width: 200, height: 200), scale: 2)
+
+let textImage = try await RoughText("Hello", font: .systemFont(ofSize: 64))
+    .stroke(.black)
+    .pencilTexture()
+    .metalSnapshot(scale: 2)
+```
 
 See the *Renderers* section in `DOCUMENTATION.md` for the full tradeoff
 discussion and the `RibbonMesh` API.
