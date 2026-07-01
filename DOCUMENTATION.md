@@ -1,6 +1,6 @@
-# RoughSwiftUI API Documentation
+# Sketchy API Documentation
 
-> **Optimized for coding agents and LLMs.** This document provides structured, comprehensive API reference for the RoughSwiftUI package.
+> **Optimized for coding agents and LLMs.** This document provides structured, comprehensive API reference for the Sketchy package.
 
 ## Table of Contents
 
@@ -25,7 +25,7 @@
 
 ```swift
 import SwiftUI
-import RoughSwiftUI
+import Sketchy
 
 struct ContentView: View {
     var body: some View {
@@ -42,7 +42,7 @@ struct ContentView: View {
 ### Import Statement
 
 ```swift
-import RoughSwiftUI
+import Sketchy
 ```
 
 ### Platform Requirements
@@ -970,7 +970,7 @@ Engine.shared.clearCaches()
 
 ## Version Information
 
-- **Package:** RoughSwiftUI
+- **Package:** Sketchy
 - **Minimum iOS:** 17.0
 - **Swift:** 5.9+
 - **Rendering:** Native Swift (no JavaScript bridge)

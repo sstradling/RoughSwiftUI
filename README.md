@@ -1,4 +1,4 @@
-# RoughSwiftUI
+# Sketchy
 
 ![](Screenshots/s.png)
 
@@ -6,7 +6,9 @@
 
 ## Description
 
-RoughSwiftUI allows you to easily create shapes in a hand-drawn, sketchy, comic style in SwiftUI. This library provides a native Swift implementation of rough.js-style rendering, optimized for iOS and tvOS.
+Sketchy allows you to easily create shapes in a hand-drawn, sketchy, comic style in SwiftUI. This library provides a native Swift implementation of rough.js-style rendering, optimized for iOS and tvOS.
+
+> Sketchy is an independent, actively maintained project. It began as a fork of [RoughSwift](https://github.com/onmyway133/RoughSwift) but has since been fully rewritten — including a native Swift generator engine (no JavaScript bridge) — with substantial new functionality. See [Credits](#credits) for attribution.
 
 - [x] Support iOS, tvOS
 - [x] Support all shapes: line, rectangle, circle, ellipse, linear path, arc, curve, polygon, SVG path, text
@@ -27,7 +29,7 @@ RoughSwiftUI allows you to easily create shapes in a hand-drawn, sketchy, comic 
 
 ## Basic
 
-The easiest way to use RoughSwiftUI is via `RoughView`, a SwiftUI `View` that renders hand-drawn primitives using SwiftUI `Canvas` under the hood.
+The easiest way to use Sketchy is via `RoughView`, a SwiftUI `View` that renders hand-drawn primitives using SwiftUI `Canvas` under the hood.
 
 Here's how to draw a green rectangle:
 
@@ -92,7 +94,7 @@ For the scribble fill style, additional parameters control the continuous zig-za
 
 ## Shapes
 
-RoughSwiftUI supports all primitive shapes, including SVG paths and text:
+Sketchy supports all primitive shapes, including SVG paths and text:
 
 - line
 - rectangle
@@ -118,6 +120,7 @@ Available fill styles:
 - dots
 - hachure (default)
 - solid
+- sunBurst
 - starBurst
 - zigzag
 - zigzagLine
@@ -298,7 +301,7 @@ struct StylesView: View {
 
 ## Text Rendering
 
-RoughSwiftUI can render text with hand-drawn styling using CoreText glyph extraction. Text is automatically centered within the view bounds by default, making it easy to create centered labels, buttons, and other UI components.
+Sketchy can render text with hand-drawn styling using CoreText glyph extraction. Text is automatically centered within the view bounds by default, making it easy to create centered labels, buttons, and other UI components.
 
 ### Basic Text Rendering
 
@@ -462,7 +465,7 @@ RoughView()
 
 ## Brush Profiles
 
-RoughSwiftUI supports custom brush profiles for calligraphic and artistic stroke effects:
+Sketchy supports custom brush profiles for calligraphic and artistic stroke effects:
 
 ```swift
 // Calligraphic brush with flat tip
@@ -490,7 +493,7 @@ RoughView()
 
 ## Animation
 
-RoughSwiftUI supports animated strokes and fills that introduce subtle variations on a loop, creating a "breathing" or "sketchy" animation effect that brings your hand-drawn graphics to life.
+Sketchy supports animated strokes and fills that introduce subtle variations on a loop, creating a "breathing" or "sketchy" animation effect that brings your hand-drawn graphics to life.
 
 ### Basic Animation
 
@@ -608,7 +611,7 @@ During the actual animation loop, the cost is essentially zero - just swapping b
 
 ## Rounded Rectangle
 
-RoughSwiftUI supports rounded rectangles with customizable corner radius:
+Sketchy supports rounded rectangles with customizable corner radius:
 
 ```swift
 // Rounded rectangle with default corner radius (8 points)
@@ -637,7 +640,7 @@ Rounded rectangles automatically fill the available space, similar to `rectangle
 
 ## Egg Shape
 
-RoughSwiftUI includes an egg-shaped (ovoid) drawable with natural asymmetry:
+Sketchy includes an egg-shaped (ovoid) drawable with natural asymmetry:
 
 ```swift
 // Basic egg shape with default tilt
@@ -708,7 +711,7 @@ struct ChartView: View {
 
 ## Advanced Usage with Drawable, Generator and SwiftUIRenderer
 
-Behind the scenes, RoughSwiftUI uses a `NativeGenerator` (pure Swift implementation inspired by rough.js) and a SwiftUI renderer.
+Behind the scenes, Sketchy uses a `NativeGenerator` (pure Swift implementation inspired by rough.js) and a SwiftUI renderer.
 
 We can instantiate `Engine` or use a shared `Engine` for memory efficiency to create a `NativeGenerator`. Every time we instruct the generator to draw a shape, the engine figures out information about the sketchy shape in `Drawing`.
 
@@ -738,7 +741,7 @@ struct CustomCanvasView: View {
 
 ## Performance
 
-RoughSwiftUI uses a **native Swift generator engine** for optimal performance - no JavaScript bridge or JavaScriptCore required. The engine also employs internal caching to further optimize rendering:
+Sketchy uses a **native Swift generator engine** for optimal performance - no JavaScript bridge or JavaScriptCore required. The engine also employs internal caching to further optimize rendering:
 
 - **Generator caching**: Generators are cached by canvas size, avoiding repeated allocations when the view size hasn't changed.
 - **Drawing caching**: Generated drawings are cached by drawable + options, avoiding repeated computations for the same shapes.
@@ -782,27 +785,27 @@ NotificationCenter.default.addObserver(
 
 ## Performance Instrumentation
 
-RoughSwiftUI includes built-in performance instrumentation using Apple's `os_signpost` API. This allows you to profile rendering performance using Instruments.app.
+Sketchy includes built-in performance instrumentation using Apple's `os_signpost` API. This allows you to profile rendering performance using Instruments.app.
 
 ### Enabling Instrumentation
 
 Instrumentation is **enabled by default in DEBUG builds** and disabled in release builds for zero overhead. To enable it explicitly in other build configurations, add the following Swift compiler flag:
 
 ```
--DROUGH_PERFORMANCE_INSTRUMENTATION
+-DSKETCHY_PERFORMANCE_INSTRUMENTATION
 ```
 
 In Xcode:
 1. Select your target
 2. Go to Build Settings → Swift Compiler - Custom Flags
-3. Add `-DROUGH_PERFORMANCE_INSTRUMENTATION` to "Other Swift Flags"
+3. Add `-DSKETCHY_PERFORMANCE_INSTRUMENTATION` to "Other Swift Flags"
 
 ### Viewing Performance Data in Instruments
 
 1. Open **Instruments.app**
 2. Choose the **Blank** template
 3. Click **+** and add the **os_signpost** instrument
-4. In the filter field, type: `com.roughswiftui`
+4. In the filter field, type: `com.sketchy`
 5. Run your app and observe the timeline
 
 ### Instrumented Operations
@@ -822,7 +825,7 @@ The following operations are measured with signposts:
 For quick debugging without Instruments, you can collect aggregate statistics:
 
 ```swift
-import RoughSwiftUI
+import Sketchy
 
 // After rendering operations...
 PerformanceStatistics.shared.printReport()
@@ -831,7 +834,7 @@ PerformanceStatistics.shared.printReport()
 This outputs a summary like:
 
 ```
-=== RoughSwiftUI Performance Report ===
+=== Sketchy Performance Report ===
 
 Duration Measurements:
   Generate Drawing:
@@ -861,14 +864,14 @@ Based on signpost data, common bottlenecks include:
 Add the following line to the dependencies in your `Package.swift` file:
 
 ```swift
-.package(url: "https://github.com/sstradling/RoughSwiftUI", from: "1.0.0"),
+.package(url: "https://github.com/sstradling/sketchy", from: "1.0.0"),
 ```
 
-Then add `RoughSwiftUI` as a dependency of your target. On iOS/tvOS, you can import the package and use `RoughView` directly inside SwiftUI:
+Then add `Sketchy` as a dependency of your target. On iOS/tvOS, you can import the package and use `RoughView` directly inside SwiftUI:
 
 ```swift
 import SwiftUI
-import RoughSwiftUI
+import Sketchy
 
 struct ContentView: View {
     var body: some View {
@@ -887,12 +890,12 @@ struct ContentView: View {
 
 ## Credits
 
-- [**RoughSwift**](https://github.com/onmyway133/RoughSwift) by [Khoa Pham](https://github.com/onmyway133) - The original Swift wrapper for rough.js that this project is based on. RoughSwiftUI builds upon Khoa's excellent foundation with a native Swift generator engine and SwiftUI-first API.
+- [**RoughSwift**](https://github.com/onmyway133/RoughSwift) by [Khoa Pham](https://github.com/onmyway133) - The original Swift wrapper for rough.js that this project is based on. Sketchy builds upon Khoa's excellent foundation with a native Swift generator engine and SwiftUI-first API.
 
-- [**rough.js**](https://github.com/pshihn/rough) by Prashant Sharma - The original JavaScript library that serves as the basis and inspiration for the native Swift generator engine powering RoughSwiftUI. The algorithms for creating hand-drawn, sketchy graphics are adapted from rough.js.
+- [**rough.js**](https://github.com/pshihn/rough) by Prashant Sharma - The original JavaScript library that serves as the basis and inspiration for the native Swift generator engine powering Sketchy. The algorithms for creating hand-drawn, sketchy graphics are adapted from rough.js.
 
 - [**SVGPath**](https://github.com/timrwood/SVGPath) by Tim Wood - For the SVG path parsing implementation.
 
 ## License
 
-**RoughSwiftUI** is available under the MIT license. See the [LICENSE](LICENSE) file for more info.
+**Sketchy** is available under the MIT license. See the [LICENSE](LICENSE) file for more info.
