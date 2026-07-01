@@ -120,6 +120,7 @@ Available fill styles:
 - dots
 - hachure (default)
 - solid
+- sunBurst
 - starBurst
 - zigzag
 - zigzagLine

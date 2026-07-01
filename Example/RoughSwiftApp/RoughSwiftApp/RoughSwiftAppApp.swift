@@ -2,7 +2,7 @@
 //  RoughSwiftAppApp.swift
 //  RoughSwiftApp
 //
-//  Created by khoa on 26/03/2022.
+//  Demo app for RoughSwiftUI.
 //
 
 import SwiftUI

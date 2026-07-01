@@ -7,6 +7,9 @@ Legend: `[x]` capture exists · `[ ]` capture needed · **(GIF)** = motion captu
 
 All images live in `Screenshots/` and are referenced from `README.md`.
 
+The Example app now has dedicated screenshot routes for the missing surfaces:
+`Primitives`, `Options`, `Text`, `Animated`, `Brushes`, `Scribble`, and `Shapes`.
+
 ---
 
 ## Existing captures (verify still representative of the rewrite)
@@ -25,13 +28,22 @@ no image/GIF. Capture and add each under its README heading.
 
 ### Fills
 - [ ] Fill Angle — three circles at 0° / 45° / 90°
-- [ ] Fill Spacing — dense / normal / sparse circles
+- [ ] Fill Spacing — dense / normal / sparse circles *(Example → Options)*
 - [ ] Fill Spacing Pattern (Gradients) — Fibonacci + dense-sparse-dense examples
 - [ ] Scribble Fill — basic, curved+brush, and variable-density variants
 
+### Primitive drawables
+- [ ] Line / LinearPath / Arc / Curve / Polygon gallery *(Example → Primitives)*
+- [ ] Composed `draw()` example showing multiple drawables in one `RoughView` *(Example → Primitives)*
+
+### Options
+- [ ] Dash controls — `dashOffset` and `dashGap` comparisons *(Example → Options)*
+- [ ] Zigzag offset comparisons *(Example → Options)*
+- [ ] Randomness controls — `maxRandomnessOffset` + `roughness` comparisons *(Example → Options)*
+
 ### Text
 - [ ] Text Rendering — system font, custom font, attributed string
-- [ ] Text Positioning and Alignment — leading/top, trailing/bottom, offset, combined
+- [ ] Text Positioning and Alignment — leading/top, trailing/bottom, offset, combined *(Example → Text)*
 
 ### SVG
 - [ ] SVG-Specific Customization — svgStrokeWidth / svgFillWeight comparison
