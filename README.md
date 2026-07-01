@@ -909,6 +909,14 @@ RoughView()
     .circle()
     .metalAccelerated()
     .frame(width: 200, height: 200)
+
+// Animated Metal rendering: precomputes all frames, then swaps frame buffers.
+RoughView()
+    .strokeGradient(from: .red, to: .blue)
+    .strokeWidth(5)
+    .circle()
+    .metalAnimated(steps: 6, speed: .medium, variance: .low)
+    .frame(width: 200, height: 200)
 ```
 
 The wrapped view renders fills via SwiftUI `Canvas` (preserving full
