@@ -488,6 +488,36 @@ RoughView()
     .rectangle()
 ```
 
+## Stroke caps, joins, and native outlines
+
+Choose endpoint and corner behavior with the stroke style modifiers:
+
+```swift
+RoughView()
+    .stroke(.black)
+    .strokeWidth(5)
+    .strokeCap(.round)        // .butt, .round, .square
+    .strokeJoin(.miter)       // .miter, .round, .bevel
+    .strokeMiterLimit(2)      // clamp long pointed spikes sooner
+    .draw(Polygon(points: points))
+```
+
+When you need a filled outline while preserving CoreGraphics' native cap,
+join, and miter-limit behavior, use `NativeStrokeOutline`:
+
+```swift
+let outline = NativeStrokeOutline.path(
+    from: centerline,
+    width: 6,
+    cap: .round,
+    join: .miter,
+    miterLimit: 4
+)
+```
+
+Variable-width effects such as taper, calligraphic brush tips, and width
+jitter still use `StrokeToFillConverter`.
+
 ## Animation
 
 RoughSwiftUI supports animated strokes and fills that introduce subtle variations on a loop, creating a "breathing" or "sketchy" animation effect that brings your hand-drawn graphics to life.
