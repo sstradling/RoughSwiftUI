@@ -52,6 +52,8 @@
 		BA129A9C2EFDEDAD0024F01F /* Nunito-BoldItalic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A5B2EFDEDAD0024F01F /* Nunito-BoldItalic.ttf */; };
 		BA129A9D2EFDEDAD0024F01F /* Fredoka-Light.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A4F2EFDEDAD0024F01F /* Fredoka-Light.ttf */; };
 		BA15ADD22EE3CB9200421BAF /* RoughSwiftUI in Frameworks */ = {isa = PBXBuildFile; productRef = BA15ADD12EE3CB9200421BAF /* RoughSwiftUI */; };
+		BAE275012EFD000000000001 /* PrimitivesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAE275032EFD000000000001 /* PrimitivesView.swift */; };
+		BAE275022EFD000000000001 /* OptionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAE275042EFD000000000001 /* OptionsView.swift */; };
 		BACB84922EDE7B8D00878DDE /* Inject in Frameworks */ = {isa = PBXBuildFile; productRef = BACB84912EDE7B8D00878DDE /* Inject */; };
 		BAEF0FA72EDE5CD800C46DE6 /* RoughSwiftUI in Frameworks */ = {isa = PBXBuildFile; productRef = BAEF0FA62EDE5CD800C46DE6 /* RoughSwiftUI */; };
 		D2C5CBF127EF63D200BBE97D /* RoughSwiftAppApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2C5CBF027EF63D200BBE97D /* RoughSwiftAppApp.swift */; };
@@ -106,6 +108,8 @@
 		BA129A692EFDEDAD0024F01F /* Nunito-Italic-VariableFont_wght.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Nunito-Italic-VariableFont_wght.ttf"; sourceTree = "<group>"; };
 		BA129A6A2EFDEDAD0024F01F /* Nunito-VariableFont_wght.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Nunito-VariableFont_wght.ttf"; sourceTree = "<group>"; };
 		BA129A9E2EFDEDF10024F01F /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		BAE275032EFD000000000001 /* PrimitivesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrimitivesView.swift; sourceTree = "<group>"; };
+		BAE275042EFD000000000001 /* OptionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OptionsView.swift; sourceTree = "<group>"; };
 		D2C5CBED27EF63D200BBE97D /* RoughSwiftApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RoughSwiftApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D2C5CBF027EF63D200BBE97D /* RoughSwiftAppApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoughSwiftAppApp.swift; sourceTree = "<group>"; };
 		D2C5CBF227EF63D200BBE97D /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -225,6 +229,8 @@
 				BA129A9E2EFDEDF10024F01F /* Info.plist */,
 				D2C5CBF027EF63D200BBE97D /* RoughSwiftAppApp.swift */,
 				D2C5CBF227EF63D200BBE97D /* ContentView.swift */,
+				BAE275032EFD000000000001 /* PrimitivesView.swift */,
+				BAE275042EFD000000000001 /* OptionsView.swift */,
 				BA129A572EFDEDAD0024F01F /* Fredoka */,
 				BA129A6D2EFDEDAD0024F01F /* Nunito */,
 				D2C5CBF427EF63D500BBE97D /* Assets.xcassets */,
@@ -378,6 +384,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				BAE275012EFD000000000001 /* PrimitivesView.swift in Sources */,
+				BAE275022EFD000000000001 /* OptionsView.swift in Sources */,
 				D2C5CBF327EF63D300BBE97D /* ContentView.swift in Sources */,
 				D2C5CBF127EF63D200BBE97D /* RoughSwiftAppApp.swift in Sources */,
 			);
