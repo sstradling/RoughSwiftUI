@@ -23,7 +23,7 @@ RoughSwiftUI allows you to easily create shapes in a hand-drawn, sketchy, comic 
 - [x] Custom brush profiles for calligraphic effects
 - [x] Text rendering with rough styling
 - [x] Scribble fill pattern for continuous zig-zag fills
-- [ ] SVG elliptical arc
+- [x] SVG elliptical arc
 
 ## Basic
 
@@ -393,7 +393,7 @@ RoughView()
 
 ![](Screenshots/svg.png)
 
-SVG shapes are automatically scaled to fit within the specified frame while maintaining aspect ratio. The stroke and fill are aligned using a single transform calculated from the original SVG bounds, ensuring perfect alignment.
+SVG shapes are automatically scaled to fit within the specified frame while maintaining aspect ratio. The stroke and fill are aligned using a single transform calculated from the original SVG bounds, ensuring perfect alignment. SVG path data supports the standard path commands including elliptical arcs (`A`/`a`), which are decomposed into cubic Bezier segments for continuous curved rendering.
 
 ### Basic SVG Usage
 
