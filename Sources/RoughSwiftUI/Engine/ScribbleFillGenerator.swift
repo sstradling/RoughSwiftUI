@@ -15,9 +15,9 @@ import os.signpost
 
 /// Generates scribble fill patterns for shapes.
 ///
-/// The scribble fill creates a continuous zig-zag line that traverses from one edge
-/// of a shape to the opposite edge, with configurable tightness and vertex curvature.
-/// For concave shapes, the fill is split into separate stroke segments.
+/// The scribble fill crosses a shape with parallel strokes. `scribbleOrigin` is
+/// the stroke bearing in degrees (0 to the right, 90 straight down, clockwise
+/// positive). Tightness sets how many crossings, and curvature rounds the turns.
 public struct ScribbleFillGenerator {
     
     // MARK: - Public Interface
@@ -74,87 +74,79 @@ public struct ScribbleFillGenerator {
         
         guard !vertexPositions.isEmpty else { return [] }
         
-        // Generate zig-zag by alternating between left and right edges at each position
+        // Each stroke crosses the shape along originAngle. The next stroke
+        // comes back on the following scan line, so the long legs stay parallel
+        // to that bearing instead of cutting the diagonal between scan lines.
         var allSegments: [[CGPoint]] = []
         var currentSegment: [CGPoint] = []
-        var goToRight = true  // Which side to go to next
+        var goToRight = true
         var lastSpacing: CGFloat = traversalLength / CGFloat(vertexPositions.count + 1)
-        
+
         for (index, position) in vertexPositions.enumerated() {
-            // Cast a ray perpendicular to traversal direction at this position
             let rayOrigin = pointOnAxis(center: CGPoint(x: bounds.midX, y: bounds.midY),
                                         angle: traversalAngle,
                                         distance: position - (minProjection + maxProjection) / 2)
-            
+
             let intersections = findRayIntersections(
                 path: path,
                 rayOrigin: rayOrigin,
                 rayAngle: originAngle,
                 bounds: bounds
             )
-            
+
             guard intersections.count >= 2 else {
-                // No valid intersections at this level - save current segment and start fresh
                 if !currentSegment.isEmpty {
                     allSegments.append(currentSegment)
                     currentSegment = []
                 }
                 continue
             }
-            
-            // Sort intersections along the ray direction (always left to right)
+
             let sortedIntersections = intersections.sorted { p1, p2 in
                 let d1 = projectPointOntoAxis(point: p1, origin: rayOrigin, angle: originAngle)
                 let d2 = projectPointOntoAxis(point: p2, origin: rayOrigin, angle: originAngle)
                 return d1 < d2
             }
-            
-            // Get left-most and right-most intersection points
+
             let leftEdge = sortedIntersections.first!
             let rightEdge = sortedIntersections.last!
-            
-            // Calculate the inset point (vertex) for this level
             let segmentWidth = hypot(rightEdge.x - leftEdge.x, rightEdge.y - leftEdge.y)
+            guard segmentWidth > 0.5 else { continue }
+
             let insetAmount = min(edgePadding, segmentWidth * 0.35)
-            
             let dx = (rightEdge.x - leftEdge.x) / segmentWidth
             let dy = (rightEdge.y - leftEdge.y) / segmentWidth
-            
-            // Choose the vertex point based on which side we're going to
-            let vertex: CGPoint
-            if goToRight {
-                // Vertex near the right edge, inset toward center
-                vertex = CGPoint(
-                    x: rightEdge.x - dx * insetAmount,
-                    y: rightEdge.y - dy * insetAmount
-                )
-            } else {
-                // Vertex near the left edge, inset toward center
-                vertex = CGPoint(
-                    x: leftEdge.x + dx * insetAmount,
-                    y: leftEdge.y + dy * insetAmount
-                )
-            }
-            
-            // Calculate expected spacing for gap detection
+            let leftInset = CGPoint(
+                x: leftEdge.x + dx * insetAmount,
+                y: leftEdge.y + dy * insetAmount
+            )
+            let rightInset = CGPoint(
+                x: rightEdge.x - dx * insetAmount,
+                y: rightEdge.y - dy * insetAmount
+            )
+            let start = goToRight ? leftInset : rightInset
+            let end = goToRight ? rightInset : leftInset
+
             if index > 0 {
                 lastSpacing = vertexPositions[index] - vertexPositions[index - 1]
             }
-            
-            // Check for concave gaps (if the new vertex is too far from the last point)
+
+            // A jump along the edge means the shape pinched. Break there.
+            // The crossing itself is start→end and is allowed to be long.
             if !currentSegment.isEmpty {
                 let lastPoint = currentSegment.last!
-                let distanceToVertex = hypot(vertex.x - lastPoint.x, vertex.y - lastPoint.y)
-                let expectedMaxDistance = segmentWidth + lastSpacing * 1.5
-                
-                if distanceToVertex > expectedMaxDistance {
-                    // Gap detected - save current segment and start new one
+                let distanceToStart = hypot(start.x - lastPoint.x, start.y - lastPoint.y)
+                let expectedMaxDistance = lastSpacing * 2.5 + edgePadding
+                if distanceToStart > expectedMaxDistance {
                     allSegments.append(currentSegment)
                     currentSegment = []
                 }
             }
-            
-            currentSegment.append(vertex)
+
+            if currentSegment.isEmpty || hypot(start.x - currentSegment.last!.x, start.y - currentSegment.last!.y) > 0.5 {
+                currentSegment.append(start)
+            }
+            currentSegment.append(end)
             goToRight.toggle()
         }
         

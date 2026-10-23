@@ -497,8 +497,9 @@ RoughView().fill(.green).fillStyle(.crossHatch).rectangle()
 // Dots
 RoughView().fill(.purple).fillStyle(.dots).circle()
 
-// Scribble (continuous zig-zag)
-RoughView().fill(.orange).fillStyle(.scribble).scribbleTightness(15).circle()
+// Scribble (continuous zig-zag). scribbleOrigin is the stroke bearing:
+// 0 runs to the right, 90 runs straight down, positive angles rotate clockwise.
+RoughView().fill(.orange).fillStyle(.scribble).scribbleOrigin(85).scribbleTightness(15).circle()
 ```
 
 ---

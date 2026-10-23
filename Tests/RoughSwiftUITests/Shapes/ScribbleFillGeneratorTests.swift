@@ -97,6 +97,35 @@ final class ScribbleFillGeneratorTests: XCTestCase {
         XCTAssertFalse(operationSets.isEmpty)
     }
     
+    func testScribbleStrokesFollowOrigin() {
+        let rect = CGRect(x: 0, y: 0, width: 140, height: 90)
+        let path = CGPath(rect: rect, transform: nil)
+        var options = Options()
+        options.scribbleTightness = 8
+        options.scribbleCurvature = 0
+        options.scribbleOrigin = 85
+
+        let sets = ScribbleFillGenerator.generate(for: path, options: options)
+        var counted = 0
+        var aligned = 0
+        for set in sets {
+            let points = endpoints(of: set.operations)
+            for index in 1..<points.count {
+                let dx = points[index].x - points[index - 1].x
+                let dy = points[index].y - points[index - 1].y
+                guard hypot(dx, dy) > 25 else { continue }
+                counted += 1
+                var bearing = atan2(dy, dx) * 180 / .pi
+                if bearing < 0 { bearing += 180 }
+                if abs(bearing - 85) < 8 {
+                    aligned += 1
+                }
+            }
+        }
+        XCTAssertGreaterThan(counted, 3)
+        XCTAssertEqual(aligned, counted)
+    }
+
     func testScribbleFillGeneratorTightnessAffectsVertexCount() {
         let rect = CGRect(x: 0, y: 0, width: 100, height: 100)
         let path = CGPath(rect: rect, transform: nil)
@@ -122,5 +151,19 @@ final class ScribbleFillGeneratorTests: XCTestCase {
         
         XCTAssertGreaterThan(opsHigh, opsLow, "Higher tightness should produce more operations")
     }
-    
+
+    private func endpoints(of operations: [RoughSwiftUI.Operation]) -> [CGPoint] {
+        operations.compactMap { operation in
+            if let move = operation as? Move {
+                let point = move.point.toRoughPoint()
+                return CGPoint(x: CGFloat(point[0]), y: CGFloat(point[1]))
+            }
+            if let line = operation as? LineTo {
+                let point = line.point.toRoughPoint()
+                return CGPoint(x: CGFloat(point[0]), y: CGFloat(point[1]))
+            }
+            return nil
+        }
+    }
+
 }

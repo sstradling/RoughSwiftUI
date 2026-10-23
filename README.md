@@ -84,7 +84,7 @@ For SVG paths, additional options are available to fine-tune rendering:
 
 For the scribble fill style, additional parameters control the continuous zig-zag pattern:
 
-- `scribbleOrigin` - Starting angle in degrees (0-360)
+- `scribbleOrigin` - Stroke bearing in degrees. 0 runs to the right, 90 runs straight down, and positive angles rotate clockwise
 - `scribbleTightness` - Number of zig-zags (1-100)
 - `scribbleCurvature` - Vertex curvature (0-50)
 - `scribbleUseBrushStroke` - Enable brush stroke rendering
@@ -210,7 +210,7 @@ RoughView()
     .fill(.blue)
     .fillStyle(.scribble)
     .scribble(
-        origin: 45,           // Start from 45° angle
+        origin: 45,           // Strokes 45° clockwise from horizontal
         tightness: 20,        // 20 zig-zags
         curvature: 30,        // Curved vertices
         useBrushStroke: true  // Variable-width strokes
