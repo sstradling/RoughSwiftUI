@@ -628,16 +628,18 @@ public struct BrushProfile: Equatable, Hashable, Sendable {
     public static let calligraphic  // Flat tip, tapered
     public static let marker        // Flat tip, uniform, butt caps
     public static let pen           // Pressure simulation
-    public static let crayon        // Grainy wax stroke, two passes, seed 1
+    public static let crayon        // Continuous wax base, dense grit, seed 1
 
     public static func crayon(
-        grain: Float = 0.5,
-        edgeRoughness: Float = 0.88,
-        widthVariation: Float = 0.28,
-        opacityVariation: Float = 0.62,
+        grain: Float = 0.28,
+        edgeRoughness: Float = 0.75,
+        widthVariation: Float = 0.18,
+        opacityVariation: Float = 0.35,
         passes: Int = 2,
-        segmentLength: Float = 1,
-        tooth: Float = 0.86,
+        baseOpacity: Float = 0.8,
+        baseSoftness: Float = 0.5,
+        grit: Float = 0.92,
+        flakeSize: Float = 1.45,
         seed: UInt64 = 1
     ) -> BrushProfile
 }
@@ -645,19 +647,21 @@ public struct BrushProfile: Equatable, Hashable, Sendable {
 
 ### CrayonStyle
 
-Crayon strokes are flecks of wax on toothy paper: a dense core with pinholes, a torn edge with loose crumbs, and a lighter second pass. `segmentLength` stretches the wax runs and the gaps between them without changing speckle size. `strokeWidth` is the wax width in points and is not scaled again when an SVG path is fitted to the view, matching a normal stroke. The same `seed` repeats the same texture. Closed contours are sampled through the closing segment so the join does not seam.
+A crayon stroke is continuous. A soft translucent halo and a greasy core are drawn first, then denser flakes and edge crumbs are laid on top. Nothing in the preset opens a paper break along the stroke. `strokeWidth` is the wax width in points and is not scaled again when an SVG path is fitted to the view, matching a normal stroke. The same `seed` repeats the same texture. Closed contours are sampled through the closing segment so the join does not seam.
 
 When `brushProfile.crayon` is set, hachure, zigzag, and scribble fill lines use the same wax. The fill-line width is `fillWeight` (or half the stroke width when `fillWeight` is automatic). Outline strokes still use `strokeWidth`.
 
 | Parameter | Default | Range | Effect |
 |-----------|---------|-------|--------|
-| `grain` | 0.5 | 0...1 | Pinholes and longer paper gaps |
-| `edgeRoughness` | 0.88 | 0...1 | Torn edge and detached flecks |
-| `widthVariation` | 0.28 | 0...1 | Width swell along the stroke |
-| `opacityVariation` | 0.62 | 0...1 | How much later passes fade |
-| `passes` | 2 | 1...3 | Overlapping wax layers |
-| `segmentLength` | 1 | 0.25...8 | Wax-run length and the gap between runs |
-| `tooth` | 0.86 | 0...1 | Speckle fineness. `0` is chunky wax, `1` is fine paper tooth |
+| `grain` | 0.28 | 0...1 | Thins the grit into speckle. Does not break the base |
+| `edgeRoughness` | 0.75 | 0...1 | Ragged edge and detached flakes |
+| `widthVariation` | 0.18 | 0...1 | Width swell along the stroke |
+| `opacityVariation` | 0.35 | 0...1 | How much later grit passes fade |
+| `passes` | 2 | 1...3 | Grit layers on top of the base |
+| `baseOpacity` | 0.8 | 0.2...1 | Opacity of the greasy base |
+| `baseSoftness` | 0.5 | 0...1 | Width of the soft halo |
+| `grit` | 0.92 | 0...1 | Density of flakes on the base |
+| `flakeSize` | 1.45 | 0.35...3 | Size of clumps and specks |
 | `seed` | 1 | any `UInt64` | Stable grain |
 
 ```swift
@@ -711,7 +715,7 @@ RoughView()
 RoughView()
     .stroke(.orange)
     .strokeWidth(6)
-    .brushProfile(.crayon(grain: 0.5, edgeRoughness: 0.7, segmentLength: 3, seed: 4))
+    .brushProfile(.crayon(baseOpacity: 0.7, grit: 0.95, flakeSize: 1.6, seed: 4))
     .circle()
 
 // Zigzag shading picks up the same crayon. fillWeight is the wax width of each line.

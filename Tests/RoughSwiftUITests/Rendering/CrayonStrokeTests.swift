@@ -14,8 +14,10 @@ final class CrayonStrokeTests: XCTestCase {
         let profile = BrushProfile.crayon
         XCTAssertNotNil(profile.crayon)
         XCTAssertEqual(profile.crayon?.passes, 2)
-        XCTAssertEqual(profile.crayon?.segmentLength, 1)
-        XCTAssertEqual(profile.crayon?.tooth, 0.86)
+        XCTAssertEqual(profile.crayon?.baseOpacity, 0.8)
+        XCTAssertEqual(profile.crayon?.baseSoftness, 0.5)
+        XCTAssertEqual(profile.crayon?.grit, 0.92)
+        XCTAssertEqual(profile.crayon?.flakeSize, 1.45)
         XCTAssertEqual(profile.crayon?.seed, 1)
         XCTAssertTrue(profile.requiresCustomRendering)
         XCTAssertEqual(profile.tip, .circular)
@@ -29,8 +31,10 @@ final class CrayonStrokeTests: XCTestCase {
             widthVariation: 2,
             opacityVariation: -3,
             passes: 9,
-            segmentLength: 20,
-            tooth: -1,
+            baseOpacity: -1,
+            baseSoftness: 4,
+            grit: -2,
+            flakeSize: 9,
             seed: 42
         )
         XCTAssertEqual(profile.crayon?.grain, 1)
@@ -38,8 +42,10 @@ final class CrayonStrokeTests: XCTestCase {
         XCTAssertEqual(profile.crayon?.widthVariation, 1)
         XCTAssertEqual(profile.crayon?.opacityVariation, 0)
         XCTAssertEqual(profile.crayon?.passes, 3)
-        XCTAssertEqual(profile.crayon?.segmentLength, 8)
-        XCTAssertEqual(profile.crayon?.tooth, 0)
+        XCTAssertEqual(profile.crayon?.baseOpacity, 0.2)
+        XCTAssertEqual(profile.crayon?.baseSoftness, 1)
+        XCTAssertEqual(profile.crayon?.grit, 0)
+        XCTAssertEqual(profile.crayon?.flakeSize, 3)
         XCTAssertEqual(profile.crayon?.seed, 42)
     }
 
@@ -66,12 +72,12 @@ final class CrayonStrokeTests: XCTestCase {
             width: 6,
             style: CrayonStyle(seed: 3)
         )
-        XCTAssertEqual(open.count, 2)
-        XCTAssertEqual(closed.count, 2)
-        XCTAssertGreaterThan(moveCount(open[0].path), 4)
-        XCTAssertGreaterThan(moveCount(closed[0].path), moveCount(open[0].path))
-        XCTAssertEqual(open[0].opacity, 0.9, accuracy: 0.001)
-        XCTAssertLessThan(open[1].opacity, open[0].opacity)
+        XCTAssertEqual(open.count, 4)
+        XCTAssertEqual(closed.count, 4)
+        XCTAssertGreaterThan(moveCount(open[1].path), 4)
+        XCTAssertGreaterThan(moveCount(closed[1].path), moveCount(open[1].path))
+        XCTAssertLessThan(open[0].opacity, open[1].opacity)
+        XCTAssertGreaterThan(open[2].opacity, open[1].opacity)
     }
 
     func testSameSeedIsStableAndAnotherSeedChangesTheTexture() {
@@ -119,8 +125,8 @@ final class CrayonStrokeTests: XCTestCase {
     func testHigherGrainSkipsMoreMarks() {
         let solid = CrayonStyle(grain: 0, passes: 1, seed: 9)
         let broken = CrayonStyle(grain: 1, passes: 1, seed: 9)
-        let solidCount = moveCount(CrayonStroke.passes(operations: line(from: (0, 0), to: (160, 0)), width: 8, style: solid)[0].path)
-        let brokenCount = moveCount(CrayonStroke.passes(operations: line(from: (0, 0), to: (160, 0)), width: 8, style: broken)[0].path)
+        let solidCount = moveCount(CrayonStroke.passes(operations: line(from: (0, 0), to: (160, 0)), width: 8, style: solid).last!.path)
+        let brokenCount = moveCount(CrayonStroke.passes(operations: line(from: (0, 0), to: (160, 0)), width: 8, style: broken).last!.path)
         XCTAssertGreaterThan(solidCount, brokenCount)
     }
 
@@ -134,27 +140,36 @@ final class CrayonStrokeTests: XCTestCase {
         let started = Date()
         let passes = CrayonStroke.passes(operations: operations, width: 5, style: CrayonStyle())
         XCTAssertLessThan(Date().timeIntervalSince(started), 0.5)
-        XCTAssertEqual(passes.count, 2)
+        XCTAssertEqual(passes.count, 4)
         XCTAssertLessThan(moveCount(passes[0].path), 8_000)
     }
 
-    func testSegmentLengthStretchesWaxRunsAndGaps() {
-        let short = CrayonStyle(grain: 0.9, edgeRoughness: 0, widthVariation: 0, passes: 1, segmentLength: 1, tooth: 0, seed: 4)
-        let long = CrayonStyle(grain: 0.9, edgeRoughness: 0, widthVariation: 0, passes: 1, segmentLength: 3, tooth: 0, seed: 4)
-        let operations = line(from: (0, 0), to: (520, 0))
-        let shortRuns = coverageRuns(operations, width: 16, style: short)
-        let longRuns = coverageRuns(operations, width: 16, style: long)
-        XCTAssertGreaterThan(longRuns.maxGap, shortRuns.maxGap * 1.7)
-        XCTAssertGreaterThan(longRuns.maxWax, shortRuns.maxWax * 1.7)
+    func testBaseLayerIsContinuous() {
+        let style = CrayonStyle(grain: 1, edgeRoughness: 0, passes: 1, grit: 1, seed: 4)
+        let passes = CrayonStroke.passes(
+            operations: line(from: (0, 0), to: (220, 0)),
+            width: 14,
+            style: style
+        )
+        let base = passes[1].path
+        var misses = 0
+        var x: CGFloat = 12
+        while x <= 205 {
+            if !base.contains(CGPoint(x: x, y: 0)) {
+                misses += 1
+            }
+            x += 4
+        }
+        XCTAssertEqual(misses, 0)
     }
 
-    func testHigherToothBreaksTheStrokeIntoMoreFlecks() {
-        let smooth = CrayonStyle(grain: 0.2, edgeRoughness: 0.2, passes: 1, tooth: 0, seed: 6)
-        let gritty = CrayonStyle(grain: 0.2, edgeRoughness: 0.2, passes: 1, tooth: 1, seed: 6)
-        let operations = line(from: (0, 0), to: (80, 0))
-        let smoothCount = moveCount(CrayonStroke.passes(operations: operations, width: 16, style: smooth)[0].path)
-        let grittyCount = moveCount(CrayonStroke.passes(operations: operations, width: 16, style: gritty)[0].path)
-        XCTAssertGreaterThan(grittyCount, smoothCount)
+    func testDenserGritAddsFlakes() {
+        let sparse = CrayonStyle(edgeRoughness: 0, passes: 1, grit: 0.05, seed: 6)
+        let dense = CrayonStyle(edgeRoughness: 0, passes: 1, grit: 1, seed: 6)
+        let operations = line(from: (0, 0), to: (100, 0))
+        let sparseCount = moveCount(CrayonStroke.passes(operations: operations, width: 16, style: sparse).last!.path)
+        let denseCount = moveCount(CrayonStroke.passes(operations: operations, width: 16, style: dense).last!.path)
+        XCTAssertGreaterThan(denseCount, sparseCount)
     }
 
     @MainActor
@@ -207,7 +222,7 @@ final class CrayonStrokeTests: XCTestCase {
             options: options
         )
         let commands = SwiftUIRenderer().commands(for: drawing, options: options, in: CGSize(width: 80, height: 40))
-        XCTAssertEqual(commands.count, 2)
+        XCTAssertEqual(commands.count, 4)
         for command in commands {
             guard case .fill = command.style else {
                 return XCTFail("Expected a crayon fill")
@@ -237,42 +252,6 @@ final class CrayonStrokeTests: XCTestCase {
             .reduce(CGRect.null) { rect, pass in
                 rect.union(pass.path.boundingRect)
             }
-    }
-
-    /// Longest covered and uncovered runs along the stroke centerline, in points.
-    private func coverageRuns(
-        _ operations: [RoughSwiftUI.Operation],
-        width: CGFloat,
-        style: CrayonStyle
-    ) -> (maxGap: CGFloat, maxWax: CGFloat) {
-        let path = CrayonStroke.passes(operations: operations, width: width, style: style)[0].path
-        var maxGap: CGFloat = 0
-        var maxWax: CGFloat = 0
-        var gap: CGFloat = 0
-        var wax: CGFloat = 0
-        var x: CGFloat = 8
-        while x <= 500 {
-            var hit = false
-            var y: CGFloat = -8
-            while y <= 8 {
-                if path.contains(CGPoint(x: x, y: y)) {
-                    hit = true
-                    break
-                }
-                y += 2
-            }
-            if hit {
-                wax += 3
-                maxWax = max(maxWax, wax)
-                gap = 0
-            } else {
-                gap += 3
-                maxGap = max(maxGap, gap)
-                wax = 0
-            }
-            x += 3
-        }
-        return (maxGap, maxWax)
     }
 
     private func moveCount(_ path: SwiftUI.Path) -> Int {

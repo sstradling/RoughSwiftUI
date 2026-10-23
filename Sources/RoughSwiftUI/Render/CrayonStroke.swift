@@ -4,13 +4,12 @@
 //
 //  Builds layered wax-crayon strokes from engine operations.
 //
-//  Each pass is a fill of small wax flecks. The core is dense, with pinholes
-//  where flecks are missing. The edge is torn and sheds detached crumbs.
-//  A slow envelope, scaled by `segmentLength`, opens longer paper gaps between
-//  wax runs. Flecks are stamped in destination space, so `width` matches a
-//  normal stroke's point width even when an SVG path is fitted to the canvas.
-//  A closed contour is sampled through its closing segment, so the join is
-//  covered by the same flecks as the rest of the loop and does not seam.
+//  The first passes are a continuous greasy base: a wide soft halo and a
+//  firmer core, with no breaks along the stroke. Later passes lay denser,
+//  larger flakes and edge crumbs on top of that base. Marks are stamped in
+//  destination space, so `width` matches a normal stroke's point width even
+//  when an SVG path is fitted to the canvas. A closed contour is sampled
+//  through its closing segment, so the join is covered and does not seam.
 //
 
 import CoreGraphics
@@ -46,11 +45,17 @@ public enum CrayonStroke {
         guard !subpaths.isEmpty else { return [] }
 
         var result: [CrayonStrokePass] = []
-        result.reserveCapacity(style.passes)
+        result.reserveCapacity(style.passes + 2)
+        result.append(contentsOf: basePasses(
+            subpaths: subpaths,
+            width: width,
+            style: style,
+            transform: transform
+        ))
         for pass in 0..<style.passes {
             let marks = CGMutablePath()
             for (index, subpath) in subpaths.enumerated() {
-                stamp(
+                stampGrit(
                     subpath,
                     into: marks,
                     width: width,
@@ -62,13 +67,42 @@ public enum CrayonStroke {
             }
             guard !marks.isEmpty else { continue }
             let fade = style.passes == 1 ? 0 : CGFloat(pass) / CGFloat(style.passes - 1)
-            // The first pass is already a little translucent so a second pass
-            // reads as another layer of wax instead of a second opaque stroke.
-            let opacity = max(0.34, 0.9 - CGFloat(style.opacityVariation) * fade * 0.85)
+            let opacity = max(0.72, 0.96 - CGFloat(style.opacityVariation) * fade * 0.28)
             result.append(CrayonStrokePass(path: SwiftUI.Path(marks), opacity: opacity))
         }
         return result
     }
+}
+
+private func basePasses(
+    subpaths: [CrayonSubpath],
+    width: CGFloat,
+    style: CrayonStyle,
+    transform: CGAffineTransform
+) -> [CrayonStrokePass] {
+    let halo = CGMutablePath()
+    let core = CGMutablePath()
+    for (index, subpath) in subpaths.enumerated() {
+        stampBase(
+            subpath,
+            halo: halo,
+            core: core,
+            width: width,
+            style: style,
+            transform: transform,
+            subpathIndex: index
+        )
+    }
+    let baseOpacity = CGFloat(style.baseOpacity)
+    let haloOpacity = max(0.14, baseOpacity * (0.22 + 0.12 * CGFloat(style.baseSoftness)))
+    var passes: [CrayonStrokePass] = []
+    if !halo.isEmpty {
+        passes.append(CrayonStrokePass(path: SwiftUI.Path(halo), opacity: haloOpacity))
+    }
+    if !core.isEmpty {
+        passes.append(CrayonStrokePass(path: SwiftUI.Path(core), opacity: baseOpacity))
+    }
+    return passes
 }
 
 // MARK: - Sampling
@@ -218,7 +252,69 @@ private func appendQuad(
 
 // MARK: - Stamping
 
-private func stamp(
+/// Continuous greasy base. Overlapping ellipses leave no paper break along the stroke.
+private func stampBase(
+    _ subpath: CrayonSubpath,
+    halo: CGMutablePath,
+    core: CGMutablePath,
+    width: CGFloat,
+    style: CrayonStyle,
+    transform: CGAffineTransform,
+    subpathIndex: Int
+) {
+    let placed = transformed(subpath.samples, by: transform)
+    guard placed.count >= 2 else { return }
+
+    let softness = CGFloat(style.baseSoftness)
+    let step = max(1.05, width * 0.2)
+    var traveled: CGFloat = 0
+    var next: CGFloat = 0
+    var serial = subpathIndex * 20_000
+    let budget = serial + 8_000
+
+    for index in 1..<placed.count {
+        let start = placed[index - 1]
+        let end = placed[index]
+        let span = distance(start.point, end.point)
+        guard span > 0.01 else { continue }
+        while next <= traveled + span && serial < budget {
+            let t = min(1, max(0, (next - traveled) / span))
+            let point = lerp(start.point, end.point, t)
+            let tangent = end.tangent
+            let normal = tangent + .pi / 2
+            let swell = unit(style.seed, 0, serial, 6) - 0.5
+            let wobble = 1 + CGFloat(style.widthVariation) * swell * 0.22
+            // A small sideways drift softens the edge. It stays well inside the
+            // ellipse thickness, so the wax still overlaps and does not break.
+            let drift = (unit(style.seed, 1, serial, 8) - 0.5) * width * softness * 0.1
+            let center = CGPoint(
+                x: point.x + cos(normal) * drift,
+                y: point.y + sin(normal) * drift
+            )
+            let along = max(step * 2.4, width * 0.9)
+            addEllipse(
+                halo,
+                center: center,
+                angle: tangent,
+                length: along,
+                thickness: width * (1.08 + softness * 0.28) * wobble
+            )
+            addEllipse(
+                core,
+                center: center,
+                angle: tangent,
+                length: along * 0.96,
+                thickness: width * (0.88 + softness * 0.06) * wobble
+            )
+            serial += 1
+            next += step
+        }
+        traveled += span
+    }
+}
+
+/// Dark clumps, smaller paper-tooth specks, and detached edge flakes. Never opens a gap in the base.
+private func stampGrit(
     _ subpath: CrayonSubpath,
     into path: CGMutablePath,
     width: CGFloat,
@@ -230,15 +326,15 @@ private func stamp(
     let placed = transformed(subpath.samples, by: transform)
     guard placed.count >= 2 else { return }
 
-    // Flecks stay small relative to the stroke so the core reads as paper tooth
-    // rather than a row of capsules. `tooth` shrinks them further.
-    let fleck = min(width * 0.24, max(0.7, width * (0.16 - 0.06 * CGFloat(style.tooth))))
-    let step = max(0.8, fleck * 0.72)
+    let flake = max(1.35, width * (0.16 + 0.15 * CGFloat(style.flakeSize)))
+    let speck = max(0.8, flake * 0.34)
+    let step = max(1.05, flake * 0.62)
+    let rows = min(4, max(2, Int((width * 0.55 / flake).rounded(.up))))
     var traveled: CGFloat = 0
-    var next = step * 0.45
-    var serial = subpathIndex * 20_000
-    let budget = serial + 12_000
-    let lateralBias = (pass == 0 ? 0 : (pass % 2 == 0 ? -1 : 1)) * width * 0.1
+    var next = step * 0.35
+    var serial = subpathIndex * 20_000 + pass * 3_000
+    let budget = serial + 10_000
+    let lateralBias = (pass == 0 ? 0 : (pass % 2 == 0 ? -1 : 1)) * width * 0.06
 
     for index in 1..<placed.count {
         let start = placed[index - 1]
@@ -247,123 +343,120 @@ private func stamp(
         guard span > 0.01 else { continue }
         while next <= traveled + span && serial < budget {
             let t = min(1, max(0, (next - traveled) / span))
-            emitColumn(
+            emitGrit(
                 at: lerp(start.point, end.point, t),
                 tangent: end.tangent,
                 width: width,
-                fleck: fleck,
+                flake: flake,
+                speck: speck,
+                rows: rows,
                 style: style,
                 pass: pass,
-                distance: next,
                 serial: serial,
                 lateralBias: lateralBias,
                 into: path
             )
             serial += 1
-            let jitter = 0.78 + 0.44 * unit(style.seed, pass, serial, 2)
-            next += step * jitter
+            next += step * (0.82 + 0.36 * unit(style.seed, pass, serial, 2))
         }
         traveled += span
     }
 }
 
-/// One across-stroke slice of wax: core flecks, edge crumbs, and the slow gap envelope.
-private func emitColumn(
+private func emitGrit(
     at point: CGPoint,
     tangent: CGFloat,
     width: CGFloat,
-    fleck: CGFloat,
+    flake: CGFloat,
+    speck: CGFloat,
+    rows: Int,
     style: CrayonStyle,
     pass: Int,
-    distance: CGFloat,
     serial: Int,
     lateralBias: CGFloat,
     into path: CGMutablePath
 ) {
-    let tooth = CGFloat(style.tooth)
-    let period = max(width * 3.4, 8) * CGFloat(style.segmentLength)
-    let wave = 0.5 + 0.5 * sin(
-        distance / period * 2 * .pi
-            + CGFloat(style.seed % 48) * 0.13
-            + CGFloat(pass) * 1.15
-    )
-    let gapJitter = (unit(style.seed, pass, serial, 3) - 0.5) * 0.06
-    let inGap = wave < CGFloat(style.grain) * 0.62 + gapJitter
-    if inGap {
-        // A few crumbs survive inside the longer paper gap.
-        guard unit(style.seed, pass, serial, 19) < 0.14 * CGFloat(style.edgeRoughness) else { return }
-        let normal = tangent + .pi / 2
-        let side: CGFloat = unit(style.seed, pass, serial, 20) < 0.5 ? -1 : 1
-        let out = width * 0.22 * side
-        addEllipse(
-            path,
-            center: CGPoint(x: point.x + cos(normal) * out, y: point.y + sin(normal) * out),
-            angle: tangent,
-            length: fleck * 0.55,
-            thickness: fleck * 0.4
-        )
-        return
-    }
-
     let normal = tangent + .pi / 2
-    let tear = (unit(style.seed, pass, serial, 4) - 0.5) * width * CGFloat(style.edgeRoughness) * 0.36
-    let swell = unit(style.seed, pass, serial, 6) - 0.5
-    var half = width * (0.46 + CGFloat(style.widthVariation) * swell * 0.22)
-    if unit(style.seed, pass, serial, 7) < CGFloat(style.edgeRoughness) * 0.24 {
-        half *= 0.58
-    }
-    half = min(width * 0.78, max(width * 0.2, half))
+    let edge = CGFloat(style.edgeRoughness)
+    let tear = (unit(style.seed, pass, serial, 4) - 0.5) * width * edge * 0.34
     let center = CGPoint(
         x: point.x + cos(normal) * (lateralBias + tear),
         y: point.y + sin(normal) * (lateralBias + tear)
     )
-    let angle = tangent + (unit(style.seed, pass, serial, 5) - 0.5) * CGFloat(style.edgeRoughness) * 0.65
-    let rows = min(8, max(3, Int((half * 2 / max(fleck * 0.85, 0.6)).rounded())))
+    let angle = tangent + (unit(style.seed, pass, serial, 5) - 0.5) * edge * 0.9
+    // The dark band wanders. The greasy base stays wider and smooth under it,
+    // so the torn edge is the grit, not a break in the wax.
+    let band = width * (0.34 + 0.16 * unit(style.seed, pass, serial, 30) * (0.35 + edge))
+    let clumpScale: CGFloat = pass == 0 ? 1 : 0.62
+    let clumpKeep = min(0.97, 0.58 + CGFloat(style.grit) * 0.38 - CGFloat(style.grain) * 0.18)
+    let speckKeep = min(0.7, 0.1 + CGFloat(style.grit) * 0.4 - CGFloat(style.grain) * 0.16)
 
     for row in 0..<rows {
         let span = CGFloat(max(rows - 1, 1))
-        let across = (CGFloat(row) / span - 0.5) * half * 2
-        let radial = abs(across) / max(half, 0.01)
-        let keep: CGFloat
-        if radial < 0.48 {
-            // Pinholes scale with tooth. Grain opens the longer gaps, not the core.
-            keep = 0.97 - CGFloat(style.grain) * 0.28 * tooth
-        } else if radial < 0.8 {
-            keep = 0.7 - CGFloat(style.grain) * 0.18 * tooth
-        } else {
-            keep = 0.2 + 0.55 * CGFloat(style.edgeRoughness) * max(tooth, 0.35)
+        let across = (CGFloat(row) / span - 0.5) * band * 2
+        let radial = abs(across) / max(band, 0.01)
+        let keep = radial < 0.8 ? clumpKeep : clumpKeep * (0.55 + 0.35 * edge)
+        if unit(style.seed, pass, serial &* 17 &+ row, 11) <= keep {
+            let jAlong = (unit(style.seed, pass, serial &+ row, 12) - 0.5) * flake * 0.85
+            let jAcross = (unit(style.seed, pass, serial &+ row, 13) - 0.5) * flake * 0.55
+            let length = flake * clumpScale * (0.9 + 0.85 * unit(style.seed, pass, serial &+ row, 14))
+            let thickness = flake * clumpScale * (0.48 + 0.55 * unit(style.seed, pass, serial &+ row, 15))
+            addEllipse(
+                path,
+                center: CGPoint(
+                    x: center.x + cos(angle) * jAlong + cos(normal) * (across + jAcross),
+                    y: center.y + sin(angle) * jAlong + sin(normal) * (across + jAcross)
+                ),
+                angle: angle + (unit(style.seed, pass, serial &+ row, 16) - 0.5) * 1.1,
+                length: length,
+                thickness: thickness
+            )
         }
-        if unit(style.seed, pass, serial &* 17 &+ row, 11) > keep { continue }
-        let jAlong = (unit(style.seed, pass, serial &+ row, 12) - 0.5) * fleck
-        let jAcross = (unit(style.seed, pass, serial &+ row, 13) - 0.5) * fleck * 0.85
-        let fleckLength = fleck * (0.5 + 0.95 * unit(style.seed, pass, serial &+ row, 14))
-        let fleckThickness = fleck * (0.38 + 0.7 * unit(style.seed, pass, serial &+ row, 15))
-        let fleckAngle = angle + (unit(style.seed, pass, serial &+ row, 16) - 0.5) * 1.2
-        addEllipse(
-            path,
-            center: CGPoint(
-                x: center.x + cos(angle) * jAlong + cos(normal) * (across + jAcross),
-                y: center.y + sin(angle) * jAlong + sin(normal) * (across + jAcross)
-            ),
-            angle: fleckAngle,
-            length: max(0.6, fleckLength),
-            thickness: max(0.45, fleckThickness)
-        )
+        if unit(style.seed, pass, serial &* 13 &+ row, 17) <= speckKeep {
+            let acrossSpeck = (unit(style.seed, pass, serial &+ row, 18) - 0.5) * band * 1.7
+            addEllipse(
+                path,
+                center: CGPoint(
+                    x: center.x + cos(normal) * acrossSpeck,
+                    y: center.y + sin(normal) * acrossSpeck
+                ),
+                angle: angle + (unit(style.seed, pass, serial &+ row, 19) - 0.5),
+                length: speck * (0.65 + 0.8 * unit(style.seed, pass, serial &+ row, 20)),
+                thickness: speck * (0.4 + 0.45 * unit(style.seed, pass, serial &+ row, 21))
+            )
+        }
     }
 
-    if unit(style.seed, pass, serial, 18) < CGFloat(style.edgeRoughness) * 0.75 * tooth {
-        let side: CGFloat = unit(style.seed, pass, serial, 20) < 0.5 ? -1 : 1
-        let out = half + width * (0.05 + 0.32 * unit(style.seed, pass, serial, 21))
-        let crumb = max(0.55, fleck * (0.4 + 0.55 * unit(style.seed, pass, serial, 22)))
+    // Crumbs sit outside the soft halo so they read as detached flakes.
+    let haloHalf = width * (1.08 + CGFloat(style.baseSoftness) * 0.28) / 2
+    if unit(style.seed, pass, serial, 22) < edge * (0.42 + CGFloat(style.grit) * 0.28) {
+        let side: CGFloat = unit(style.seed, pass, serial, 23) < 0.5 ? -1 : 1
+        let out = haloHalf + width * (0.01 + 0.06 * unit(style.seed, pass, serial, 24))
+        let crumb = flake * (0.36 + 0.4 * unit(style.seed, pass, serial, 25))
         addEllipse(
             path,
             center: CGPoint(
                 x: center.x + cos(normal) * side * out,
                 y: center.y + sin(normal) * side * out
             ),
-            angle: angle + (unit(style.seed, pass, serial, 23) - 0.5),
+            angle: angle + (unit(style.seed, pass, serial, 26) - 0.5) * 1.4,
             length: crumb,
-            thickness: crumb * 0.65
+            thickness: crumb * 0.58
+        )
+    }
+    if unit(style.seed, pass, serial, 27) < edge * 0.42 {
+        let side: CGFloat = unit(style.seed, pass, serial, 28) < 0.5 ? -1 : 1
+        let out = haloHalf + width * (0.05 + 0.1 * unit(style.seed, pass, serial, 29))
+        let crumb = flake * 0.36 * (0.7 + unit(style.seed, pass, serial, 31))
+        addEllipse(
+            path,
+            center: CGPoint(
+                x: center.x + cos(normal) * side * out + cos(angle) * flake * 0.2,
+                y: center.y + sin(normal) * side * out + sin(angle) * flake * 0.2
+            ),
+            angle: angle,
+            length: crumb,
+            thickness: crumb * 0.7
         )
     }
 }

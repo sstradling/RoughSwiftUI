@@ -478,8 +478,8 @@ RoughView()
     .thicknessProfile(.tapered)
     .circle()
 
-// Wax crayon. Fine paper-tooth grain, a torn edge, and a stable seed.
-// segmentLength stretches the wax runs and the gaps; tooth controls speckle size.
+// Wax crayon. A continuous greasy base, then dense flakes and a ragged edge.
+// baseOpacity and baseSoftness set the wax. grit and flakeSize set the overlay.
 RoughView()
     .stroke(.black)
     .strokeWidth(8)
@@ -489,7 +489,7 @@ RoughView()
 RoughView()
     .stroke(.orange)
     .strokeWidth(6)
-    .brushProfile(.crayon(grain: 0.6, segmentLength: 3, tooth: 0.9, seed: 4))
+    .brushProfile(.crayon(baseOpacity: 0.7, grit: 0.95, flakeSize: 1.6, seed: 4))
     .circle()
 
 // Hachure and zigzag fill lines use the crayon brush too.
