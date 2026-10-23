@@ -53,9 +53,10 @@ public struct CrayonStyle: Equatable, Hashable, Sendable {
     /// `0` is a few marks. `1` packs the core with wax clumps and speckle. Default is 0.92.
     public var grit: Float
 
-    /// Size of the grit flakes relative to the preset. Range 0.35...3.
+    /// Size of the grit flakes relative to the stroke width. Range 0.35...3.
     ///
     /// `1` is the preset flake. Larger values make darker clumps and specks bigger.
+    /// A thinner stroke gets smaller flakes, so the grit stays a fraction of the wax.
     /// Default is 1.45.
     public var flakeSize: Float
 

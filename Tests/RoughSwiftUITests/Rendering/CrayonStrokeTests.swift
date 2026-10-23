@@ -163,6 +163,26 @@ final class CrayonStrokeTests: XCTestCase {
         XCTAssertEqual(misses, 0)
     }
 
+    func testGritScalesWithThinStrokes() {
+        let style = CrayonStyle(
+            grain: 0,
+            edgeRoughness: 0,
+            widthVariation: 0,
+            opacityVariation: 0,
+            passes: 1,
+            grit: 1,
+            flakeSize: 1,
+            seed: 3
+        )
+        let operations = line(from: (0, 0), to: (140, 0))
+        let thin = medianMarkExtent(CrayonStroke.passes(operations: operations, width: 2.4, style: style).last!.path)
+        let thick = medianMarkExtent(CrayonStroke.passes(operations: operations, width: 12, style: style).last!.path)
+        // 12 / 2.4 is 5. A fixed flake floor near 1.35 pt would keep the thin
+        // marks large and pull this ratio under 3.
+        XCTAssertGreaterThan(thick, thin * 3.2)
+        XCTAssertLessThan(thin, 2.0)
+    }
+
     func testDenserGritAddsFlakes() {
         let sparse = CrayonStyle(edgeRoughness: 0, passes: 1, grit: 0.05, seed: 6)
         let dense = CrayonStyle(edgeRoughness: 0, passes: 1, grit: 1, seed: 6)
@@ -252,6 +272,35 @@ final class CrayonStrokeTests: XCTestCase {
             .reduce(CGRect.null) { rect, pass in
                 rect.union(pass.path.boundingRect)
             }
+    }
+
+    /// Long axis of each grit ellipse. Tracks flake size rather than the whole stroke.
+    private func medianMarkExtent(_ path: SwiftUI.Path) -> CGFloat {
+        var extents: [CGFloat] = []
+        var current = CGRect.null
+        path.forEach { element in
+            switch element {
+            case .move(let point):
+                current = CGRect(origin: point, size: .zero)
+            case .line(let point):
+                current = current.union(CGRect(origin: point, size: .zero))
+            case .quadCurve(let point, let control):
+                current = current.union(CGRect(origin: point, size: .zero))
+                current = current.union(CGRect(origin: control, size: .zero))
+            case .curve(let point, let control1, let control2):
+                current = current.union(CGRect(origin: point, size: .zero))
+                current = current.union(CGRect(origin: control1, size: .zero))
+                current = current.union(CGRect(origin: control2, size: .zero))
+            case .closeSubpath:
+                if !current.isNull {
+                    extents.append(max(current.width, current.height))
+                }
+                current = .null
+            }
+        }
+        let sorted = extents.sorted()
+        guard !sorted.isEmpty else { return 0 }
+        return sorted[sorted.count / 2]
     }
 
     private func moveCount(_ path: SwiftUI.Path) -> Int {

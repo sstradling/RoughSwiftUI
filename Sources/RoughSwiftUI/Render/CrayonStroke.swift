@@ -266,7 +266,9 @@ private func stampBase(
     guard placed.count >= 2 else { return }
 
     let softness = CGFloat(style.baseSoftness)
-    let step = max(1.05, width * 0.2)
+    // The floor is a fraction of a point so a hairline still overlaps.
+    // It stays below the width-based step, so thin strokes keep the same texture scale.
+    let step = max(0.4, width * 0.2)
     var traveled: CGFloat = 0
     var next: CGFloat = 0
     var serial = subpathIndex * 20_000
@@ -326,9 +328,11 @@ private func stampGrit(
     let placed = transformed(subpath.samples, by: transform)
     guard placed.count >= 2 else { return }
 
-    let flake = max(1.35, width * (0.16 + 0.15 * CGFloat(style.flakeSize)))
-    let speck = max(0.8, flake * 0.34)
-    let step = max(1.05, flake * 0.62)
+    // Flakes are a fraction of the wax width. The small floor keeps a mark on a
+    // hairline without turning a thin stroke into one solid blob.
+    let flake = max(0.45, width * (0.16 + 0.15 * CGFloat(style.flakeSize)))
+    let speck = max(0.28, flake * 0.34)
+    let step = max(0.4, flake * 0.62)
     let rows = min(4, max(2, Int((width * 0.55 / flake).rounded(.up))))
     var traveled: CGFloat = 0
     var next = step * 0.35

@@ -649,7 +649,7 @@ public struct BrushProfile: Equatable, Hashable, Sendable {
 
 A crayon stroke is continuous. A soft translucent halo and a greasy core are drawn first, then denser flakes and edge crumbs are laid on top. Nothing in the preset opens a paper break along the stroke. `strokeWidth` is the wax width in points and is not scaled again when an SVG path is fitted to the view, matching a normal stroke. The same `seed` repeats the same texture. Closed contours are sampled through the closing segment so the join does not seam.
 
-When `brushProfile.crayon` is set, hachure, zigzag, and scribble fill lines use the same wax. The fill-line width is `fillWeight` (or half the stroke width when `fillWeight` is automatic). Outline strokes still use `strokeWidth`.
+When `brushProfile.crayon` is set, hachure, zigzag, and scribble fill lines use the same wax. The fill-line width is `fillWeight` (or half the stroke width when `fillWeight` is automatic). Outline strokes still use `strokeWidth`. Flakes, specks, and the stamp spacing scale with that width, down to a fraction of a point, so a thin fill line still shows grit instead of a smooth tube.
 
 | Parameter | Default | Range | Effect |
 |-----------|---------|-------|--------|
@@ -661,7 +661,7 @@ When `brushProfile.crayon` is set, hachure, zigzag, and scribble fill lines use 
 | `baseOpacity` | 0.8 | 0.2...1 | Opacity of the greasy base |
 | `baseSoftness` | 0.5 | 0...1 | Width of the soft halo |
 | `grit` | 0.92 | 0...1 | Density of flakes on the base |
-| `flakeSize` | 1.45 | 0.35...3 | Size of clumps and specks |
+| `flakeSize` | 1.45 | 0.35...3 | Clump and speck size as a fraction of the stroke width |
 | `seed` | 1 | any `UInt64` | Stable grain |
 
 ```swift

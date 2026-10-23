@@ -480,6 +480,7 @@ RoughView()
 
 // Wax crayon. A continuous greasy base, then dense flakes and a ragged edge.
 // baseOpacity and baseSoftness set the wax. grit and flakeSize set the overlay.
+// Flakes scale with the stroke width, including thin fill lines.
 RoughView()
     .stroke(.black)
     .strokeWidth(8)
