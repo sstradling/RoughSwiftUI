@@ -34,6 +34,12 @@ public struct RoughRenderCommand {
     /// Line join style for strokes.
     public let join: BrushJoin
 
+    /// Fill rule used when `style` is `.fill`.
+    ///
+    /// Existing fills stay even-odd so holes in glyphs keep working.
+    /// Crayon passes use winding so overlapping wax marks union instead of punching holes.
+    public let fillRule: RoughFillRule
+
     /// Description of stroke or fill styling.
     public enum Style {
         /// Stroke path with a color and line width.
@@ -48,7 +54,8 @@ public struct RoughRenderCommand {
         clipPath: SwiftUI.Path? = nil,
         inverseClip: Bool = false,
         cap: BrushCap = .round,
-        join: BrushJoin = .round
+        join: BrushJoin = .round,
+        fillRule: RoughFillRule = .evenOdd
     ) {
         self.path = path
         self.style = style
@@ -56,7 +63,16 @@ public struct RoughRenderCommand {
         self.inverseClip = inverseClip
         self.cap = cap
         self.join = join
+        self.fillRule = fillRule
     }
+}
+
+/// How a filled rough command covers overlapping subpaths.
+public enum RoughFillRule: Equatable, Hashable, Sendable {
+    /// Subtract overlapping regions. Used for holes such as glyph counters.
+    case evenOdd
+    /// Add overlapping regions. Used by crayon wax marks.
+    case winding
 }
 
 /// Convert `Drawing`/`OperationSet` data into SwiftUI `Path` commands and render them.
@@ -165,11 +181,11 @@ public struct SwiftUIRenderer {
                 style: strokeStyle
             )
         case let .fill(color):
-            // Use even-odd fill rule for proper handling of paths with holes (like glyph counters)
+            // Even-odd keeps holes in glyphs. Crayon passes opt into winding so wax marks union.
             context.fill(
                 command.path,
                 with: .color(color),
-                style: SwiftUI.FillStyle(eoFill: true)
+                style: SwiftUI.FillStyle(eoFill: command.fillRule == .evenOdd)
             )
         }
     }
@@ -211,6 +227,24 @@ private extension SwiftUIRenderer {
                 path = basePath
             }
             let strokeColor = Color(options.stroke).opacity(Double(options.strokeOpacity))
+
+            if let crayon = options.brushProfile.crayon {
+                let passes = CrayonStroke.passes(
+                    operations: set.operations,
+                    width: CGFloat(strokeWidth),
+                    style: crayon,
+                    transform: svgTransform ?? .identity
+                )
+                if !passes.isEmpty {
+                    return passes.map { pass in
+                        RoughRenderCommand(
+                            path: pass.path,
+                            style: .fill(strokeColor.opacity(Double(pass.opacity))),
+                            fillRule: .winding
+                        )
+                    }
+                }
+            }
             
             // Check if brush profile requires custom rendering
             if options.brushProfile.requiresCustomRendering {

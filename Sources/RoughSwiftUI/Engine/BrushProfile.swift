@@ -250,18 +250,26 @@ public struct BrushProfile: Equatable, Hashable, Sendable {
     
     /// Style for stroke corners/vertices.
     public var join: BrushJoin
+
+    /// Wax-crayon texture. When set, strokes are drawn as layered grainy passes
+    /// instead of a solid stroke or a variable-width outline.
+    ///
+    /// `nil` keeps the existing stroke behavior. Default profiles leave this `nil`.
+    public var crayon: CrayonStyle?
     
     /// Creates a brush profile with the specified components.
     public init(
         tip: BrushTip = .circular,
         thicknessProfile: ThicknessProfile = .uniform,
         cap: BrushCap = .round,
-        join: BrushJoin = .round
+        join: BrushJoin = .round,
+        crayon: CrayonStyle? = nil
     ) {
         self.tip = tip
         self.thicknessProfile = thicknessProfile
         self.cap = cap
         self.join = join
+        self.crayon = crayon
     }
     
     /// Default brush profile - circular tip with uniform thickness.
@@ -290,10 +298,48 @@ public struct BrushProfile: Equatable, Hashable, Sendable {
         cap: .round,
         join: .round
     )
+
+    /// Wax-crayon stroke: grainy, slightly ragged, with two overlapping passes.
+    ///
+    /// The preset uses a circular tip. Texture comes from `crayon`, not from
+    /// the calligraphic outline converter. `strokeWidth` is the wax width in points.
+    public static let crayon = BrushProfile(crayon: CrayonStyle())
+
+    /// Crayon preset with explicit texture settings.
+    ///
+    /// - Parameters:
+    ///   - grain: How much paper shows through, 0...1. Default 0.34.
+    ///   - edgeRoughness: Raggedness of the edge as a fraction of width, 0...1. Default 0.62.
+    ///   - widthVariation: Along-stroke width wander, 0...1. Default 0.3.
+    ///   - opacityVariation: How much later passes fade, 0...1. Default 0.38.
+    ///   - passes: Overlapping wax layers, 1...3. Default 2.
+    ///   - seed: Stable grain seed. The same seed and path repeat the same texture.
+    public static func crayon(
+        grain: Float = 0.34,
+        edgeRoughness: Float = 0.62,
+        widthVariation: Float = 0.3,
+        opacityVariation: Float = 0.38,
+        passes: Int = 2,
+        seed: UInt64 = 1
+    ) -> BrushProfile {
+        BrushProfile(
+            crayon: CrayonStyle(
+                grain: grain,
+                edgeRoughness: edgeRoughness,
+                widthVariation: widthVariation,
+                opacityVariation: opacityVariation,
+                passes: passes,
+                seed: seed
+            )
+        )
+    }
     
     /// Whether this profile requires custom stroke-to-fill conversion.
     /// Returns false for simple profiles that can use standard stroke rendering.
     public var requiresCustomRendering: Bool {
+        if crayon != nil {
+            return true
+        }
         // Need custom rendering if:
         // 1. Brush tip is not circular and direction-sensitive
         // 2. Thickness profile is not uniform
@@ -310,7 +356,8 @@ public struct BrushProfile: Equatable, Hashable, Sendable {
             tip: tip,
             thicknessProfile: .uniform,
             cap: cap,
-            join: join
+            join: join,
+            crayon: crayon
         )
     }
 }

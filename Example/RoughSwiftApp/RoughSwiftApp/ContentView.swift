@@ -958,6 +958,20 @@ struct BrushStrokeView: View {
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
+
+                        // Crayon preset
+                        VStack(spacing: 8) {
+                            RoughView()
+                                .stroke(Color.black)
+                                .strokeWidth(6)
+                                .brushProfile(.crayon)
+                                .circle()
+                                .frame(width: 100, height: 100)
+
+                            SwiftUI.Text("Crayon")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
                     }
                 }
                 

@@ -65,7 +65,8 @@ import RoughSwiftUI
 | `Point` | 2D coordinate | `Point(x: Float, y: Float)` |
 | `Size` | Dimensions | `Size(width: Float, height: Float)` |
 | `FillStyle` | Fill pattern enumeration | `.hachure`, `.solid`, etc. |
-| `BrushProfile` | Stroke styling configuration | Calligraphic effects |
+| `BrushProfile` | Stroke styling configuration | Calligraphic, pen, and crayon effects |
+| `CrayonStyle` | Wax-crayon grain, edge, and seed | Used by `BrushProfile.crayon` |
 | `AnimationConfig` | Animation settings | Steps, speed, variance |
 
 ### Point
@@ -619,13 +620,57 @@ public struct BrushProfile: Equatable, Hashable, Sendable {
     public var cap: BrushCap
     public var join: BrushJoin
     
+    /// Wax-crayon texture. `nil` on every preset except `.crayon`.
+    public var crayon: CrayonStyle?
+
     // Presets
     public static let `default`     // Circular, uniform
     public static let calligraphic  // Flat tip, tapered
     public static let marker        // Flat tip, uniform, butt caps
     public static let pen           // Pressure simulation
+    public static let crayon        // Grainy wax stroke, two passes, seed 1
+
+    public static func crayon(
+        grain: Float = 0.34,
+        edgeRoughness: Float = 0.62,
+        widthVariation: Float = 0.3,
+        opacityVariation: Float = 0.38,
+        passes: Int = 2,
+        seed: UInt64 = 1
+    ) -> BrushProfile
 }
 ```
+
+### CrayonStyle
+
+Crayon strokes are layered elliptical wax marks. Gaps are bare paper. `strokeWidth` is the mark width in points and is not scaled again when an SVG path is fitted to the view, matching a normal stroke. The same `seed` repeats the same texture. Closed contours are sampled through the closing segment so the join does not seam.
+
+| Parameter | Default | Range | Effect |
+|-----------|---------|-------|--------|
+| `grain` | 0.34 | 0...1 | Paper showing through |
+| `edgeRoughness` | 0.62 | 0...1 | Ragged edge and angle wander |
+| `widthVariation` | 0.3 | 0...1 | Width swell along the stroke |
+| `opacityVariation` | 0.38 | 0...1 | How much later passes fade |
+| `passes` | 2 | 1...3 | Overlapping wax layers |
+| `seed` | 1 | any `UInt64` | Stable grain |
+
+```swift
+public struct CrayonStrokePass: Equatable, Sendable {
+    public var path: SwiftUI.Path
+    public var opacity: CGFloat
+}
+
+public enum CrayonStroke {
+    public static func passes(
+        operations: [Operation],
+        width: CGFloat,
+        style: CrayonStyle,
+        transform: CGAffineTransform = .identity
+    ) -> [CrayonStrokePass]
+}
+```
+
+`RoughView` calls this when `brushProfile.crayon` is set. Use `CrayonStroke.passes` when drawing the marks yourself. Fill each pass with the winding rule.
 
 ### Brush Examples
 
@@ -648,6 +693,20 @@ RoughView()
     .stroke(.green)
     .brushProfile(.calligraphic)
     .rectangle()
+
+// Wax crayon. strokeWidth is the wax width in points.
+RoughView()
+    .stroke(.black)
+    .strokeWidth(8)
+    .brushProfile(.crayon)
+    .draw(Line(from: Point(x: 10, y: 20), to: Point(x: 180, y: 20)))
+
+// Same texture every redraw; a different seed is a different crayon.
+RoughView()
+    .stroke(.orange)
+    .strokeWidth(6)
+    .brushProfile(.crayon(grain: 0.5, edgeRoughness: 0.7, seed: 4))
+    .circle()
 ```
 
 ---

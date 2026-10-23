@@ -462,7 +462,7 @@ RoughView()
 
 ## Brush Profiles
 
-RoughSwiftUI supports custom brush profiles for calligraphic and artistic stroke effects:
+RoughSwiftUI supports custom brush profiles for calligraphic, pen, and crayon strokes:
 
 ```swift
 // Calligraphic brush with flat tip
@@ -478,14 +478,18 @@ RoughView()
     .thicknessProfile(.tapered)
     .circle()
 
-// Custom thickness profile
+// Wax crayon. Gaps in the wax are the paper. The seed keeps the grain stable.
 RoughView()
-    .stroke(.green)
-    .thicknessProfile(.custom { t in
-        // Bulge in the middle
-        1.0 - abs(t - 0.5) * 0.5
-    })
-    .rectangle()
+    .stroke(.black)
+    .strokeWidth(8)
+    .brushProfile(.crayon)
+    .draw(Line(from: Point(x: 10, y: 20), to: Point(x: 180, y: 20)))
+
+RoughView()
+    .stroke(.orange)
+    .strokeWidth(6)
+    .brushProfile(.crayon(grain: 0.5, seed: 4))
+    .circle()
 ```
 
 ## Animation
