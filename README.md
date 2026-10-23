@@ -478,7 +478,8 @@ RoughView()
     .thicknessProfile(.tapered)
     .circle()
 
-// Wax crayon. Gaps in the wax are the paper. The seed keeps the grain stable.
+// Wax crayon. Fine paper-tooth grain, a torn edge, and a stable seed.
+// segmentLength stretches the wax runs and the gaps; tooth controls speckle size.
 RoughView()
     .stroke(.black)
     .strokeWidth(8)
@@ -488,7 +489,15 @@ RoughView()
 RoughView()
     .stroke(.orange)
     .strokeWidth(6)
-    .brushProfile(.crayon(grain: 0.5, seed: 4))
+    .brushProfile(.crayon(grain: 0.6, segmentLength: 3, tooth: 0.9, seed: 4))
+    .circle()
+
+// Hachure and zigzag fill lines use the crayon brush too.
+RoughView()
+    .fill(.orange)
+    .fillStyle(.zigzag)
+    .fillWeight(4)
+    .brushProfile(.crayon)
     .circle()
 ```
 

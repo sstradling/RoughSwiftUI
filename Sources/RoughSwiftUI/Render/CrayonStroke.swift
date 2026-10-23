@@ -4,11 +4,13 @@
 //
 //  Builds layered wax-crayon strokes from engine operations.
 //
-//  Each pass is a fill of overlapping elliptical marks. Gaps between marks
-//  are the paper. Marks are stamped in destination space, so `width` matches
-//  a normal stroke's point width even when an SVG path is fitted to the canvas.
+//  Each pass is a fill of small wax flecks. The core is dense, with pinholes
+//  where flecks are missing. The edge is torn and sheds detached crumbs.
+//  A slow envelope, scaled by `segmentLength`, opens longer paper gaps between
+//  wax runs. Flecks are stamped in destination space, so `width` matches a
+//  normal stroke's point width even when an SVG path is fitted to the canvas.
 //  A closed contour is sampled through its closing segment, so the join is
-//  covered by the same marks as the rest of the loop and does not seam.
+//  covered by the same flecks as the rest of the loop and does not seam.
 //
 
 import CoreGraphics
@@ -60,7 +62,9 @@ public enum CrayonStroke {
             }
             guard !marks.isEmpty else { continue }
             let fade = style.passes == 1 ? 0 : CGFloat(pass) / CGFloat(style.passes - 1)
-            let opacity = max(0.28, 1 - CGFloat(style.opacityVariation) * fade)
+            // The first pass is already a little translucent so a second pass
+            // reads as another layer of wax instead of a second opaque stroke.
+            let opacity = max(0.34, 0.9 - CGFloat(style.opacityVariation) * fade * 0.85)
             result.append(CrayonStrokePass(path: SwiftUI.Path(marks), opacity: opacity))
         }
         return result
@@ -226,75 +230,142 @@ private func stamp(
     let placed = transformed(subpath.samples, by: transform)
     guard placed.count >= 2 else { return }
 
-    let spacing = max(0.9, width * 0.46)
+    // Flecks stay small relative to the stroke so the core reads as paper tooth
+    // rather than a row of capsules. `tooth` shrinks them further.
+    let fleck = min(width * 0.24, max(0.7, width * (0.16 - 0.06 * CGFloat(style.tooth))))
+    let step = max(0.8, fleck * 0.72)
     var traveled: CGFloat = 0
-    var next: CGFloat = 0
-    var markIndex = subpathIndex * 10_000
-    let lateralBias = (pass == 0 ? 0 : (pass % 2 == 0 ? -1 : 1)) * width * 0.16
+    var next = step * 0.45
+    var serial = subpathIndex * 20_000
+    let budget = serial + 12_000
+    let lateralBias = (pass == 0 ? 0 : (pass % 2 == 0 ? -1 : 1)) * width * 0.1
 
     for index in 1..<placed.count {
         let start = placed[index - 1]
         let end = placed[index]
-        let segment = distance(start.point, end.point)
-        guard segment > 0.01 else { continue }
-        while next <= traveled + segment && markIndex < subpathIndex * 10_000 + 4_000 {
-            let t = min(1, max(0, (next - traveled) / segment))
-            placeMark(
+        let span = distance(start.point, end.point)
+        guard span > 0.01 else { continue }
+        while next <= traveled + span && serial < budget {
+            let t = min(1, max(0, (next - traveled) / span))
+            emitColumn(
                 at: lerp(start.point, end.point, t),
                 tangent: end.tangent,
                 width: width,
+                fleck: fleck,
                 style: style,
                 pass: pass,
-                subpathIndex: subpathIndex,
-                markIndex: markIndex,
-                lateralBias: lateralBias,
                 distance: next,
+                serial: serial,
+                lateralBias: lateralBias,
                 into: path
             )
-            markIndex += 1
-            let jitter = 0.78 + 0.44 * unit(style.seed, pass, markIndex, 2)
-            next += spacing * jitter
+            serial += 1
+            let jitter = 0.78 + 0.44 * unit(style.seed, pass, serial, 2)
+            next += step * jitter
         }
-        traveled += segment
+        traveled += span
     }
 }
 
-private func placeMark(
-    at center: CGPoint,
+/// One across-stroke slice of wax: core flecks, edge crumbs, and the slow gap envelope.
+private func emitColumn(
+    at point: CGPoint,
     tangent: CGFloat,
     width: CGFloat,
+    fleck: CGFloat,
     style: CrayonStyle,
     pass: Int,
-    subpathIndex: Int,
-    markIndex: Int,
-    lateralBias: CGFloat,
     distance: CGFloat,
+    serial: Int,
+    lateralBias: CGFloat,
     into path: CGMutablePath
 ) {
-    let skip = unit(style.seed, pass, markIndex &+ subpathIndex &* 131, 3)
-    if skip < CGFloat(style.grain) * 0.62 {
+    let tooth = CGFloat(style.tooth)
+    let period = max(width * 3.4, 8) * CGFloat(style.segmentLength)
+    let wave = 0.5 + 0.5 * sin(
+        distance / period * 2 * .pi
+            + CGFloat(style.seed % 48) * 0.13
+            + CGFloat(pass) * 1.15
+    )
+    let gapJitter = (unit(style.seed, pass, serial, 3) - 0.5) * 0.06
+    let inGap = wave < CGFloat(style.grain) * 0.62 + gapJitter
+    if inGap {
+        // A few crumbs survive inside the longer paper gap.
+        guard unit(style.seed, pass, serial, 19) < 0.14 * CGFloat(style.edgeRoughness) else { return }
+        let normal = tangent + .pi / 2
+        let side: CGFloat = unit(style.seed, pass, serial, 20) < 0.5 ? -1 : 1
+        let out = width * 0.22 * side
+        addEllipse(
+            path,
+            center: CGPoint(x: point.x + cos(normal) * out, y: point.y + sin(normal) * out),
+            angle: tangent,
+            length: fleck * 0.55,
+            thickness: fleck * 0.4
+        )
         return
     }
 
-    let edge = unit(style.seed, pass, markIndex, 4) - 0.5
-    let spin = unit(style.seed, pass, markIndex, 5) - 0.5
-    let swell = unit(style.seed, pass, markIndex, 6) - 0.5
-    let along = sin(distance / max(width * 5.5, 1) + CGFloat(style.seed % 64) * 0.17)
-
     let normal = tangent + .pi / 2
-    let lateral = lateralBias + edge * width * CGFloat(style.edgeRoughness) * 0.55
-    let stamped = CGPoint(
-        x: center.x + cos(normal) * lateral,
-        y: center.y + sin(normal) * lateral
-    )
-    let angle = tangent + spin * CGFloat(style.edgeRoughness) * 0.85
-    var thickness = width * (0.82 + CGFloat(style.widthVariation) * swell + CGFloat(style.widthVariation) * along * 0.35)
-    if unit(style.seed, pass, markIndex, 7) < CGFloat(style.grain) * 0.35 {
-        thickness *= 0.45
+    let tear = (unit(style.seed, pass, serial, 4) - 0.5) * width * CGFloat(style.edgeRoughness) * 0.36
+    let swell = unit(style.seed, pass, serial, 6) - 0.5
+    var half = width * (0.46 + CGFloat(style.widthVariation) * swell * 0.22)
+    if unit(style.seed, pass, serial, 7) < CGFloat(style.edgeRoughness) * 0.24 {
+        half *= 0.58
     }
-    thickness = min(width * 1.55, max(width * 0.22, thickness))
-    let length = max(thickness, width * (1.05 + 0.7 * unit(style.seed, pass, markIndex, 8)))
-    addEllipse(path, center: stamped, angle: angle, length: length, thickness: thickness)
+    half = min(width * 0.78, max(width * 0.2, half))
+    let center = CGPoint(
+        x: point.x + cos(normal) * (lateralBias + tear),
+        y: point.y + sin(normal) * (lateralBias + tear)
+    )
+    let angle = tangent + (unit(style.seed, pass, serial, 5) - 0.5) * CGFloat(style.edgeRoughness) * 0.65
+    let rows = min(8, max(3, Int((half * 2 / max(fleck * 0.85, 0.6)).rounded())))
+
+    for row in 0..<rows {
+        let span = CGFloat(max(rows - 1, 1))
+        let across = (CGFloat(row) / span - 0.5) * half * 2
+        let radial = abs(across) / max(half, 0.01)
+        let keep: CGFloat
+        if radial < 0.48 {
+            // Pinholes scale with tooth. Grain opens the longer gaps, not the core.
+            keep = 0.97 - CGFloat(style.grain) * 0.28 * tooth
+        } else if radial < 0.8 {
+            keep = 0.7 - CGFloat(style.grain) * 0.18 * tooth
+        } else {
+            keep = 0.2 + 0.55 * CGFloat(style.edgeRoughness) * max(tooth, 0.35)
+        }
+        if unit(style.seed, pass, serial &* 17 &+ row, 11) > keep { continue }
+        let jAlong = (unit(style.seed, pass, serial &+ row, 12) - 0.5) * fleck
+        let jAcross = (unit(style.seed, pass, serial &+ row, 13) - 0.5) * fleck * 0.85
+        let fleckLength = fleck * (0.5 + 0.95 * unit(style.seed, pass, serial &+ row, 14))
+        let fleckThickness = fleck * (0.38 + 0.7 * unit(style.seed, pass, serial &+ row, 15))
+        let fleckAngle = angle + (unit(style.seed, pass, serial &+ row, 16) - 0.5) * 1.2
+        addEllipse(
+            path,
+            center: CGPoint(
+                x: center.x + cos(angle) * jAlong + cos(normal) * (across + jAcross),
+                y: center.y + sin(angle) * jAlong + sin(normal) * (across + jAcross)
+            ),
+            angle: fleckAngle,
+            length: max(0.6, fleckLength),
+            thickness: max(0.45, fleckThickness)
+        )
+    }
+
+    if unit(style.seed, pass, serial, 18) < CGFloat(style.edgeRoughness) * 0.75 * tooth {
+        let side: CGFloat = unit(style.seed, pass, serial, 20) < 0.5 ? -1 : 1
+        let out = half + width * (0.05 + 0.32 * unit(style.seed, pass, serial, 21))
+        let crumb = max(0.55, fleck * (0.4 + 0.55 * unit(style.seed, pass, serial, 22)))
+        addEllipse(
+            path,
+            center: CGPoint(
+                x: center.x + cos(normal) * side * out,
+                y: center.y + sin(normal) * side * out
+            ),
+            angle: angle + (unit(style.seed, pass, serial, 23) - 0.5),
+            length: crumb,
+            thickness: crumb * 0.65
+        )
+    }
 }
 
 private func addEllipse(

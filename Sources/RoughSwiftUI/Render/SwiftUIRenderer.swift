@@ -229,20 +229,17 @@ private extension SwiftUIRenderer {
             let strokeColor = Color(options.stroke).opacity(Double(options.strokeOpacity))
 
             if let crayon = options.brushProfile.crayon {
-                let passes = CrayonStroke.passes(
+                let crayonCommands = crayonPasses(
                     operations: set.operations,
                     width: CGFloat(strokeWidth),
                     style: crayon,
-                    transform: svgTransform ?? .identity
+                    color: strokeColor,
+                    transform: svgTransform,
+                    clipPath: nil,
+                    inverseClip: false
                 )
-                if !passes.isEmpty {
-                    return passes.map { pass in
-                        RoughRenderCommand(
-                            path: pass.path,
-                            style: .fill(strokeColor.opacity(Double(pass.opacity))),
-                            fillRule: .winding
-                        )
-                    }
+                if !crayonCommands.isEmpty {
+                    return crayonCommands
                 }
             }
             
@@ -293,6 +290,20 @@ private extension SwiftUIRenderer {
                 path = basePath
             }
             let color = Color(options.fill).opacity(Double(options.fillOpacity))
+            if let crayon = options.brushProfile.crayon {
+                let crayonCommands = crayonPasses(
+                    operations: set.operations,
+                    width: CGFloat(effectiveFillWeight),
+                    style: crayon,
+                    color: color,
+                    transform: svgTransform,
+                    clipPath: clipPath,
+                    inverseClip: inverseClip
+                )
+                if !crayonCommands.isEmpty {
+                    return crayonCommands
+                }
+            }
             return [
                 RoughRenderCommand(
                     path: path,
@@ -365,9 +376,24 @@ private extension SwiftUIRenderer {
             
             let color = Color(options.fill).opacity(Double(options.fillOpacity))
             
-            // If there are hachure operations, render them clipped to the shape
-            // Otherwise fall back to stroking the shape (for stroke alignment behavior)
+            // If there are hachure operations, render them clipped to the shape.
+            // A crayon brush stamps those lines as wax instead of a solid stroke.
+            // Otherwise fall back to stroking the shape (for stroke alignment behavior).
             if !set.operations.isEmpty {
+                if let crayon = options.brushProfile.crayon {
+                    let crayonCommands = crayonPasses(
+                        operations: set.operations,
+                        width: CGFloat(effectiveFillWeight),
+                        style: crayon,
+                        color: color,
+                        transform: svgTransform,
+                        clipPath: shapePath,
+                        inverseClip: false
+                    )
+                    if !crayonCommands.isEmpty {
+                        return crayonCommands
+                    }
+                }
                 return [
                     RoughRenderCommand(
                         path: hachurePath,
@@ -428,6 +454,21 @@ private extension SwiftUIRenderer {
         // Convert each scribble set to render commands
         return scribbleSets.flatMap { set -> [RoughRenderCommand] in
             let basePath = SwiftPath.from(operationSet: set)
+
+            if let crayon = options.brushProfile.crayon {
+                let crayonCommands = crayonPasses(
+                    operations: set.operations,
+                    width: CGFloat(fillWeight),
+                    style: crayon,
+                    color: color,
+                    transform: nil,
+                    clipPath: clipPath,
+                    inverseClip: false
+                )
+                if !crayonCommands.isEmpty {
+                    return crayonCommands
+                }
+            }
             
             // Check if brush strokes are enabled and profile needs custom rendering
             let useBrushStroke = options.scribbleUseBrushStroke && 
@@ -518,6 +559,37 @@ private extension SwiftUIRenderer {
         return nil
     }
     
+    /// Wax passes for a stroke or for fill lines (hachure, zigzag, scribble).
+    ///
+    /// `width` is the wax width in destination points. `transform` moves the
+    /// centerline and does not scale `width`. Each pass is a winding fill so
+    /// flecks union; clip them when the lines must stay inside a shape.
+    func crayonPasses(
+        operations: [Operation],
+        width: CGFloat,
+        style: CrayonStyle,
+        color: Color,
+        transform: CGAffineTransform?,
+        clipPath: SwiftPath?,
+        inverseClip: Bool
+    ) -> [RoughRenderCommand] {
+        let passes = CrayonStroke.passes(
+            operations: operations,
+            width: width,
+            style: style,
+            transform: transform ?? .identity
+        )
+        return passes.map { pass in
+            RoughRenderCommand(
+                path: pass.path,
+                style: .fill(color.opacity(Double(pass.opacity))),
+                clipPath: clipPath,
+                inverseClip: inverseClip,
+                fillRule: .winding
+            )
+        }
+    }
+
     /// Calculate effective line width and clipping for stroke alignment.
     /// - Parameters:
     ///   - lineWidth: The desired visual line width.

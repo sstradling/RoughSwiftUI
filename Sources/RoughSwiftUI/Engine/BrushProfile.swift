@@ -311,15 +311,19 @@ public struct BrushProfile: Equatable, Hashable, Sendable {
     ///   - grain: How much paper shows through, 0...1. Default 0.34.
     ///   - edgeRoughness: Raggedness of the edge as a fraction of width, 0...1. Default 0.62.
     ///   - widthVariation: Along-stroke width wander, 0...1. Default 0.3.
-    ///   - opacityVariation: How much later passes fade, 0...1. Default 0.38.
+    ///   - opacityVariation: How much later passes fade, 0...1. Default 0.62.
     ///   - passes: Overlapping wax layers, 1...3. Default 2.
+    ///   - segmentLength: Wax-run length and the gap between runs, relative to the preset. Default 1.
+    ///   - tooth: Speckle fineness, 0...1. Default 0.86.
     ///   - seed: Stable grain seed. The same seed and path repeat the same texture.
     public static func crayon(
-        grain: Float = 0.34,
-        edgeRoughness: Float = 0.62,
-        widthVariation: Float = 0.3,
-        opacityVariation: Float = 0.38,
+        grain: Float = 0.5,
+        edgeRoughness: Float = 0.88,
+        widthVariation: Float = 0.28,
+        opacityVariation: Float = 0.62,
         passes: Int = 2,
+        segmentLength: Float = 1,
+        tooth: Float = 0.86,
         seed: UInt64 = 1
     ) -> BrushProfile {
         BrushProfile(
@@ -329,6 +333,8 @@ public struct BrushProfile: Equatable, Hashable, Sendable {
                 widthVariation: widthVariation,
                 opacityVariation: opacityVariation,
                 passes: passes,
+                segmentLength: segmentLength,
+                tooth: tooth,
                 seed: seed
             )
         )

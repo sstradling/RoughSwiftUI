@@ -14,6 +14,8 @@ final class CrayonStrokeTests: XCTestCase {
         let profile = BrushProfile.crayon
         XCTAssertNotNil(profile.crayon)
         XCTAssertEqual(profile.crayon?.passes, 2)
+        XCTAssertEqual(profile.crayon?.segmentLength, 1)
+        XCTAssertEqual(profile.crayon?.tooth, 0.86)
         XCTAssertEqual(profile.crayon?.seed, 1)
         XCTAssertTrue(profile.requiresCustomRendering)
         XCTAssertEqual(profile.tip, .circular)
@@ -27,6 +29,8 @@ final class CrayonStrokeTests: XCTestCase {
             widthVariation: 2,
             opacityVariation: -3,
             passes: 9,
+            segmentLength: 20,
+            tooth: -1,
             seed: 42
         )
         XCTAssertEqual(profile.crayon?.grain, 1)
@@ -34,6 +38,8 @@ final class CrayonStrokeTests: XCTestCase {
         XCTAssertEqual(profile.crayon?.widthVariation, 1)
         XCTAssertEqual(profile.crayon?.opacityVariation, 0)
         XCTAssertEqual(profile.crayon?.passes, 3)
+        XCTAssertEqual(profile.crayon?.segmentLength, 8)
+        XCTAssertEqual(profile.crayon?.tooth, 0)
         XCTAssertEqual(profile.crayon?.seed, 42)
     }
 
@@ -64,7 +70,7 @@ final class CrayonStrokeTests: XCTestCase {
         XCTAssertEqual(closed.count, 2)
         XCTAssertGreaterThan(moveCount(open[0].path), 4)
         XCTAssertGreaterThan(moveCount(closed[0].path), moveCount(open[0].path))
-        XCTAssertEqual(open[0].opacity, 1, accuracy: 0.001)
+        XCTAssertEqual(open[0].opacity, 0.9, accuracy: 0.001)
         XCTAssertLessThan(open[1].opacity, open[0].opacity)
     }
 
@@ -129,7 +135,64 @@ final class CrayonStrokeTests: XCTestCase {
         let passes = CrayonStroke.passes(operations: operations, width: 5, style: CrayonStyle())
         XCTAssertLessThan(Date().timeIntervalSince(started), 0.5)
         XCTAssertEqual(passes.count, 2)
-        XCTAssertLessThan(moveCount(passes[0].path), 4_000)
+        XCTAssertLessThan(moveCount(passes[0].path), 8_000)
+    }
+
+    func testSegmentLengthStretchesWaxRunsAndGaps() {
+        let short = CrayonStyle(grain: 0.9, edgeRoughness: 0, widthVariation: 0, passes: 1, segmentLength: 1, tooth: 0, seed: 4)
+        let long = CrayonStyle(grain: 0.9, edgeRoughness: 0, widthVariation: 0, passes: 1, segmentLength: 3, tooth: 0, seed: 4)
+        let operations = line(from: (0, 0), to: (520, 0))
+        let shortRuns = coverageRuns(operations, width: 16, style: short)
+        let longRuns = coverageRuns(operations, width: 16, style: long)
+        XCTAssertGreaterThan(longRuns.maxGap, shortRuns.maxGap * 1.7)
+        XCTAssertGreaterThan(longRuns.maxWax, shortRuns.maxWax * 1.7)
+    }
+
+    func testHigherToothBreaksTheStrokeIntoMoreFlecks() {
+        let smooth = CrayonStyle(grain: 0.2, edgeRoughness: 0.2, passes: 1, tooth: 0, seed: 6)
+        let gritty = CrayonStyle(grain: 0.2, edgeRoughness: 0.2, passes: 1, tooth: 1, seed: 6)
+        let operations = line(from: (0, 0), to: (80, 0))
+        let smoothCount = moveCount(CrayonStroke.passes(operations: operations, width: 16, style: smooth)[0].path)
+        let grittyCount = moveCount(CrayonStroke.passes(operations: operations, width: 16, style: gritty)[0].path)
+        XCTAssertGreaterThan(grittyCount, smoothCount)
+    }
+
+    @MainActor
+    func testZigzagFillUsesCrayonMarks() throws {
+        var crayonOptions = Options()
+        crayonOptions.fillStyle = .zigzag
+        crayonOptions.fill = .gray
+        crayonOptions.fillWeight = 4
+        crayonOptions.fillSpacing = 3
+        crayonOptions.strokeOpacity = 0
+        crayonOptions.brushProfile = .crayon(seed: 2)
+        let size = CGSize(width: 90, height: 70)
+        let drawing = try XCTUnwrap(Engine.shared.generate(
+            drawable: RoughSwiftUI.Path(d: "M8 8 H70 V48 H8 Z"),
+            options: crayonOptions,
+            size: size
+        ))
+        let crayonCommands = SwiftUIRenderer().commands(for: drawing, options: crayonOptions, in: size)
+        let clippedFills = crayonCommands.filter { command in
+            guard case .fill = command.style else { return false }
+            return command.clipPath != nil && command.fillRule == .winding
+        }
+        XCTAssertFalse(clippedFills.isEmpty)
+
+        var plainOptions = crayonOptions
+        plainOptions.brushProfile = .default
+        let plain = try XCTUnwrap(Engine.shared.generate(
+            drawable: RoughSwiftUI.Path(d: "M8 8 H70 V48 H8 Z"),
+            options: plainOptions,
+            size: size
+        ))
+        let plainCommands = SwiftUIRenderer().commands(for: plain, options: plainOptions, in: size)
+        let clippedStrokes = plainCommands.filter { command in
+            guard case .stroke = command.style else { return false }
+            return command.clipPath != nil
+        }
+        XCTAssertFalse(clippedStrokes.isEmpty)
+        XCTAssertTrue(plainCommands.allSatisfy { $0.fillRule == .evenOdd })
     }
 
     @MainActor
@@ -174,6 +237,42 @@ final class CrayonStrokeTests: XCTestCase {
             .reduce(CGRect.null) { rect, pass in
                 rect.union(pass.path.boundingRect)
             }
+    }
+
+    /// Longest covered and uncovered runs along the stroke centerline, in points.
+    private func coverageRuns(
+        _ operations: [RoughSwiftUI.Operation],
+        width: CGFloat,
+        style: CrayonStyle
+    ) -> (maxGap: CGFloat, maxWax: CGFloat) {
+        let path = CrayonStroke.passes(operations: operations, width: width, style: style)[0].path
+        var maxGap: CGFloat = 0
+        var maxWax: CGFloat = 0
+        var gap: CGFloat = 0
+        var wax: CGFloat = 0
+        var x: CGFloat = 8
+        while x <= 500 {
+            var hit = false
+            var y: CGFloat = -8
+            while y <= 8 {
+                if path.contains(CGPoint(x: x, y: y)) {
+                    hit = true
+                    break
+                }
+                y += 2
+            }
+            if hit {
+                wax += 3
+                maxWax = max(maxWax, wax)
+                gap = 0
+            } else {
+                gap += 3
+                maxGap = max(maxGap, gap)
+                wax = 0
+            }
+            x += 3
+        }
+        return (maxGap, maxWax)
     }
 
     private func moveCount(_ path: SwiftUI.Path) -> Int {
