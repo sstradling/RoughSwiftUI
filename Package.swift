@@ -9,10 +9,17 @@ let package = Package(
         .iOS(.v17)
     ],
     products: [
-        // Products define the executables and libraries a package produces, and make them visible to other packages.
         .library(
             name: "RoughSwiftUI",
             targets: ["RoughSwiftUI"]
+        ),
+        // Optional Metal-accelerated renderer. Importing this product is opt-in:
+        // it adds a Metal/MetalKit dependency and provides `MetalRoughRenderer`
+        // and the `RoughView.metalAccelerated()` modifier. The base
+        // `RoughSwiftUI` library does not link against Metal.
+        .library(
+            name: "RoughSwiftUIMetal",
+            targets: ["RoughSwiftUIMetal"]
         ),
     ],
     dependencies: [
@@ -20,17 +27,23 @@ let package = Package(
         // .package(url: /* package url */, from: "1.0.0"),
     ],
     targets: [
-        // Targets are the basic building blocks of a package. A target can define a module or a test suite.
-        // Targets can depend on other targets in this package, and on products in packages this package depends on.
         .target(
             name: "RoughSwiftUI"
-            // swiftSettings: [
-            //     .unsafeFlags(["-enable-library-evolution"])
-            // ]
+        ),
+        .target(
+            name: "RoughSwiftUIMetal",
+            dependencies: ["RoughSwiftUI"],
+            resources: [
+                .process("Shaders")
+            ]
         ),
         .testTarget(
             name: "RoughSwiftUITests",
             dependencies: ["RoughSwiftUI"]
+        ),
+        .testTarget(
+            name: "RoughSwiftUIMetalTests",
+            dependencies: ["RoughSwiftUIMetal"]
         ),
     ]
 )
