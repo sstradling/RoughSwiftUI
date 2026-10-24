@@ -240,16 +240,13 @@ public extension RoughView {
     
     // MARK: - Scribble Fill Modifiers
     
-    /// Set the starting angle for scribble fill (0-360 degrees).
+    /// Set the direction of the scribble strokes, in degrees.
     ///
-    /// The scribble pattern starts from this position on the shape's edge
-    /// and traverses to the opposite point (origin + 180 degrees).
+    /// Core Graphics y points down. 0 runs to the right, 90 runs straight down,
+    /// and positive angles rotate clockwise. Each stroke crosses the shape on
+    /// that bearing, and the next stroke comes back parallel to it.
     ///
-    /// - Parameter degrees: Starting angle in degrees.
-    ///   - 0 = right-center edge
-    ///   - 90 = bottom-center
-    ///   - 180 = left-center
-    ///   - 270 = top-center
+    /// - Parameter degrees: Stroke bearing in degrees. Wraps at 360.
     /// - Returns: The view with updated scribble origin.
     func scribbleOrigin(_ degrees: Float) -> Self {
         var v = self

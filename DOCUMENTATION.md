@@ -65,7 +65,8 @@ import RoughSwiftUI
 | `Point` | 2D coordinate | `Point(x: Float, y: Float)` |
 | `Size` | Dimensions | `Size(width: Float, height: Float)` |
 | `FillStyle` | Fill pattern enumeration | `.hachure`, `.solid`, etc. |
-| `BrushProfile` | Stroke styling configuration | Calligraphic effects |
+| `BrushProfile` | Stroke styling configuration | Calligraphic, pen, and crayon effects |
+| `CrayonStyle` | Wax-crayon grain, edge, and seed | Used by `BrushProfile.crayon` |
 | `AnimationConfig` | Animation settings | Steps, speed, variance |
 
 ### Point
@@ -496,8 +497,9 @@ RoughView().fill(.green).fillStyle(.crossHatch).rectangle()
 // Dots
 RoughView().fill(.purple).fillStyle(.dots).circle()
 
-// Scribble (continuous zig-zag)
-RoughView().fill(.orange).fillStyle(.scribble).scribbleTightness(15).circle()
+// Scribble (continuous zig-zag). scribbleOrigin is the stroke bearing:
+// 0 runs to the right, 90 runs straight down, positive angles rotate clockwise.
+RoughView().fill(.orange).fillStyle(.scribble).scribbleOrigin(85).scribbleTightness(15).circle()
 ```
 
 ---
@@ -619,13 +621,67 @@ public struct BrushProfile: Equatable, Hashable, Sendable {
     public var cap: BrushCap
     public var join: BrushJoin
     
+    /// Wax-crayon texture. `nil` on every preset except `.crayon`.
+    public var crayon: CrayonStyle?
+
     // Presets
     public static let `default`     // Circular, uniform
     public static let calligraphic  // Flat tip, tapered
     public static let marker        // Flat tip, uniform, butt caps
     public static let pen           // Pressure simulation
+    public static let crayon        // Continuous wax base, dense grit, seed 1
+
+    public static func crayon(
+        grain: Float = 0.28,
+        edgeRoughness: Float = 0.75,
+        widthVariation: Float = 0.18,
+        opacityVariation: Float = 0.35,
+        passes: Int = 2,
+        baseOpacity: Float = 0.8,
+        baseSoftness: Float = 0.5,
+        grit: Float = 0.92,
+        flakeSize: Float = 1.45,
+        seed: UInt64 = 1
+    ) -> BrushProfile
 }
 ```
+
+### CrayonStyle
+
+A crayon stroke is continuous. A soft translucent halo and a greasy core are drawn first, then denser flakes and edge crumbs are laid on top. Nothing in the preset opens a paper break along the stroke. `strokeWidth` is the wax width in points and is not scaled again when an SVG path is fitted to the view, matching a normal stroke. The same `seed` repeats the same texture. Closed contours are sampled through the closing segment so the join does not seam.
+
+When `brushProfile.crayon` is set, hachure, zigzag, and scribble fill lines use the same wax. The fill-line width is `fillWeight` (or half the stroke width when `fillWeight` is automatic). Outline strokes still use `strokeWidth`. Flakes, specks, and the stamp spacing scale with that width, down to a fraction of a point, so a thin fill line still shows grit instead of a smooth tube.
+
+| Parameter | Default | Range | Effect |
+|-----------|---------|-------|--------|
+| `grain` | 0.28 | 0...1 | Thins the grit into speckle. Does not break the base |
+| `edgeRoughness` | 0.75 | 0...1 | Ragged edge and detached flakes |
+| `widthVariation` | 0.18 | 0...1 | Width swell along the stroke |
+| `opacityVariation` | 0.35 | 0...1 | How much later grit passes fade |
+| `passes` | 2 | 1...3 | Grit layers on top of the base |
+| `baseOpacity` | 0.8 | 0.2...1 | Opacity of the greasy base |
+| `baseSoftness` | 0.5 | 0...1 | Width of the soft halo |
+| `grit` | 0.92 | 0...1 | Density of flakes on the base |
+| `flakeSize` | 1.45 | 0.35...3 | Clump and speck size as a fraction of the stroke width |
+| `seed` | 1 | any `UInt64` | Stable grain |
+
+```swift
+public struct CrayonStrokePass: Equatable, Sendable {
+    public var path: SwiftUI.Path
+    public var opacity: CGFloat
+}
+
+public enum CrayonStroke {
+    public static func passes(
+        operations: [Operation],
+        width: CGFloat,
+        style: CrayonStyle,
+        transform: CGAffineTransform = .identity
+    ) -> [CrayonStrokePass]
+}
+```
+
+`RoughView` calls this when `brushProfile.crayon` is set. Use `CrayonStroke.passes` when drawing the marks yourself. Fill each pass with the winding rule.
 
 ### Brush Examples
 
@@ -647,6 +703,30 @@ RoughView()
 RoughView()
     .stroke(.green)
     .brushProfile(.calligraphic)
+    .rectangle()
+
+// Wax crayon. strokeWidth is the wax width in points.
+RoughView()
+    .stroke(.black)
+    .strokeWidth(8)
+    .brushProfile(.crayon)
+    .draw(Line(from: Point(x: 10, y: 20), to: Point(x: 180, y: 20)))
+
+// Same texture every redraw; a different seed is a different crayon.
+RoughView()
+    .stroke(.orange)
+    .strokeWidth(6)
+    .brushProfile(.crayon(baseOpacity: 0.7, grit: 0.95, flakeSize: 1.6, seed: 4))
+    .circle()
+
+// Zigzag shading picks up the same crayon. fillWeight is the wax width of each line.
+RoughView()
+    .fill(.gray)
+    .fillStyle(.zigzag)
+    .fillWeight(3)
+    .fillSpacing(2.5)
+    .stroke(.clear)
+    .brushProfile(.crayon)
     .rectangle()
 ```
 

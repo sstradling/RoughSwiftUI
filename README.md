@@ -84,7 +84,7 @@ For SVG paths, additional options are available to fine-tune rendering:
 
 For the scribble fill style, additional parameters control the continuous zig-zag pattern:
 
-- `scribbleOrigin` - Starting angle in degrees (0-360)
+- `scribbleOrigin` - Stroke bearing in degrees. 0 runs to the right, 90 runs straight down, and positive angles rotate clockwise
 - `scribbleTightness` - Number of zig-zags (1-100)
 - `scribbleCurvature` - Vertex curvature (0-50)
 - `scribbleUseBrushStroke` - Enable brush stroke rendering
@@ -210,7 +210,7 @@ RoughView()
     .fill(.blue)
     .fillStyle(.scribble)
     .scribble(
-        origin: 45,           // Start from 45° angle
+        origin: 45,           // Strokes 45° clockwise from horizontal
         tightness: 20,        // 20 zig-zags
         curvature: 30,        // Curved vertices
         useBrushStroke: true  // Variable-width strokes
@@ -462,7 +462,7 @@ RoughView()
 
 ## Brush Profiles
 
-RoughSwiftUI supports custom brush profiles for calligraphic and artistic stroke effects:
+RoughSwiftUI supports custom brush profiles for calligraphic, pen, and crayon strokes:
 
 ```swift
 // Calligraphic brush with flat tip
@@ -478,14 +478,28 @@ RoughView()
     .thicknessProfile(.tapered)
     .circle()
 
-// Custom thickness profile
+// Wax crayon. A continuous greasy base, then dense flakes and a ragged edge.
+// baseOpacity and baseSoftness set the wax. grit and flakeSize set the overlay.
+// Flakes scale with the stroke width, including thin fill lines.
 RoughView()
-    .stroke(.green)
-    .thicknessProfile(.custom { t in
-        // Bulge in the middle
-        1.0 - abs(t - 0.5) * 0.5
-    })
-    .rectangle()
+    .stroke(.black)
+    .strokeWidth(8)
+    .brushProfile(.crayon)
+    .draw(Line(from: Point(x: 10, y: 20), to: Point(x: 180, y: 20)))
+
+RoughView()
+    .stroke(.orange)
+    .strokeWidth(6)
+    .brushProfile(.crayon(baseOpacity: 0.7, grit: 0.95, flakeSize: 1.6, seed: 4))
+    .circle()
+
+// Hachure and zigzag fill lines use the crayon brush too.
+RoughView()
+    .fill(.orange)
+    .fillStyle(.zigzag)
+    .fillWeight(4)
+    .brushProfile(.crayon)
+    .circle()
 ```
 
 ## Animation

@@ -67,9 +67,11 @@ public struct Options: Equatable, Hashable {
     
     // MARK: - Scribble Fill Options
     
-    /// The starting angle for scribble fill (0-360 degrees).
-    /// 0 = right-center edge, 90 = bottom-center, 180 = left-center, 270 = top-center.
-    /// The scribble traverses from this point to the opposite point (origin + 180).
+    /// Direction of each scribble stroke, in degrees.
+    ///
+    /// Core Graphics y points down: 0 runs to the right, 90 runs straight down,
+    /// and positive angles rotate clockwise. The return stroke comes back along
+    /// the same bearing. Range is any angle; values wrap at 360.
     public var scribbleOrigin: Float = 0
     
     /// Number of zig-zags in the scribble fill. Higher values = denser fill.
