@@ -17,6 +17,11 @@ public struct StarburstFiller: FillGenerator {
     public init() {}
     
     public func fillPolygon(points: [[Float]], options: Options) -> OperationSet? {
+        if options.seed != nil && !RoughRandom.isActive {
+            return RoughRandom.with(seed: options.seed) {
+                fillPolygon(points: points, options: options)
+            }
+        }
         guard points.count >= 3 else { return nil }
         
         let bounds = RoughMath.polygonBounds(points)
@@ -72,6 +77,11 @@ public struct StarburstFiller: FillGenerator {
     }
     
     public func fillEllipse(cx: Float, cy: Float, rx: Float, ry: Float, options: Options) -> OperationSet? {
+        if options.seed != nil && !RoughRandom.isActive {
+            return RoughRandom.with(seed: options.seed) {
+                fillEllipse(cx: cx, cy: cy, rx: rx, ry: ry, options: options)
+            }
+        }
         var gap = options.computedHachureGap
         if gap < 0 {
             gap = options.strokeWidth * 4
@@ -99,6 +109,11 @@ public struct StarburstFiller: FillGenerator {
     }
     
     public func fillArc(cx: Float, cy: Float, rx: Float, ry: Float, start: Float, stop: Float, options: Options) -> OperationSet? {
+        if options.seed != nil && !RoughRandom.isActive {
+            return RoughRandom.with(seed: options.seed) {
+                fillArc(cx: cx, cy: cy, rx: rx, ry: ry, start: start, stop: stop, options: options)
+            }
+        }
         var gap = options.computedHachureGap
         if gap < 0 {
             gap = options.strokeWidth * 4

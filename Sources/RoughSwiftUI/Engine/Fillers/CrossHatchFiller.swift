@@ -18,6 +18,11 @@ public struct CrossHatchFiller: FillGenerator {
     public init() {}
     
     public func fillPolygon(points: [[Float]], options: Options) -> OperationSet? {
+        if options.seed != nil && !RoughRandom.isActive {
+            return RoughRandom.with(seed: options.seed) {
+                fillPolygon(points: points, options: options)
+            }
+        }
         // First pass at original angle
         let lines1 = hachureFiller.hachureLines(points: points, options: options)
         var ops = hachureFiller.renderLines(lines: lines1, options: options, connect: false)
@@ -32,6 +37,11 @@ public struct CrossHatchFiller: FillGenerator {
     }
     
     public func fillEllipse(cx: Float, cy: Float, rx: Float, ry: Float, options: Options) -> OperationSet? {
+        if options.seed != nil && !RoughRandom.isActive {
+            return RoughRandom.with(seed: options.seed) {
+                fillEllipse(cx: cx, cy: cy, rx: rx, ry: ry, options: options)
+            }
+        }
         // First pass at original angle
         let lines1 = hachureFiller.hachureEllipse(cx: cx, cy: cy, rx: rx, ry: ry, options: options)
         var ops = hachureFiller.renderLines(lines: lines1, options: options, connect: false)

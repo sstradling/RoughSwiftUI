@@ -18,7 +18,12 @@ public struct DotsFiller: FillGenerator {
     public init() {}
     
     public func fillPolygon(points: [[Float]], options: Options) -> OperationSet? {
-        // Use horizontal hachure for dot placement
+        if options.seed != nil && !RoughRandom.isActive {
+            return RoughRandom.with(seed: options.seed) {
+                fillPolygon(points: points, options: options)
+            }
+        }
+        // Dot rows follow fillAngle 0, which is horizontal.
         var dotOptions = options
         dotOptions.fillAngle = 0
         dotOptions.curveStepCount = 4
@@ -29,6 +34,11 @@ public struct DotsFiller: FillGenerator {
     }
     
     public func fillEllipse(cx: Float, cy: Float, rx: Float, ry: Float, options: Options) -> OperationSet? {
+        if options.seed != nil && !RoughRandom.isActive {
+            return RoughRandom.with(seed: options.seed) {
+                fillEllipse(cx: cx, cy: cy, rx: rx, ry: ry, options: options)
+            }
+        }
         var dotOptions = options
         dotOptions.fillAngle = 0
         dotOptions.curveStepCount = 4

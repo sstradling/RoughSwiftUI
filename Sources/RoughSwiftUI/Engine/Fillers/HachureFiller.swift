@@ -17,12 +17,22 @@ public struct HachureFiller: FillGenerator {
     public init() {}
     
     public func fillPolygon(points: [[Float]], options: Options) -> OperationSet? {
+        if options.seed != nil && !RoughRandom.isActive {
+            return RoughRandom.with(seed: options.seed) {
+                fillPolygon(points: points, options: options)
+            }
+        }
         let lines = hachureLines(points: points, options: options)
         let ops = renderLines(lines: lines, options: options, connect: false)
         return OperationSet(type: .fillSketch, operations: ops, path: nil, size: nil)
     }
     
     public func fillEllipse(cx: Float, cy: Float, rx: Float, ry: Float, options: Options) -> OperationSet? {
+        if options.seed != nil && !RoughRandom.isActive {
+            return RoughRandom.with(seed: options.seed) {
+                fillEllipse(cx: cx, cy: cy, rx: rx, ry: ry, options: options)
+            }
+        }
         let lines = hachureEllipse(cx: cx, cy: cy, rx: rx, ry: ry, options: options)
         let ops = renderLines(lines: lines, options: options, connect: false)
         return OperationSet(type: .fillSketch, operations: ops, path: nil, size: nil)
@@ -43,8 +53,11 @@ public struct HachureFiller: FillGenerator {
         let minY = bounds.minY
         let maxY = bounds.maxY
         
-        // Calculate hachure parameters
-        let angle = options.fillAngle * Float.pi / 180
+        // The scanner's slope is cot(angle). Passing the complement makes
+        // `fillAngle` the line direction: 0° horizontal, 90° vertical. That
+        // matches `hachureEllipse`, which rotates a horizontal chord by
+        // `fillAngle` (clockwise on screen, because y points down).
+        let angle = (90 - options.fillAngle) * Float.pi / 180
         var gap = options.computedHachureGap
         if gap < 0 {
             gap = options.strokeWidth * 4
@@ -106,6 +119,7 @@ public struct HachureFiller: FillGenerator {
         rx += RoughMath.randOffset(rx * 0.05, options: options)
         ry += RoughMath.randOffset(ry * 0.05, options: options)
         
+        // 0° leaves the horizontal chords in place. 90° turns them vertical.
         let angle = options.fillAngle * Float.pi / 180
         var gap = options.computedHachureGap
         if gap <= 0 {

@@ -16,11 +16,21 @@ public struct SolidFiller: FillGenerator {
     public init() {}
     
     public func fillPolygon(points: [[Float]], options: Options) -> OperationSet? {
+        if options.seed != nil && !RoughRandom.isActive {
+            return RoughRandom.with(seed: options.seed) {
+                fillPolygon(points: points, options: options)
+            }
+        }
         let ops = RoughMath.solidFillPathOps(points: points, options: options)
         return OperationSet(type: .fillPath, operations: ops, path: nil, size: nil)
     }
     
     public func fillEllipse(cx: Float, cy: Float, rx: Float, ry: Float, options: Options) -> OperationSet? {
+        if options.seed != nil && !RoughRandom.isActive {
+            return RoughRandom.with(seed: options.seed) {
+                fillEllipse(cx: cx, cy: cy, rx: rx, ry: ry, options: options)
+            }
+        }
         // Generate a single closed ellipse for solid fill
         // Use solidEllipseOps instead of ellipseOps to get one fillable path
         let ellipseOps = RoughMath.solidEllipseOps(cx: cx, cy: cy, rx: rx, ry: ry, options: options)
@@ -30,6 +40,11 @@ public struct SolidFiller: FillGenerator {
     }
     
     public func fillArc(cx: Float, cy: Float, rx: Float, ry: Float, start: Float, stop: Float, options: Options) -> OperationSet? {
+        if options.seed != nil && !RoughRandom.isActive {
+            return RoughRandom.with(seed: options.seed) {
+                fillArc(cx: cx, cy: cy, rx: rx, ry: ry, start: start, stop: stop, options: options)
+            }
+        }
         // Generate arc as polygon points
         var points: [[Float]] = [[cx, cy]]
         let increment = (stop - start) / options.curveStepCount

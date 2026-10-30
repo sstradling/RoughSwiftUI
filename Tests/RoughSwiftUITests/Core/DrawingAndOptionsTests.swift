@@ -200,6 +200,7 @@ final class DrawingAndOptionsTests: XCTestCase {
         base.zigzagOffset = 7
         base.stroke = UIColor.green
         base.fill = UIColor.red
+        base.seed = 88
 
         let dict = base.toRoughDictionary()
         let decoded = Options(dictionary: dict)
@@ -213,6 +214,7 @@ final class DrawingAndOptionsTests: XCTestCase {
         XCTAssertEqual(decoded.fillStyle, base.fillStyle)
         XCTAssertEqual(decoded.fillWeight, base.fillWeight)
         XCTAssertEqual(decoded.fillAngle, base.fillAngle)
+        XCTAssertEqual(decoded.seed, base.seed)
         XCTAssertEqual(decoded.fillSpacing, base.fillSpacing)
         XCTAssertEqual(decoded.dashOffset, base.dashOffset)
         XCTAssertEqual(decoded.dashGap, base.dashGap)

@@ -430,15 +430,17 @@ struct PathVarianceGenerator {
     /// Creates a variance generator for the given animation config.
     /// - Parameters:
     ///   - config: The animation configuration.
-    ///   - baseSeed: A base seed for reproducibility (defaults to random).
-    init(config: AnimationConfig, baseSeed: UInt64 = UInt64.random(in: 0..<UInt64.max)) {
+    ///   - baseSeed: A base seed for reproducibility.
+    ///     `nil` uses `AnimationConfig.seed`, then a random seed.
+    init(config: AnimationConfig, baseSeed: UInt64? = nil) {
         self.variance = config.variance.factor
+        let resolvedSeed = baseSeed ?? config.seed ?? UInt64.random(in: 0..<UInt64.max)
         
         // Generate deterministic seeds for each step
         var seeds: [UInt64] = []
         seeds.reserveCapacity(config.steps)
         for i in 0..<config.steps {
-            seeds.append(baseSeed &+ UInt64(i) &* 0x9E3779B97F4A7C15)
+            seeds.append(resolvedSeed &+ UInt64(i) &* 0x9E3779B97F4A7C15)
         }
         self.stepSeeds = seeds
     }

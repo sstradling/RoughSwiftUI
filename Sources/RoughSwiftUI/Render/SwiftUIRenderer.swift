@@ -228,7 +228,7 @@ private extension SwiftUIRenderer {
             }
             let strokeColor = Color(options.stroke).opacity(Double(options.strokeOpacity))
 
-            if let crayon = options.brushProfile.crayon {
+            if let crayon = options.resolvedCrayonStyle {
                 let crayonCommands = crayonPasses(
                     operations: set.operations,
                     width: CGFloat(strokeWidth),
@@ -290,7 +290,7 @@ private extension SwiftUIRenderer {
                 path = basePath
             }
             let color = Color(options.fill).opacity(Double(options.fillOpacity))
-            if let crayon = options.brushProfile.crayon {
+            if let crayon = options.resolvedCrayonStyle {
                 let crayonCommands = crayonPasses(
                     operations: set.operations,
                     width: CGFloat(effectiveFillWeight),
@@ -380,7 +380,7 @@ private extension SwiftUIRenderer {
             // A crayon brush stamps those lines as wax instead of a solid stroke.
             // Otherwise fall back to stroking the shape (for stroke alignment behavior).
             if !set.operations.isEmpty {
-                if let crayon = options.brushProfile.crayon {
+                if let crayon = options.resolvedCrayonStyle {
                     let crayonCommands = crayonPasses(
                         operations: set.operations,
                         width: CGFloat(effectiveFillWeight),
@@ -455,7 +455,7 @@ private extension SwiftUIRenderer {
         return scribbleSets.flatMap { set -> [RoughRenderCommand] in
             let basePath = SwiftPath.from(operationSet: set)
 
-            if let crayon = options.brushProfile.crayon {
+            if let crayon = options.resolvedCrayonStyle {
                 let crayonCommands = crayonPasses(
                     operations: set.operations,
                     width: CGFloat(fillWeight),

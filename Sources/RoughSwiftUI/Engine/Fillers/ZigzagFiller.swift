@@ -18,12 +18,22 @@ public struct ZigzagFiller: FillGenerator {
     public init() {}
     
     public func fillPolygon(points: [[Float]], options: Options) -> OperationSet? {
+        if options.seed != nil && !RoughRandom.isActive {
+            return RoughRandom.with(seed: options.seed) {
+                fillPolygon(points: points, options: options)
+            }
+        }
         let lines = hachureFiller.hachureLines(points: points, options: options)
         let ops = hachureFiller.renderLines(lines: lines, options: options, connect: true)
         return OperationSet(type: .fillSketch, operations: ops, path: nil, size: nil)
     }
     
     public func fillEllipse(cx: Float, cy: Float, rx: Float, ry: Float, options: Options) -> OperationSet? {
+        if options.seed != nil && !RoughRandom.isActive {
+            return RoughRandom.with(seed: options.seed) {
+                fillEllipse(cx: cx, cy: cy, rx: rx, ry: ry, options: options)
+            }
+        }
         let lines = hachureFiller.hachureEllipse(cx: cx, cy: cy, rx: rx, ry: ry, options: options)
         let ops = hachureFiller.renderLines(lines: lines, options: options, connect: true)
         return OperationSet(type: .fillSketch, operations: ops, path: nil, size: nil)

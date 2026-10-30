@@ -147,6 +147,23 @@ RoughView()
     .circle()
 ```
 
+`0°` is horizontal and `90°` is vertical for hachure, zigzag, cross-hatch, dashed, and zigzag-line. Positive angles rotate clockwise because Core Graphics y points down. Dots always use the horizontal `0°` grid. Scribble strokes use `scribbleOrigin` with that same bearing. Starburst fills are radial and ignore `fillAngle`.
+
+### Seed
+
+Pass `.seed(_:)` to redraw the same roughness and fill wobble. `nil` (the default) keeps a new random drawing whenever the cache misses.
+
+```swift
+RoughView()
+    .stroke(.black)
+    .fill(.blue)
+    .fillStyle(.hachure)
+    .seed(42)
+    .rectangle()
+```
+
+`CrayonStyle.seed` still controls wax grain. If that seed is left at `CrayonStyle.defaultSeed` (`1`) and `Options.seed` is set, the grain seed is taken from `Options.seed`. Any other crayon seed wins.
+
 ### Fill Spacing
 
 Use `fillSpacing` to control the gap between fill lines as a factor of the fill line weight (0.5x to 100x):
