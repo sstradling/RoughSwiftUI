@@ -18,6 +18,11 @@ public struct ZigzagLineFiller: FillGenerator {
     public init() {}
     
     public func fillPolygon(points: [[Float]], options: Options) -> OperationSet? {
+        if options.seed != nil && !RoughRandom.isActive {
+            return RoughRandom.with(seed: options.seed) {
+                fillPolygon(points: points, options: options)
+            }
+        }
         let gap = max(options.computedHachureGap, options.strokeWidth * 4)
         var zigOptions = options
         zigOptions.fillSpacing = (gap + zigzagOffset(options: options)) / options.effectiveFillWeight
@@ -28,6 +33,11 @@ public struct ZigzagLineFiller: FillGenerator {
     }
     
     public func fillEllipse(cx: Float, cy: Float, rx: Float, ry: Float, options: Options) -> OperationSet? {
+        if options.seed != nil && !RoughRandom.isActive {
+            return RoughRandom.with(seed: options.seed) {
+                fillEllipse(cx: cx, cy: cy, rx: rx, ry: ry, options: options)
+            }
+        }
         let gap = max(options.computedHachureGap, options.strokeWidth * 4)
         var zigOptions = options
         zigOptions.fillSpacing = (gap + zigzagOffset(options: options)) / options.effectiveFillWeight

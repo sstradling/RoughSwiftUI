@@ -53,6 +53,13 @@ public final class NativeGenerator {
     
     /// Generates a Drawing without checking cache.
     private func generateUncached(drawable: Drawable, options: Options) -> Drawing? {
+        // One seed covers the outline and every fill line. Nested RoughMath
+        // and filler calls keep consuming this sequence.
+        if options.seed != nil && !RoughRandom.isActive {
+            return RoughRandom.with(seed: options.seed) {
+                generateUncached(drawable: drawable, options: options)
+            }
+        }
         let arguments: [Any]
         if let fullable = drawable as? Fulfillable {
             arguments = fullable.arguments(size: Size(width: Float(size.width), height: Float(size.height)))

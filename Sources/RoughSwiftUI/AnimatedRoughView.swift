@@ -299,7 +299,7 @@ public struct AnimatedRoughView: View {
         varianceQueue.async {
             let cache = measurePerformance(AnimationSignpost.precompute, log: RoughPerformanceLog.animation, metadata: "steps=\(animConfig.steps)") {
                 // Create variance generator
-                let varGen = PathVarianceGenerator(config: animConfig)
+                let varGen = PathVarianceGenerator(config: animConfig, baseSeed: animConfig.seed)
                 
                 // Pre-compute all frames using optimized offset storage
                 // This extracts paths once, computes offsets, and rebuilds all frames

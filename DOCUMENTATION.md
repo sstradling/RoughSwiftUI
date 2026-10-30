@@ -142,7 +142,8 @@ Pass any `Drawable` type for precise positioning.
 |----------|-----------|-------------|
 | `.fillStyle(_ value:)` | `FillStyle` | Pattern type (hachure, solid, etc.) |
 | `.fillWeight(_ value:)` | `Float` | Fill line thickness |
-| `.fillAngle(_ value:)` | `Float` (0-360) | Fill line angle in degrees |
+| `.fillAngle(_ value:)` | `Float` | Fill line angle in degrees. 0° is horizontal, 90° is vertical |
+| `.seed(_ value:)` | `UInt64?` | Stable random seed. `nil` keeps unseeded randomness |
 | `.fillSpacing(_ value:)` | `Float` (0.5-100) | Gap between fill lines |
 | `.fillSpacingPattern(_ pattern:)` | `[Float]` | Variable spacing for gradients |
 
@@ -431,7 +432,8 @@ public struct Options: Equatable, Hashable {
     public var fillOpacity: Float = 1.0    // 0.0 - 1.0
     public var fillStyle: FillStyle = .hachure
     public var fillWeight: Float = -1      // -1 = auto (strokeWidth/2)
-    public var fillAngle: Float = 45       // degrees
+    public var fillAngle: Float = 45       // degrees; 0 horizontal, 90 vertical
+    public var seed: UInt64? = nil         // nil = system random
     public var fillSpacing: Float = 4.0    // multiplier of fillWeight
     public var fillSpacingPattern: [Float]? = nil
     
@@ -460,6 +462,10 @@ public struct Options: Equatable, Hashable {
     public var brushProfile: BrushProfile = .default
 }
 ```
+
+`fillAngle` is clockwise from the +x axis because Core Graphics y points down. `0` draws horizontal lines and `90` draws vertical lines for hachure, zigzag, cross-hatch, dashed, and zigzag-line. Dots always use that horizontal grid. Scribble strokes take their bearing from `scribbleOrigin`. Starburst and sunburst fills are radial and ignore `fillAngle`.
+
+`.seed(42)` restarts a SplitMix64 sequence for each generate call. Leave it `nil` for a new random drawing on every cache miss. `CrayonStyle.seed` still owns wax grain unless it is left at `CrayonStyle.defaultSeed` (1), in which case a set `Options.seed` is copied onto the crayon. `AnimationConfig.seed` is separate and is passed through as `PathVarianceGenerator`'s base seed.
 
 ---
 
@@ -663,7 +669,7 @@ When `brushProfile.crayon` is set, hachure, zigzag, and scribble fill lines use 
 | `baseSoftness` | 0.5 | 0...1 | Width of the soft halo |
 | `grit` | 0.92 | 0...1 | Density of flakes on the base |
 | `flakeSize` | 1.45 | 0.35...3 | Clump and speck size as a fraction of the stroke width |
-| `seed` | 1 | any `UInt64` | Stable grain |
+| `seed` | 1 (`defaultSeed`) | any `UInt64` | Stable grain. Yields to `Options.seed` only while it is still `defaultSeed` |
 
 ```swift
 public struct CrayonStrokePass: Equatable, Sendable {
@@ -762,11 +768,13 @@ public struct AnimationConfig: Sendable {
     public let steps: Int
     public let speed: AnimationSpeed
     public let variance: AnimationVariance
+    public let seed: UInt64?    // nil randomizes each animation run
     
     public init(
         steps: Int = 4,          // Minimum 2
         speed: AnimationSpeed = .medium,
-        variance: AnimationVariance = .medium
+        variance: AnimationVariance = .medium,
+        seed: UInt64? = nil      // passed to PathVarianceGenerator as baseSeed
     )
     
     public static let `default`
@@ -1031,6 +1039,10 @@ RoughView().draw(Text("Hello", font: .systemFont(ofSize: 32)))
 ```swift
 Engine.shared.clearCaches()
 ```
+
+### Issue: Drawing Changes Every Redraw
+
+**Solution:** Set `.seed(_)` (or `Options.seed`) so roughness and fill wobble repeat. Crayon grain repeats from `CrayonStyle.seed`. Animation frames repeat when `AnimationConfig.seed` is set.
 
 ### Issue: Fill Pattern Too Dense/Sparse
 

@@ -162,13 +162,26 @@ public extension RoughView {
         return v
     }
 
-    /// Set the angle of fill lines in degrees (0-360).
+    /// Set the angle of fill lines in degrees.
+    ///
+    /// Positive angles rotate clockwise from the +x axis (y points down).
     /// - 0° = horizontal lines
     /// - 45° = diagonal lines (default)
     /// - 90° = vertical lines
     func fillAngle(_ value: Float) -> Self {
         var v = self
         v.options.fillAngle = value
+        return v
+    }
+
+    /// Fixes the random sequence used for roughness, bowing, and fill wobble.
+    ///
+    /// The same seed redraws the same strokes. `nil` keeps a new random
+    /// sequence each time an uncached drawing is built. See `Options.seed`
+    /// for how this interacts with `CrayonStyle.seed`.
+    func seed(_ value: UInt64?) -> Self {
+        var v = self
+        v.options.seed = value
         return v
     }
 

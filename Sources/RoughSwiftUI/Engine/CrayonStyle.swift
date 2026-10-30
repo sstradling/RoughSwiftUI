@@ -60,6 +60,10 @@ public struct CrayonStyle: Equatable, Hashable, Sendable {
     /// Default is 1.45.
     public var flakeSize: Float
 
+    /// Preset grain seed. `Options.seed` replaces this only while a crayon
+    /// style is still on the preset. Any other value wins over `Options.seed`.
+    public static let defaultSeed: UInt64 = 1
+
     /// Seed for the grain. Change it to get a different, still-stable texture.
     public var seed: UInt64
 
@@ -74,7 +78,7 @@ public struct CrayonStyle: Equatable, Hashable, Sendable {
         baseSoftness: Float = 0.5,
         grit: Float = 0.92,
         flakeSize: Float = 1.45,
-        seed: UInt64 = 1
+        seed: UInt64 = CrayonStyle.defaultSeed
     ) {
         self.grain = min(1, max(0, grain))
         self.edgeRoughness = min(1, max(0, edgeRoughness))

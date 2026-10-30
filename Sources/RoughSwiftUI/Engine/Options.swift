@@ -45,11 +45,33 @@ public struct Options: Equatable, Hashable {
     public var fillStyle: FillStyle = .hachure
     public var fillWeight: Float = -1
     
-    /// The angle of fill lines in degrees (0-360). Default is 45°.
+    /// The angle of fill lines in degrees. Default is 45°.
+    ///
+    /// Core Graphics y points down, so positive angles rotate clockwise from
+    /// the +x axis. The same bearing is used by hachure, zigzag, cross-hatch,
+    /// dashed, and zigzag-line fills, and by the horizontal dot grid at 0°:
     /// - 0° = horizontal lines
     /// - 45° = diagonal lines (default)
     /// - 90° = vertical lines
+    ///
+    /// Dots always place marks on the 0° grid. Scribble strokes use
+    /// `scribbleOrigin` instead, with the same clockwise bearing. Starburst
+    /// fills are radial and ignore this angle.
     public var fillAngle: Float = 45
+
+    /// Seed for roughness, bowing, and fill wobble.
+    ///
+    /// `nil` (the default) keeps the system random generator, so an uncached
+    /// drawing is different each time it is built. A value restarts a
+    /// `SplitMix64` sequence at each `NativeGenerator.generate`, direct filler
+    /// call, and scribble generation. Nested stroke and fill work keeps
+    /// consuming that sequence instead of starting over.
+    ///
+    /// Crayon grain still uses `CrayonStyle.seed`. When this property is set
+    /// and the crayon seed is still `CrayonStyle.defaultSeed` (1), grain is
+    /// taken from this seed. Any other crayon seed wins. `nil` leaves the
+    /// crayon seed unchanged.
+    public var seed: UInt64? = nil
     
     /// Spacing between fill lines as a factor of fill line weight.
     /// Range: 0.5 to 100. Default is 4.0 (4x the fill weight).
@@ -176,12 +198,21 @@ public struct Options: Equatable, Hashable {
     }
     
     /// Computes a hash value for caching purposes.
-    /// This hash covers all rendering-affecting properties.
+    ///
+    /// The hash covers geometry, colour, opacity, brush, and seed. `Hasher`
+    /// is salted per process, so compare hashes inside one run only.
+    /// The drawing cache stores geometry and applies colour at render time;
+    /// it includes `seed` because the seed changes the paths, and it leaves
+    /// colour, opacity, and brush out of that geometry key.
     public var cacheHash: Int {
         var hasher = Hasher()
         hasher.combine(maxRandomnessOffset)
         hasher.combine(roughness)
         hasher.combine(bowing)
+        hasher.combine(strokeColor)
+        hasher.combine(fillColor)
+        hasher.combine(strokeOpacity)
+        hasher.combine(fillOpacity)
         hasher.combine(strokeWidth)
         hasher.combine(curveTightness)
         hasher.combine(curveStepCount)
@@ -198,11 +229,29 @@ public struct Options: Equatable, Hashable {
         hasher.combine(scribbleCurvature)
         hasher.combine(scribbleUseBrushStroke)
         hasher.combine(scribbleTightnessPattern)
+        hasher.combine(svgStrokeWidth)
+        hasher.combine(svgFillWeight)
+        hasher.combine(svgFillStrokeAlignment)
+        hasher.combine(brushProfile)
+        hasher.combine(seed)
         return hasher.finalize()
+    }
+
+    /// Crayon texture after resolving `seed`.
+    ///
+    /// An explicit `CrayonStyle.seed` other than `CrayonStyle.defaultSeed`
+    /// is kept. When `seed` is set and the crayon style is still on that
+    /// default, the grain seed becomes `seed`.
+    public var resolvedCrayonStyle: CrayonStyle? {
+        guard var crayon = brushProfile.crayon else { return nil }
+        if let seed, crayon.seed == CrayonStyle.defaultSeed {
+            crayon.seed = seed
+        }
+        return crayon
     }
     
     func toRoughDictionary() -> JSONDictionary {
-        return [
+        var dictionary: JSONDictionary = [
             "maxRandomnessOffset": maxRandomnessOffset,
             "roughness": roughness,
             "bowing": bowing,
@@ -219,6 +268,10 @@ public struct Options: Equatable, Hashable {
             "dashGap": dashGap,
             "zigzagOffset": zigzagOffset
         ]
+        if let seed {
+            dictionary["seed"] = NSNumber(value: seed)
+        }
+        return dictionary
     }
     
     /// Creates a copy of options with a specific hachure gap override.
@@ -243,6 +296,9 @@ public extension Options {
         dashOffset <-? (dictionary["dashOffset"] as? NSNumber)?.floatValue
         dashGap <-? (dictionary["dashGap"] as? NSNumber)?.floatValue
         zigzagOffset <-? (dictionary["zigzagOffset"] as? NSNumber)?.floatValue
+        if let seedNumber = dictionary["seed"] as? NSNumber {
+            seed = seedNumber.uint64Value
+        }
         
         // Convert hachureGap back to fillSpacing factor
         if let gap = (dictionary["hachureGap"] as? NSNumber)?.floatValue, gap > 0 {

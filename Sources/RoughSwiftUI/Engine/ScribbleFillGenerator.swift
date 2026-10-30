@@ -29,7 +29,15 @@ public struct ScribbleFillGenerator {
     ///   - options: The rendering options containing scribble parameters.
     /// - Returns: An array of OperationSets, one per continuous stroke segment.
     public static func generate(for path: CGPath, options: Options) -> [OperationSet] {
-        measurePerformance(PathOpsSignpost.scribbleFill, log: RoughPerformanceLog.pathOps, metadata: "tightness=\(options.scribbleTightness)") {
+        // Scribble legs are geometric, so they do not consume random numbers.
+        // The seed scope is still installed so any roughness sampled while
+        // building the fill stays on `Options.seed`.
+        if options.seed != nil && !RoughRandom.isActive {
+            return RoughRandom.with(seed: options.seed) {
+                generate(for: path, options: options)
+            }
+        }
+        return measurePerformance(PathOpsSignpost.scribbleFill, log: RoughPerformanceLog.pathOps, metadata: "tightness=\(options.scribbleTightness)") {
             generateInternal(for: path, options: options)
         }
     }

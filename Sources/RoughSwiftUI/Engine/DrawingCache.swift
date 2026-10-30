@@ -69,6 +69,7 @@ public struct DrawingCacheKey: Hashable {
         hasher.combine(options.dashOffset)
         hasher.combine(options.dashGap)
         hasher.combine(options.zigzagOffset)
+        hasher.combine(options.seed)
         return hasher.finalize()
     }
 }

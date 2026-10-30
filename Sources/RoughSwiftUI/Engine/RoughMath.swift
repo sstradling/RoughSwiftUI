@@ -24,7 +24,6 @@ public struct RoughMath {
     ///   - max: Maximum offset value
     ///   - options: Options containing roughness parameter
     /// - Returns: A random offset value
-    @inlinable
     public static func randOffset(_ max: Float, options: Options) -> Float {
         randOffsetWithRange(-max, max, options: options)
     }
@@ -35,9 +34,10 @@ public struct RoughMath {
     ///   - max: Maximum value
     ///   - options: Options containing roughness parameter
     /// - Returns: A random value in the specified range
-    @inlinable
     public static func randOffsetWithRange(_ min: Float, _ max: Float, options: Options) -> Float {
-        options.roughness * (Float.random(in: 0...1) * (max - min) + min)
+        RoughRandom.with(seed: options.seed) {
+            options.roughness * (RoughRandom.unit() * (max - min) + min)
+        }
     }
     
     // MARK: - Line Operations
@@ -55,6 +55,11 @@ public struct RoughMath {
         x2: Float, y2: Float,
         options: Options
     ) -> [Operation] {
+        if shouldOwnSeed(options.seed) {
+            return RoughRandom.with(seed: options.seed) {
+                doubleLineOps(x1: x1, y1: y1, x2: x2, y2: y2, options: options)
+            }
+        }
         let ops1 = lineOps(x1: x1, y1: y1, x2: x2, y2: y2, options: options, move: true, overlay: false)
         let ops2 = lineOps(x1: x1, y1: y1, x2: x2, y2: y2, options: options, move: true, overlay: true)
         return ops1 + ops2
@@ -77,6 +82,11 @@ public struct RoughMath {
         move: Bool,
         overlay: Bool
     ) -> [Operation] {
+        if shouldOwnSeed(options.seed) {
+            return RoughRandom.with(seed: options.seed) {
+                lineOps(x1: x1, y1: y1, x2: x2, y2: y2, options: options, move: move, overlay: overlay)
+            }
+        }
         let lengthSq = pow(x1 - x2, 2) + pow(y1 - y2, 2)
         var maxOffset = options.maxRandomnessOffset
         
@@ -86,7 +96,7 @@ public struct RoughMath {
         }
         
         let halfOffset = maxOffset / 2
-        let divergePoint: Float = 0.2 + 0.2 * Float.random(in: 0...1)
+        let divergePoint: Float = 0.2 + 0.2 * RoughRandom.unit()
         
         // Bowing effect - perpendicular displacement
         var midDispX = options.bowing * options.maxRandomnessOffset * (y2 - y1) / 200
@@ -141,6 +151,11 @@ public struct RoughMath {
     ///   - options: Rendering options
     /// - Returns: Array of operations representing the curve
     public static func curveOps(points: [[Float]], options: Options) -> [Operation] {
+        if shouldOwnSeed(options.seed) {
+            return RoughRandom.with(seed: options.seed) {
+                curveOps(points: points, options: options)
+            }
+        }
         let o1 = curveWithOffset(points: points, offset: 1 * (1 + 0.2 * options.roughness), options: options)
         let o2 = curveWithOffset(points: points, offset: 1.5 * (1 + 0.22 * options.roughness), options: options)
         return o1 + o2
@@ -241,6 +256,11 @@ public struct RoughMath {
         rx: Float, ry: Float,
         options: Options
     ) -> [Operation] {
+        if shouldOwnSeed(options.seed) {
+            return RoughRandom.with(seed: options.seed) {
+                ellipseOps(cx: cx, cy: cy, rx: rx, ry: ry, options: options)
+            }
+        }
         let increment = (2 * Float.pi) / options.curveStepCount
         var rx = rx
         var ry = ry
@@ -323,6 +343,11 @@ public struct RoughMath {
         roughClosure: Bool,
         options: Options
     ) -> [Operation] {
+        if shouldOwnSeed(options.seed) {
+            return RoughRandom.with(seed: options.seed) {
+                arcOps(cx: cx, cy: cy, rx: rx, ry: ry, start: start, stop: stop, closed: closed, roughClosure: roughClosure, options: options)
+            }
+        }
         var rx = rx
         var ry = ry
         rx += randOffset(rx * 0.01, options: options)
@@ -415,6 +440,11 @@ public struct RoughMath {
     ///   - options: Rendering options
     /// - Returns: Array of operations representing the path
     public static func linearPathOps(points: [[Float]], close: Bool, options: Options) -> [Operation] {
+        if shouldOwnSeed(options.seed) {
+            return RoughRandom.with(seed: options.seed) {
+                linearPathOps(points: points, close: close, options: options)
+            }
+        }
         let len = points.count
         if len > 2 {
             var ops: [Operation] = []
@@ -449,6 +479,11 @@ public struct RoughMath {
     ///   - options: Rendering options
     /// - Returns: Array of operations representing the fill path
     public static func solidFillPathOps(points: [[Float]], options: Options) -> [Operation] {
+        if shouldOwnSeed(options.seed) {
+            return RoughRandom.with(seed: options.seed) {
+                solidFillPathOps(points: points, options: options)
+            }
+        }
         var ops: [Operation] = []
         let len = points.count
         
@@ -484,6 +519,11 @@ public struct RoughMath {
         rx: Float, ry: Float,
         options: Options
     ) -> [Operation] {
+        if shouldOwnSeed(options.seed) {
+            return RoughRandom.with(seed: options.seed) {
+                solidEllipseOps(cx: cx, cy: cy, rx: rx, ry: ry, options: options)
+            }
+        }
         let increment = (2 * Float.pi) / options.curveStepCount
         var rxMod = rx
         var ryMod = ry
@@ -525,6 +565,11 @@ public struct RoughMath {
         width: Float, height: Float,
         options: Options
     ) -> [Operation] {
+        if shouldOwnSeed(options.seed) {
+            return RoughRandom.with(seed: options.seed) {
+                rectangleOps(x: x, y: y, width: width, height: height, options: options)
+            }
+        }
         let points: [[Float]] = [
             [x, y],
             [x + width, y],
@@ -551,6 +596,11 @@ public struct RoughMath {
         cornerRadius: Float,
         options: Options
     ) -> [Operation] {
+        if shouldOwnSeed(options.seed) {
+            return RoughRandom.with(seed: options.seed) {
+                roundedRectangleOps(x: x, y: y, width: width, height: height, cornerRadius: cornerRadius, options: options)
+            }
+        }
         // Clamp corner radius to valid range
         let maxRadius = min(width, height) / 2
         let r = min(cornerRadius, maxRadius)
@@ -698,6 +748,11 @@ public struct RoughMath {
         tilt: Float,
         options: Options
     ) -> [Operation] {
+        if shouldOwnSeed(options.seed) {
+            return RoughRandom.with(seed: options.seed) {
+                eggOps(cx: cx, cy: cy, width: width, height: height, tilt: tilt, options: options)
+            }
+        }
         let increment = (2 * Float.pi) / options.curveStepCount
         var rx = width / 2
         var ry = height / 2
@@ -875,6 +930,14 @@ extension RoughMath {
         let dx = segment[1][0] - segment[0][0]
         let dy = segment[1][1] - segment[0][1]
         return sqrt(dx * dx + dy * dy)
+    }
+}
+
+extension RoughMath {
+    /// True when this call should start the seeded sequence.
+    /// Nested helpers see an active generator and keep consuming it.
+    static func shouldOwnSeed(_ seed: UInt64?) -> Bool {
+        seed != nil && !RoughRandom.isActive
     }
 }
 

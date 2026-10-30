@@ -61,20 +61,30 @@ public struct AnimationConfig: Sendable {
     
     /// Amount of variation applied to strokes and fills.
     public let variance: AnimationVariance
+
+    /// Seed for the variation sequence.
+    ///
+    /// `nil` picks a random base seed when the frames are built, so each
+    /// animation run differs. A value is passed to `PathVarianceGenerator`
+    /// as `baseSeed`, and the same config replays the same frames.
+    public let seed: UInt64?
     
     /// Creates an animation configuration.
     /// - Parameters:
     ///   - steps: Number of variation steps before looping (default: 4)
     ///   - speed: Speed of transitions (default: .medium)
     ///   - variance: Amount of variation (default: .medium)
+    ///   - seed: Stable variation seed. `nil` randomizes each run.
     public init(
         steps: Int = 4,
         speed: AnimationSpeed = .medium,
-        variance: AnimationVariance = .medium
+        variance: AnimationVariance = .medium,
+        seed: UInt64? = nil
     ) {
         self.steps = max(2, steps) // Minimum 2 steps for a loop
         self.speed = speed
         self.variance = variance
+        self.seed = seed
     }
     
     /// Default animation configuration.

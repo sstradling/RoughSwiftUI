@@ -160,6 +160,11 @@ public extension RoughText {
     func fillAngle(_ value: Float) -> Self {
         RoughText(roughView: roughView.fillAngle(value), textSize: textSize)
     }
+
+    /// Fixes the random sequence used for roughness, bowing, and fill wobble.
+    func seed(_ value: UInt64?) -> Self {
+        RoughText(roughView: roughView.seed(value), textSize: textSize)
+    }
     
     /// Set the curve tightness.
     func curveTightness(_ value: Float) -> Self {
