@@ -30,7 +30,10 @@ let package = Package(
         ),
         .testTarget(
             name: "RoughSwiftUITests",
-            dependencies: ["RoughSwiftUI"]
+            dependencies: ["RoughSwiftUI"],
+            resources: [
+                .copy("Fixtures/CrayonDuck/seth-input-v3.svg")
+            ]
         ),
     ]
 )

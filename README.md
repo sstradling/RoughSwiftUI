@@ -510,6 +510,10 @@ RoughView()
     .brushProfile(.crayon(baseOpacity: 0.7, grit: 0.95, flakeSize: 1.6, seed: 4))
     .circle()
 
+// The v3g duck fixture uses this crayon on the outlines, a plain stroke on the
+// eye, and a scribble shadow at origin 100, tightness 40, curvature 0.
+// See Tests/RoughSwiftUITests/Fixtures/CrayonDuck.
+
 // Hachure and zigzag fill lines use the crayon brush too.
 RoughView()
     .fill(.orange)
