@@ -66,6 +66,7 @@ enum DocExampleCatalog {
         title: String,
         description: String,
         snippet: String,
+        picture: DocPicture = .rough,
         _ view: @escaping () -> RoughView
     ) -> DocExample {
         DocExample(
@@ -76,7 +77,8 @@ enum DocExampleCatalog {
             snippet: snippet,
             kind: .still,
             view: view,
-            animation: nil
+            animation: nil,
+            picture: picture
         )
     }
 

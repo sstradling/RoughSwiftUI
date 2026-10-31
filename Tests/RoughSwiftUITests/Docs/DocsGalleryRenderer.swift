@@ -114,7 +114,7 @@ enum DocsGalleryRenderer {
         switch example.kind {
         case .still:
             let image = try renderImage(
-                example.view(),
+                picture(for: example),
                 id: example.id,
                 width: example.canvasWidth,
                 height: example.canvasHeight
@@ -176,6 +176,16 @@ enum DocsGalleryRenderer {
             framesDirectory: framesDirectory,
             output: example.outputRelativePath
         )
+    }
+
+    @ViewBuilder
+    private static func picture(for example: DocExample) -> some View {
+        switch example.picture {
+        case .rough:
+            example.view()
+        case .roughTextBesideCircle:
+            DocRoughTextCard()
+        }
     }
 
     private static func renderHero(_ hero: DocHero, to directory: URL) throws -> DocsManifest.Example {

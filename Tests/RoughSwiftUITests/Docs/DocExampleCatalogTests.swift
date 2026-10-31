@@ -35,7 +35,7 @@ final class DocExampleCatalogTests: XCTestCase {
             if case .gif = example.kind { return true }
             return false
         }
-        XCTAssertEqual(stills.count, 49)
+        XCTAssertEqual(stills.count, 53)
         XCTAssertEqual(gifs.count, 7)
     }
 
@@ -92,6 +92,20 @@ final class DocExampleCatalogTests: XCTestCase {
         XCTAssertNotNil(DocHeroParts.crayonCircle().options.brushProfile.crayon)
     }
 
+    func testTextPlacementExamplesKeepTheirArguments() {
+        let leading = example("leading-text").view().drawables.first as? FullText
+        XCTAssertEqual(leading?.horizontalAlignment, .leading)
+        XCTAssertEqual(leading?.verticalAlignment, .top)
+
+        let offset = example("offset-text").view().drawables.first as? FullText
+        XCTAssertEqual(offset?.offsetX, 24)
+        XCTAssertEqual(offset?.offsetY, 32)
+
+        XCTAssertTrue(example("attributed-text").view().drawables.first is FullText)
+        XCTAssertEqual(example("rough-text").picture, .roughTextBesideCircle)
+        XCTAssertEqual(example("rough-text").view().options.seed, 173)
+    }
+
     func testEveryExampleIsSeededAndAddressable() {
         var seen = Set<String>()
         for example in DocExampleCatalog.examples {
@@ -105,9 +119,15 @@ final class DocExampleCatalogTests: XCTestCase {
                 example.snippet.contains(".seed("),
                 "\(example.id) snippet should show the seed"
             )
-            XCTAssertTrue(
-                example.snippet.hasPrefix("RoughView()"),
+            XCTAssertFalse(
+                example.snippet.hasPrefix(" ") || example.snippet.hasPrefix("\n"),
                 "\(example.id) snippet should be unindented source"
+            )
+            XCTAssertTrue(
+                example.snippet.hasPrefix("RoughView()")
+                    || example.snippet.hasPrefix("HStack(")
+                    || example.snippet.hasPrefix("let "),
+                "\(example.id) snippet should start with the drawing source"
             )
             XCTAssertEqual(example.canvasWidth, DocExampleCatalog.tileSide)
             XCTAssertEqual(example.canvasHeight, DocExampleCatalog.tileSide)

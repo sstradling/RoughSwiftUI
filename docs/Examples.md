@@ -923,7 +923,7 @@ RoughView()
 
 ### Named font
 
-A PostScript font name. The glyphs are fitted to the card and filled solid.
+A PostScript font name, drawn at that size and centered in the card.
 
 ![Named font](images/text/named-font.png)
 
@@ -935,6 +935,103 @@ RoughView()
     .strokeWidth(1.5)
     .seed(155)
     .text("Note", fontName: "Helvetica-Bold", fontSize: 48)
+```
+
+### Leading top
+
+Leading and top pin the glyphs to the corner of the card, at the font size you set.
+
+![Leading top](images/text/leading-text.png)
+
+```swift
+RoughView()
+    .fill(Color(red: 0.85, green: 0.55, blue: 0.18))
+    .fillStyle(.hachure)
+    .fillAngle(45)
+    .fillSpacing(1.8)
+    .stroke(Color(red: 0.12, green: 0.14, blue: 0.18))
+    .strokeWidth(1.5)
+    .seed(160)
+    .text(
+        "Top",
+        font: .systemFont(ofSize: 32, weight: .bold),
+        horizontalAlignment: .leading,
+        verticalAlignment: .top
+    )
+```
+
+### Offset text
+
+offsetX and offsetY move a centered word. Positive x goes right and positive y goes down.
+
+![Offset text](images/text/offset-text.png)
+
+```swift
+RoughView()
+    .fill(Color(red: 0.18, green: 0.46, blue: 0.67))
+    .fillStyle(.hachure)
+    .fillAngle(45)
+    .fillSpacing(1.8)
+    .stroke(Color(red: 0.12, green: 0.14, blue: 0.18))
+    .strokeWidth(1.5)
+    .seed(164)
+    .text(
+        "Hi",
+        font: .systemFont(ofSize: 40, weight: .bold),
+        offsetX: 24,
+        offsetY: 32
+    )
+```
+
+### Attributed text
+
+An attributed string can mix sizes in one run. The bang uses a smaller font than the letters.
+
+![Attributed text](images/text/attributed-text.png)
+
+```swift
+let title = NSMutableAttributedString(
+    string: "Hi!",
+    attributes: [.font: UIFont.systemFont(ofSize: 64, weight: .heavy)]
+)
+title.addAttribute(
+    .font,
+    value: UIFont.systemFont(ofSize: 28, weight: .regular),
+    range: NSRange(location: 2, length: 1)
+)
+RoughView()
+    .fill(Color(red: 0.45, green: 0.28, blue: 0.55))
+    .fillStyle(.solid)
+    .stroke(Color(red: 0.12, green: 0.14, blue: 0.18))
+    .strokeWidth(1.5)
+    .seed(168)
+    .text(attributedString: title)
+```
+
+### RoughText
+
+RoughText sizes itself to the glyphs, so the word keeps its size beside a shape that fills the rest of the card.
+
+![RoughText](images/text/rough-text.png)
+
+```swift
+HStack(spacing: 12) {
+    RoughText("Hi", font: .systemFont(ofSize: 44, weight: .heavy))
+        .fill(Color(red: 0.76, green: 0.32, blue: 0.28))
+        .fillStyle(.hachure)
+        .fillAngle(45)
+        .fillSpacing(1.6)
+        .stroke(Color(red: 0.12, green: 0.14, blue: 0.18))
+        .strokeWidth(1.5)
+        .seed(172)
+    RoughView()
+        .fill(Color(red: 0.20, green: 0.45, blue: 0.52))
+        .fillStyle(.solid)
+        .stroke(Color(red: 0.12, green: 0.14, blue: 0.18))
+        .strokeWidth(2)
+        .seed(173)
+        .circle()
+}
 ```
 
 ## Animation
