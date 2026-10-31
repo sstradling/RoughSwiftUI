@@ -404,7 +404,7 @@ RoughView()
 | `offsetX` | Any `CGFloat` (default: `0`) | Additional horizontal offset in points. Positive moves right. |
 | `offsetY` | Any `CGFloat` (default: `0`) | Additional vertical offset in points. Positive moves down. |
 
-**Note:** Offsets are applied *after* alignment, allowing you to fine-tune the position relative to the aligned anchor point.
+**Note:** Offsets are applied *after* alignment, allowing you to fine-tune the position relative to the aligned anchor point. Text stays at that position and at the font size you set. It is not scaled to fill the frame the way an SVG path is.
 
 ## SVG
 

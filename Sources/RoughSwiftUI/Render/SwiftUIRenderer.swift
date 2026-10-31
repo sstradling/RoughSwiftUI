@@ -89,7 +89,8 @@ public struct SwiftUIRenderer {
     /// - Returns: A collection of `RoughRenderCommand` describing how to render the drawing.
     public func commands(for drawing: Drawing, options: Options, in size: CGSize) -> [RoughRenderCommand] {
         measurePerformance(RenderingSignpost.buildCommands, log: RoughPerformanceLog.rendering, metadata: "shape=\(drawing.shape)") {
-            // SVG paths need scaling to fit the canvas since they have their own coordinate system
+            // SVG paths need scaling to fit the canvas since they have their own coordinate system.
+            // Text uses shape "text": FullText has already placed the glyphs, including alignment.
             let isSVGPath = drawing.shape == "path"
             
             // For SVG paths, compute a single transform from the original SVG bounds

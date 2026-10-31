@@ -36,6 +36,15 @@ struct DocExample {
     /// Required for `.gif` examples. `seed` must be set.
     let animation: AnimationConfig?
 
+    /// What the tile draws. `.rough` uses `view`. A composition draws extra layout around it.
+    var picture: DocPicture = .rough
+
+    /// Card width in points. Gallery tiles use `DocExampleCatalog.tileSide`.
+    var canvasWidth: CGFloat = DocExampleCatalog.tileSide
+
+    /// Card height in points. Gallery tiles use `DocExampleCatalog.tileSide`.
+    var canvasHeight: CGFloat = DocExampleCatalog.tileSide
+
     /// Folder under `docs/images`.
     var sectionSlug: String {
         section.lowercased().replacing(" ", with: "-")
@@ -55,4 +64,10 @@ struct DocExample {
     var framesDirectoryRelativePath: String {
         "\(sectionSlug)/\(id)-frames"
     }
+}
+
+/// How a gallery tile is drawn. Compositions still keep a seeded `RoughView` for checks.
+enum DocPicture: Equatable {
+    case rough
+    case roughTextBesideCircle
 }
