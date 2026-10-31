@@ -36,6 +36,12 @@ struct DocExample {
     /// Required for `.gif` examples. `seed` must be set.
     let animation: AnimationConfig?
 
+    /// Card width in points. Gallery tiles use `DocExampleCatalog.tileSide`.
+    var canvasWidth: CGFloat = DocExampleCatalog.tileSide
+
+    /// Card height in points. Gallery tiles use `DocExampleCatalog.tileSide`.
+    var canvasHeight: CGFloat = DocExampleCatalog.tileSide
+
     /// Folder under `docs/images`.
     var sectionSlug: String {
         section.lowercased().replacing(" ", with: "-")

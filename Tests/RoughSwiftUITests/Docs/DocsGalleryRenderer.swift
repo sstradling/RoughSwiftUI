@@ -8,7 +8,7 @@ enum DocsGalleryError: Error, CustomStringConvertible {
     case outputNotWritable
     case imageRenderFailed(String)
     case blankImage(String)
-    case unexpectedPixelSize(String, Int, Int)
+    case unexpectedPixelSize(String, Int, Int, Int, Int)
     case pngEncodingFailed(String)
     case missingSeed(String)
     case missingAnimation(String)
@@ -22,9 +22,8 @@ enum DocsGalleryError: Error, CustomStringConvertible {
             return "ImageRenderer returned no image for \(id)."
         case let .blankImage(id):
             return "Rendered tile for \(id) is a flat color. The shape did not draw."
-        case let .unexpectedPixelSize(id, width, height):
-            let expected = Int(DocExampleCatalog.tileSide * DocExampleCatalog.renderScale)
-            return "\(id) is \(width)x\(height), expected \(expected)x\(expected) at scale \(DocExampleCatalog.renderScale)."
+        case let .unexpectedPixelSize(id, width, height, expectedWidth, expectedHeight):
+            return "\(id) is \(width)x\(height), expected \(expectedWidth)x\(expectedHeight) at scale \(DocExampleCatalog.renderScale)."
         case let .pngEncodingFailed(name):
             return "Could not encode PNG data for \(name)."
         case let .missingSeed(id):
@@ -54,6 +53,8 @@ struct DocsManifest: Encodable {
     }
 
     var examples: [Example]
+    /// Wide README banner. Published as `docs/images/hero.png`, omitted from Examples.md.
+    var hero: Example
 }
 
 /// Rasterizes catalog tiles to PNGs. The shell script compresses stills and builds GIFs.
@@ -91,7 +92,8 @@ enum DocsGalleryRenderer {
         for example in DocExampleCatalog.examples {
             entries.append(try render(example, to: directory))
         }
-        let manifest = DocsManifest(examples: entries)
+        let hero = try renderHero(DocExampleCatalog.hero, to: directory)
+        let manifest = DocsManifest(examples: entries, hero: hero)
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         let data = try encoder.encode(manifest)
@@ -111,7 +113,12 @@ enum DocsGalleryRenderer {
 
         switch example.kind {
         case .still:
-            let image = try renderImage(example.view(), id: example.id)
+            let image = try renderImage(
+                example.view(),
+                id: example.id,
+                width: example.canvasWidth,
+                height: example.canvasHeight
+            )
             try writePNG(image, to: directory.appending(path: example.outputRelativePath))
             return entry(for: example, kind: "still", framesDirectory: nil)
         case let .gif(frameCount, fps):
@@ -122,7 +129,12 @@ enum DocsGalleryRenderer {
             for index in 0..<frameCount {
                 let frame = AnimatedRoughView(config: animation, roughView: example.view())
                     .pinnedFrame(index)
-                let image = try renderImage(frame, id: "\(example.id) frame \(index)")
+                let image = try renderImage(
+                    frame,
+                    id: "\(example.id) frame \(index)",
+                    width: example.canvasWidth,
+                    height: example.canvasHeight
+                )
                 let name = frameFileName(index: index)
                 let relative = "\(example.framesDirectoryRelativePath)/\(name)"
                 let url = directory.appending(path: relative)
@@ -166,21 +178,53 @@ enum DocsGalleryRenderer {
         )
     }
 
-    private static func renderImage<Content: View>(_ content: Content, id: String) throws -> UIImage {
-        let tile = DocExampleTile(content: content)
+    private static func renderHero(_ hero: DocHero, to directory: URL) throws -> DocsManifest.Example {
+        let image = try renderImage(
+            hero.banner(),
+            id: hero.id,
+            width: hero.width,
+            height: hero.height
+        )
+        try writePNG(image, to: directory.appending(path: hero.outputRelativePath))
+        return DocsManifest.Example(
+            id: hero.id,
+            section: "Hero",
+            sectionSlug: "hero",
+            title: hero.title,
+            description: hero.description,
+            snippet: hero.snippet,
+            kind: "still",
+            fps: nil,
+            frameCount: nil,
+            framesDirectory: nil,
+            output: hero.outputRelativePath
+        )
+    }
+
+    private static func renderImage<Content: View>(
+        _ content: Content,
+        id: String,
+        width: CGFloat,
+        height: CGFloat
+    ) throws -> UIImage {
+        let tile = DocExampleTile(content: content, width: width, height: height)
         let renderer = ImageRenderer(content: tile)
         renderer.scale = DocExampleCatalog.renderScale
-        renderer.proposedSize = ProposedViewSize(
-            width: DocExampleCatalog.tileSide,
-            height: DocExampleCatalog.tileSide
-        )
+        renderer.proposedSize = ProposedViewSize(width: width, height: height)
         renderer.isOpaque = true
         guard let image = renderer.uiImage, let cgImage = image.cgImage else {
             throw DocsGalleryError.imageRenderFailed(id)
         }
-        let expected = Int(DocExampleCatalog.tileSide * DocExampleCatalog.renderScale)
-        guard cgImage.width == expected, cgImage.height == expected else {
-            throw DocsGalleryError.unexpectedPixelSize(id, cgImage.width, cgImage.height)
+        let expectedWidth = Int((width * DocExampleCatalog.renderScale).rounded())
+        let expectedHeight = Int((height * DocExampleCatalog.renderScale).rounded())
+        guard cgImage.width == expectedWidth, cgImage.height == expectedHeight else {
+            throw DocsGalleryError.unexpectedPixelSize(
+                id,
+                cgImage.width,
+                cgImage.height,
+                expectedWidth,
+                expectedHeight
+            )
         }
         guard distinctSampleCount(in: cgImage) >= 8 else {
             throw DocsGalleryError.blankImage(id)
@@ -276,11 +320,13 @@ enum DocsGalleryRenderer {
 /// Opaque light paper card. No dark-mode variant.
 private struct DocExampleTile<Content: View>: View {
     let content: Content
+    var width: CGFloat = DocExampleCatalog.tileSide
+    var height: CGFloat = DocExampleCatalog.tileSide
 
     var body: some View {
         content
             .padding(DocExampleCatalog.tileInset)
-            .frame(width: DocExampleCatalog.tileSide, height: DocExampleCatalog.tileSide)
+            .frame(width: width, height: height)
             .background(DocExampleCatalog.paper)
             .environment(\.colorScheme, .light)
             .transaction { transaction in

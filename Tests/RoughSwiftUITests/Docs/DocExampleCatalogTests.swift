@@ -4,11 +4,92 @@ import XCTest
 /// Catalog invariants that stay on during a normal test run.
 @MainActor
 final class DocExampleCatalogTests: XCTestCase {
-    func testPhaseTwoPilotsAreTheThreeAgreedExamples() {
-        XCTAssertEqual(
-            DocExampleCatalog.examples.map(\.id),
-            ["hachure-rectangle", "horizontal-hachure", "breathing-circle"]
-        )
+    private let galleryOrder = [
+        "Basics",
+        "Shapes",
+        "Fills",
+        "Strokes",
+        "Roughness",
+        "Brushes",
+        "Seeding",
+        "SVG",
+        "Text",
+        "Animation"
+    ]
+
+    func testGalleryOrderAndCounts() {
+        var seen: [String] = []
+        for example in DocExampleCatalog.examples {
+            if seen.last != example.section {
+                XCTAssertFalse(seen.contains(example.section), "section \(example.section) repeats")
+                seen.append(example.section)
+            }
+        }
+        XCTAssertEqual(seen, galleryOrder)
+
+        let stills = DocExampleCatalog.examples.filter { example in
+            if case .still = example.kind { return true }
+            return false
+        }
+        let gifs = DocExampleCatalog.examples.filter { example in
+            if case .gif = example.kind { return true }
+            return false
+        }
+        XCTAssertEqual(stills.count, 49)
+        XCTAssertEqual(gifs.count, 7)
+    }
+
+    func testPilotExamplesStayInTheCatalog() {
+        let ids = Set(DocExampleCatalog.examples.map(\.id))
+        XCTAssertTrue(ids.contains("hachure-rectangle"))
+        XCTAssertTrue(ids.contains("horizontal-hachure"))
+        XCTAssertTrue(ids.contains("breathing-circle"))
+
+        let breathing = example("breathing-circle")
+        guard case let .gif(frameCount, fps) = breathing.kind else {
+            return XCTFail("breathing-circle should stay a GIF")
+        }
+        XCTAssertEqual(frameCount, 6)
+        XCTAssertEqual(fps, 8)
+        XCTAssertEqual(breathing.animation?.seed, 42)
+    }
+
+    func testFillAnglesCoverHorizontalDiagonalAndVertical() {
+        XCTAssertEqual(example("hachure-rectangle").view().options.fillAngle, 45)
+        XCTAssertEqual(example("horizontal-hachure").view().options.fillAngle, 0)
+        XCTAssertEqual(example("clockwise-hachure").view().options.fillAngle, 20)
+        XCTAssertEqual(example("vertical-hachure").view().options.fillAngle, 90)
+        XCTAssertTrue(example("horizontal-hachure").snippet.contains(".fillAngle(0)"))
+    }
+
+    func testSameSeedIsRepeatedAndADifferentSeedDiverges() {
+        let first = example("seed-seven")
+        let second = example("seed-seven-again")
+        let other = example("seed-ninety-nine")
+        XCTAssertEqual(first.view().options.seed, 7)
+        XCTAssertEqual(second.view().options.seed, 7)
+        XCTAssertEqual(other.view().options.seed, 99)
+        XCTAssertEqual(first.view().options.roughness, second.view().options.roughness)
+        XCTAssertEqual(first.view().options.roughness, other.view().options.roughness)
+        XCTAssertEqual(first.view().options.fillAngle, second.view().options.fillAngle)
+    }
+
+    func testCrayonExamplesCarryACrayonProfile() {
+        XCTAssertNotNil(example("crayon").view().options.brushProfile.crayon)
+        XCTAssertNotNil(example("crayon-fill").view().options.brushProfile.crayon)
+        XCTAssertEqual(example("crayon").view().options.brushProfile.crayon?.seed, 4)
+    }
+
+    func testHeroIsAWideSeededPaperCard() {
+        let hero = DocExampleCatalog.hero
+        XCTAssertEqual(hero.outputRelativePath, "hero.png")
+        XCTAssertGreaterThan(hero.width, DocExampleCatalog.tileSide)
+        XCTAssertEqual(hero.height, DocExampleCatalog.tileSide)
+        XCTAssertTrue(hero.snippet.hasPrefix("HStack(spacing: 16)"))
+        XCTAssertEqual(hero.snippet.components(separatedBy: ".seed(").count - 1, 4)
+        let seeds = DocHeroParts.sketches().compactMap(\.options.seed)
+        XCTAssertEqual(seeds, [42, 11, 18, 4])
+        XCTAssertNotNil(DocHeroParts.crayonCircle().options.brushProfile.crayon)
     }
 
     func testEveryExampleIsSeededAndAddressable() {
@@ -28,6 +109,8 @@ final class DocExampleCatalogTests: XCTestCase {
                 example.snippet.hasPrefix("RoughView()"),
                 "\(example.id) snippet should be unindented source"
             )
+            XCTAssertEqual(example.canvasWidth, DocExampleCatalog.tileSide)
+            XCTAssertEqual(example.canvasHeight, DocExampleCatalog.tileSide)
 
             switch example.kind {
             case .still:
@@ -42,9 +125,11 @@ final class DocExampleCatalogTests: XCTestCase {
         }
     }
 
-    func testHorizontalHachureSnippetUsesZeroDegrees() {
-        let example = DocExampleCatalog.examples.first { $0.id == "horizontal-hachure" }
-        XCTAssertEqual(example?.view().options.fillAngle, 0)
-        XCTAssertTrue(example?.snippet.contains(".fillAngle(0)") == true)
+    private func example(_ id: String) -> DocExample {
+        guard let found = DocExampleCatalog.examples.first(where: { $0.id == id }) else {
+            XCTFail("missing example \(id)")
+            fatalError("missing example \(id)")
+        }
+        return found
     }
 }
