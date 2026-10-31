@@ -211,6 +211,12 @@ public struct AnimatedRoughView: View {
     /// Timer for animation loop.
     @State private var timer: Timer.TimerPublisher?
     @State private var timerCancellable: AnyCancellable?
+
+    /// When set, the view draws this step and does not start the timer.
+    ///
+    /// Documentation capture sets this via `pinnedFrame(_:)`. `nil` keeps the
+    /// live playback clock. The index wraps into `0..<config.steps`.
+    var pinnedFrameIndex: Int?
     
     /// Creates an animated rough view.
     /// - Parameters:
@@ -235,12 +241,32 @@ public struct AnimatedRoughView: View {
         self.config = config
         self.roughView = roughView
     }
+
+    /// Returns a copy that draws one animation step and does not run the timer.
+    ///
+    /// Paths are built synchronously during layout, so `ImageRenderer` captures a
+    /// real frame instead of waiting on the playback clock. `frameIndex` wraps
+    /// into `0..<config.steps`. The same index and `AnimationConfig.seed` redraw
+    /// the same strokes.
+    func pinnedFrame(_ frameIndex: Int) -> AnimatedRoughView {
+        var copy = self
+        copy.pinnedFrameIndex = frameIndex
+        return copy
+    }
     
     public var body: some View {
         GeometryReader { proxy in
             let size = proxy.size
+            let pinnedCommands = commandsForPinnedFrame(size: size)
             
             Canvas { context, canvasSize in
+                if let pinnedCommands {
+                    for command in pinnedCommands {
+                        renderCommand(command, in: &context)
+                    }
+                    return
+                }
+
                 let renderSize = canvasSize == .zero ? size : canvasSize
                 guard renderSize.width > 0, renderSize.height > 0 else { return }
                 
@@ -262,14 +288,30 @@ public struct AnimatedRoughView: View {
             }
         }
         .onAppear {
+            guard pinnedFrameIndex == nil else { return }
             startAnimation()
         }
         .onDisappear {
             stopAnimation()
         }
         .onChange(of: config.speed.duration) { _, _ in
+            guard pinnedFrameIndex == nil else { return }
             restartAnimation()
         }
+    }
+
+    /// Precomputed commands for a pinned documentation frame.
+    ///
+    /// Returns `nil` when playback is driven by the timer, and when the canvas
+    /// has not been given a size yet.
+    private func commandsForPinnedFrame(size: CGSize) -> [RoughRenderCommand]? {
+        guard let pinnedFrameIndex, size.width > 0, size.height > 0 else { return nil }
+        return Self.frameCommands(
+            for: roughView,
+            config: config,
+            size: size,
+            frameIndex: pinnedFrameIndex
+        )
     }
     
     /// Pre-computes all animation frames for the given size.
@@ -323,40 +365,72 @@ public struct AnimatedRoughView: View {
     
     /// Generates base render commands for all drawables.
     ///
-    /// This method involves JavaScript bridge calls and is only called
+    /// This method involves generator calls and is only called
     /// when the canvas size changes.
     private func generateBaseCommands(size: CGSize) -> [RoughRenderCommand] {
+        Self.baseCommands(for: roughView, size: size)
+    }
+
+    /// Builds the unvaried render commands for `roughView` at `size`.
+    @MainActor
+    private static func baseCommands(for roughView: RoughView, size: CGSize) -> [RoughRenderCommand] {
         let generator = Engine.shared.generator(size: size)
         var allCommands: [RoughRenderCommand] = []
-        
+
         for drawable in roughView.drawables {
             let options = roughView.options
-            
-            // Check if we have a spacing pattern for gradient effects
+
             if let pattern = options.fillSpacingPattern, !pattern.isEmpty {
                 let baseSpacing = options.fillSpacing
                 let weight = options.effectiveFillWeight
-                
+
                 for (index, multiplier) in pattern.enumerated() {
                     var patternOptions = options
                     patternOptions.fillSpacing = baseSpacing * multiplier
                     let layerWeight = weight * (1.0 + Float(index) * 0.01)
                     patternOptions.fillWeight = layerWeight
-                    
+
                     if let drawing = generator.generate(drawable: drawable, options: patternOptions) {
                         let commands = animatedRenderer.commands(for: drawing, options: patternOptions, in: size)
                         allCommands.append(contentsOf: commands)
                     }
                 }
-            } else {
-                if let drawing = generator.generate(drawable: drawable, options: options) {
-                    let commands = animatedRenderer.commands(for: drawing, options: options, in: size)
-                    allCommands.append(contentsOf: commands)
-                }
+            } else if let drawing = generator.generate(drawable: drawable, options: options) {
+                let commands = animatedRenderer.commands(for: drawing, options: options, in: size)
+                allCommands.append(contentsOf: commands)
             }
         }
-        
+
         return allCommands
+    }
+
+    /// Synchronously builds one animation step.
+    ///
+    /// `frameIndex` wraps into `0..<config.steps`. Callers that need a stable
+    /// picture pass `AnimationConfig.seed` and `Options.seed`.
+    @MainActor
+    static func frameCommands(
+        for roughView: RoughView,
+        config: AnimationConfig,
+        size: CGSize,
+        frameIndex: Int
+    ) -> [RoughRenderCommand] {
+        let base = baseCommands(for: roughView, size: size)
+        let generator = PathVarianceGenerator(config: config, baseSeed: config.seed)
+        let cache = AnimationFrameCache.precompute(
+            baseCommands: base,
+            generator: generator,
+            size: size
+        )
+        guard cache.stepCount > 0 else { return [] }
+        return cache[wrappedFrameIndex(frameIndex, count: cache.stepCount)].commands
+    }
+
+    /// Positive modulo so a negative or oversized index still lands on a step.
+    private static func wrappedFrameIndex(_ frameIndex: Int, count: Int) -> Int {
+        let count = max(count, 1)
+        let remainder = frameIndex % count
+        return remainder >= 0 ? remainder : remainder + count
     }
     
     /// Renders a single command into the graphics context.

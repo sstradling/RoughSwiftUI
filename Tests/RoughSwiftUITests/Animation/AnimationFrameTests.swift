@@ -290,5 +290,62 @@ final class AnimationFrameTests: XCTestCase {
             XCTAssertEqual(command.join, .miter)
         }
     }
+
+    func testPinnedFrameStoresTheRequestedIndex() {
+        let config = AnimationConfig(steps: 4, speed: .medium, variance: .medium, seed: 7)
+        let animated = AnimatedRoughView(config: config) {
+            RoughView().seed(7).circle()
+        }
+        XCTAssertNil(animated.pinnedFrameIndex)
+        XCTAssertEqual(animated.pinnedFrame(2).pinnedFrameIndex, 2)
+        XCTAssertNil(animated.pinnedFrameIndex)
+    }
+
+    func testFrameCommandsRepeatForTheSameSeed() {
+        let roughView = RoughView()
+            .fill(Color.blue)
+            .fillStyle(.hachure)
+            .stroke(Color.black)
+            .seed(42)
+            .circle()
+        let config = AnimationConfig(steps: 4, speed: .medium, variance: .high, seed: 99)
+        let size = CGSize(width: 160, height: 160)
+
+        let first = AnimatedRoughView.frameCommands(
+            for: roughView,
+            config: config,
+            size: size,
+            frameIndex: 0
+        )
+        let second = AnimatedRoughView.frameCommands(
+            for: roughView,
+            config: config,
+            size: size,
+            frameIndex: 0
+        )
+        let next = AnimatedRoughView.frameCommands(
+            for: roughView,
+            config: config,
+            size: size,
+            frameIndex: 1
+        )
+        let wrapped = AnimatedRoughView.frameCommands(
+            for: roughView,
+            config: config,
+            size: size,
+            frameIndex: 4
+        )
+
+        XCTAssertFalse(first.isEmpty)
+        XCTAssertEqual(signatures(of: first), signatures(of: second))
+        XCTAssertEqual(signatures(of: first), signatures(of: wrapped))
+        XCTAssertNotEqual(signatures(of: first), signatures(of: next))
+    }
+
+    private func signatures(of commands: [RoughRenderCommand]) -> [String] {
+        commands.map { command in
+            "\(command.path.description)|\(String(describing: command.style))"
+        }
+    }
     
 }
