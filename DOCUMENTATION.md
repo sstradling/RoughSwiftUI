@@ -554,6 +554,8 @@ RoughView()
     .frame(width: 200, height: 100)
 ```
 
+Text is drawn at that position and at the font size you set. It is not scaled to fill the frame. An SVG `Path` still is.
+
 ---
 
 ## Brush Profiles
