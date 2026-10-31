@@ -308,7 +308,7 @@ extension DocExampleCatalog {
             "egg",
             section: "Shapes",
             title: "Egg",
-            description: "tilt 0.45 narrows the top. curveStepCount(5) builds the outline from fewer samples.",
+            description: "tilt 0.4 narrows the top. curveStepCount(16) sets how many samples build the outline.",
             snippet: """
             RoughView()
                 .fill(\(plum.snippet))
@@ -316,9 +316,9 @@ extension DocExampleCatalog {
                 .fillSpacing(3)
                 .stroke(\(charcoal.snippet))
                 .strokeWidth(2)
-                .curveStepCount(5)
+                .curveStepCount(16)
                 .seed(28)
-                .egg(tilt: 0.45)
+                .egg(tilt: 0.4)
             """
         ) {
             RoughView()
@@ -327,9 +327,9 @@ extension DocExampleCatalog {
                 .fillSpacing(3)
                 .stroke(charcoal.color)
                 .strokeWidth(2)
-                .curveStepCount(5)
+                .curveStepCount(16)
                 .seed(28)
-                .egg(tilt: 0.45)
+                .egg(tilt: 0.4)
         }
     ]
 }

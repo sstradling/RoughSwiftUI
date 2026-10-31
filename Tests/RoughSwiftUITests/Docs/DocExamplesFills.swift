@@ -358,7 +358,7 @@ extension DocExampleCatalog {
             "spacing-pattern",
             section: "Fills",
             title: "Spacing pattern",
-            description: "fillSpacingPattern repeats multipliers, so later hachure bands open up.",
+            description: "fillSpacingPattern stacks a hachure pass for each multiplier of fillSpacing. The tightest pass covers the shape.",
             snippet: """
             RoughView()
                 .fill(\(leaf.snippet))

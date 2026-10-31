@@ -7,7 +7,7 @@ import UIKit
 enum DocsGalleryError: Error, CustomStringConvertible {
     case outputNotWritable
     case imageRenderFailed(String)
-    case blankImage(String)
+    case blankImage(String, Int)
     case unexpectedPixelSize(String, Int, Int, Int, Int)
     case pngEncodingFailed(String)
     case missingSeed(String)
@@ -20,8 +20,8 @@ enum DocsGalleryError: Error, CustomStringConvertible {
             return "Could not write the docs render directory."
         case let .imageRenderFailed(id):
             return "ImageRenderer returned no image for \(id)."
-        case let .blankImage(id):
-            return "Rendered tile for \(id) is a flat color. The shape did not draw."
+        case let .blankImage(id, colors):
+            return "Rendered tile for \(id) has \(colors) sampled colors. The shape did not draw."
         case let .unexpectedPixelSize(id, width, height, expectedWidth, expectedHeight):
             return "\(id) is \(width)x\(height), expected \(expectedWidth)x\(expectedHeight) at scale \(DocExampleCatalog.renderScale)."
         case let .pngEncodingFailed(name):
@@ -226,8 +226,10 @@ enum DocsGalleryRenderer {
                 expectedHeight
             )
         }
-        guard distinctSampleCount(in: cgImage) >= 8 else {
-            throw DocsGalleryError.blankImage(id)
+        let colors = distinctSampleCount(in: cgImage)
+        // A paper-only card stays at one color. A clean solid fill is only a few.
+        guard colors >= 3 else {
+            throw DocsGalleryError.blankImage(id, colors)
         }
         return image
     }
@@ -256,7 +258,8 @@ enum DocsGalleryRenderer {
         guard drew else { return 0 }
 
         var colors = Set<UInt32>()
-        let step = 8
+        // Step 2 so a horizontal stroke a few pixels tall still lands on a sample.
+        let step = 2
         var y = 0
         while y < height {
             var x = 0

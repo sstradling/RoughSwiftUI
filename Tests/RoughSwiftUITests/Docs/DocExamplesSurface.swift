@@ -174,16 +174,16 @@ extension DocExampleCatalog {
             "bowed",
             section: "Roughness",
             title: "Bowed edges",
-            description: "bowing(7) bends the long edges. Roughness stays low so the bend stays readable.",
+            description: "bowing(6) bends each edge. maxRandomnessOffset(3) is how far that bend can travel.",
             snippet: """
             RoughView()
                 .fill(\(leaf.snippet))
                 .fillStyle(.solid)
                 .stroke(\(charcoal.snippet))
                 .strokeWidth(2)
-                .roughness(0.4)
-                .bowing(7)
-                .maxRandomnessOffset(1.5)
+                .roughness(1)
+                .bowing(6)
+                .maxRandomnessOffset(3)
                 .seed(115)
                 .rectangle()
             """
@@ -193,9 +193,9 @@ extension DocExampleCatalog {
                 .fillStyle(.solid)
                 .stroke(charcoal.color)
                 .strokeWidth(2)
-                .roughness(0.4)
-                .bowing(7)
-                .maxRandomnessOffset(1.5)
+                .roughness(1)
+                .bowing(6)
+                .maxRandomnessOffset(3)
                 .seed(115)
                 .rectangle()
         },

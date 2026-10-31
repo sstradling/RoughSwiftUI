@@ -115,10 +115,10 @@ extension DocExampleCatalog {
                 .text("Hi", font: .systemFont(ofSize: 76, weight: .heavy))
         },
         still(
-            "aligned-note",
+            "named-font",
             section: "Text",
-            title: "Aligned text",
-            description: "A named font, pinned to the leading top corner, then shifted by offsetX and offsetY.",
+            title: "Named font",
+            description: "A PostScript font name. The glyphs are fitted to the card and filled solid.",
             snippet: """
             RoughView()
                 .fill(\(leaf.snippet))
@@ -126,15 +126,7 @@ extension DocExampleCatalog {
                 .stroke(\(charcoal.snippet))
                 .strokeWidth(1.5)
                 .seed(155)
-                .text(
-                    "Note",
-                    fontName: "Helvetica-Bold",
-                    fontSize: 40,
-                    horizontalAlignment: .leading,
-                    verticalAlignment: .top,
-                    offsetX: 12,
-                    offsetY: 16
-                )
+                .text("Note", fontName: "Helvetica-Bold", fontSize: 48)
             """
         ) {
             RoughView()
@@ -143,15 +135,7 @@ extension DocExampleCatalog {
                 .stroke(charcoal.color)
                 .strokeWidth(1.5)
                 .seed(155)
-                .text(
-                    "Note",
-                    fontName: "Helvetica-Bold",
-                    fontSize: 40,
-                    horizontalAlignment: .leading,
-                    verticalAlignment: .top,
-                    offsetX: 12,
-                    offsetY: 16
-                )
+                .text("Note", fontName: "Helvetica-Bold", fontSize: 48)
         }
     ]
 
