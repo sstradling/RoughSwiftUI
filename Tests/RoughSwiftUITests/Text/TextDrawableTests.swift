@@ -158,9 +158,67 @@ final class TextDrawableTests: XCTestCase {
         let fullText = FullText("Test", font: UIFont.systemFont(ofSize: 36))
         let drawing = try XCTUnwrap(generator.generate(drawable: fullText))
         
-        // Should produce a path drawing
-        XCTAssertEqual(drawing.shape, "path")
+        // Already placed in the view, so the renderer must not fit it like an SVG path.
+        XCTAssertEqual(drawing.shape, "text")
         XCTAssertFalse(drawing.sets.isEmpty)
+    }
+
+    func testFullTextAlignmentSurvivesRendering() throws {
+        let size = CGSize(width: 240, height: 160)
+        let generator = NativeGenerator(size: size)
+        let font = UIFont.systemFont(ofSize: 28)
+        var options = Options()
+        options.fill = .systemRed
+        options.fillStyle = .solid
+        options.stroke = .black
+        options.strokeWidth = 1
+        options.seed = 3
+
+        let leading = try XCTUnwrap(generator.generate(
+            drawable: FullText("A", font: font, horizontalAlignment: .leading, verticalAlignment: .top),
+            options: options
+        ))
+        let trailing = try XCTUnwrap(generator.generate(
+            drawable: FullText("A", font: font, horizontalAlignment: .trailing, verticalAlignment: .bottom),
+            options: options
+        ))
+        let shifted = try XCTUnwrap(generator.generate(
+            drawable: FullText("A", font: font, offsetX: 40, offsetY: 24),
+            options: options
+        ))
+        let centered = try XCTUnwrap(generator.generate(
+            drawable: FullText("A", font: font),
+            options: options
+        ))
+        let svg = try XCTUnwrap(generator.generate(
+            drawable: Path(d: "M0,0 L20,0 L10,20 Z"),
+            options: options
+        ))
+
+        XCTAssertEqual(leading.shape, "text")
+        XCTAssertEqual(svg.shape, "path")
+
+        let renderer = SwiftUIRenderer()
+        let leadingBounds = unionBounds(of: renderer.commands(for: leading, options: options, in: size))
+        let trailingBounds = unionBounds(of: renderer.commands(for: trailing, options: options, in: size))
+        let centeredBounds = unionBounds(of: renderer.commands(for: centered, options: options, in: size))
+        let shiftedBounds = unionBounds(of: renderer.commands(for: shifted, options: options, in: size))
+
+        XCTAssertLessThan(leadingBounds.midX, size.width * 0.35)
+        XCTAssertGreaterThan(trailingBounds.midX, size.width * 0.65)
+        XCTAssertLessThan(leadingBounds.midY, trailingBounds.midY)
+        XCTAssertGreaterThan(shiftedBounds.midX, centeredBounds.midX + 20)
+        XCTAssertGreaterThan(shiftedBounds.midY, centeredBounds.midY + 12)
+    }
+
+    private func unionBounds(of commands: [RoughRenderCommand]) -> CGRect {
+        commands.reduce(CGRect.null) { partial, command in
+            let bounds = command.path.boundingRect
+            guard !bounds.isNull, !bounds.isInfinite, bounds.width > 0, bounds.height > 0 else {
+                return partial
+            }
+            return partial.union(bounds)
+        }
     }
     
     func testFullTextDifferentFromText() {

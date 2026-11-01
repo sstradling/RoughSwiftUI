@@ -12,10 +12,11 @@
 # gifski from PNG frames of pinned animation steps.
 #
 # Budgets, checked after compression. The script exits non-zero past any of them:
-#   each still PNG  <= 120 KB
+#   each still PNG  <= 120 KB   (includes docs/images/hero.png)
 #   each GIF        <= 800 KB
 #   docs/images     <= 10 MB
 # No Git LFS.
+# hero.png is a wide banner. It is published beside the tiles and left out of Examples.md.
 
 set -euo pipefail
 
@@ -296,6 +297,13 @@ for example in examples:
         "framesDirectory": example.get("framesDirectory"),
         "fps": example.get("fps") or 8,
     })
+hero = manifest["hero"]
+plan.append({
+    "kind": hero["kind"],
+    "output": hero["output"],
+    "framesDirectory": hero.get("framesDirectory"),
+    "fps": hero.get("fps") or 8,
+})
 plan_path = source_root / "publish-plan.json"
 plan_path.write_text(json.dumps(plan), encoding="utf-8")
 
@@ -351,6 +359,11 @@ for item in plan:
     else:
         raise SystemExit(f"unknown kind {item['kind']}")
 PY
+
+# Replace the gallery so a removed example does not linger and count against the budget.
+# Screenshots/ (the older README images) lives outside this directory.
+rm -rf "$DOCS_IMAGES"
+mkdir -p "$DOCS_IMAGES"
 
 while IFS=$'\t' read -r kind src dest extra; do
   [[ -z "${kind:-}" ]] && continue

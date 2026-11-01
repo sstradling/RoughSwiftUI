@@ -87,7 +87,14 @@ public final class NativeGenerator {
         case "curve":
             return generateCurve(arguments: arguments, options: options)
         case "path":
-            return generatePath(arguments: arguments, options: options)
+            guard let drawing = generatePath(arguments: arguments, options: options) else {
+                return nil
+            }
+            // FullText already places the glyphs in the view. Marking the
+            // drawing as "text" keeps the renderer from fitting it like an
+            // SVG path, which would scale and center the word.
+            guard drawable is FullText else { return drawing }
+            return Drawing(shape: "text", sets: drawing.sets, options: drawing.options)
         case "roundedRectangle":
             return generateRoundedRectangle(arguments: arguments, options: options)
         case "egg":
