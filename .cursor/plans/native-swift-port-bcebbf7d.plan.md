@@ -12,11 +12,11 @@ New:     RoughView → NativeGenerator (Swift) → Drawing
 
 Key files to modify/create:
 
-- Create: `Sources/RoughSwiftUI/Engine/NativeGenerator.swift` (main generator)
-- Create: `Sources/RoughSwiftUI/Engine/RoughMath.swift` (core algorithms)
-- Create: `Sources/RoughSwiftUI/Engine/Fillers/` (fill pattern implementations)
-- Modify: [`Engine.swift`](Sources/RoughSwiftUI/Engine/Engine.swift) (remove JSContext, use native)
-- Modify: [`Generator.swift`](Sources/RoughSwiftUI/Engine/Generator.swift) (replace JS calls with native)
+- Create: `Sources/Sketchy/Engine/NativeGenerator.swift` (main generator)
+- Create: `Sources/Sketchy/Engine/RoughMath.swift` (core algorithms)
+- Create: `Sources/Sketchy/Engine/Fillers/` (fill pattern implementations)
+- Modify: [`Engine.swift`](Sources/Sketchy/Engine/Engine.swift) (remove JSContext, use native)
+- Modify: [`Generator.swift`](Sources/Sketchy/Engine/Generator.swift) (replace JS calls with native)
 
 ---
 
@@ -145,7 +145,7 @@ struct HachureHelper {
 
 ## Phase 4: SVG Path Support
 
-Leverage existing [`SVGPath.swift`](Sources/RoughSwiftUI/Render/SVGPath.swift) for parsing. Add rough rendering:
+Leverage existing [`SVGPath.swift`](Sources/Sketchy/Render/SVGPath.swift) for parsing. Add rough rendering:
 
 ```swift
 func pathOps(svgPathString: String, options: Options) -> [Operation] {

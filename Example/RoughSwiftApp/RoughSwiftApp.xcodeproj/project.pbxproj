@@ -51,9 +51,9 @@
 		BA129A9B2EFDEDAD0024F01F /* Fredoka_Condensed-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A3D2EFDEDAD0024F01F /* Fredoka_Condensed-Regular.ttf */; };
 		BA129A9C2EFDEDAD0024F01F /* Nunito-BoldItalic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A5B2EFDEDAD0024F01F /* Nunito-BoldItalic.ttf */; };
 		BA129A9D2EFDEDAD0024F01F /* Fredoka-Light.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BA129A4F2EFDEDAD0024F01F /* Fredoka-Light.ttf */; };
-		BA15ADD22EE3CB9200421BAF /* RoughSwiftUI in Frameworks */ = {isa = PBXBuildFile; productRef = BA15ADD12EE3CB9200421BAF /* RoughSwiftUI */; };
+		BA15ADD22EE3CB9200421BAF /* Sketchy in Frameworks */ = {isa = PBXBuildFile; productRef = BA15ADD12EE3CB9200421BAF /* Sketchy */; };
 		BACB84922EDE7B8D00878DDE /* Inject in Frameworks */ = {isa = PBXBuildFile; productRef = BACB84912EDE7B8D00878DDE /* Inject */; };
-		BAEF0FA72EDE5CD800C46DE6 /* RoughSwiftUI in Frameworks */ = {isa = PBXBuildFile; productRef = BAEF0FA62EDE5CD800C46DE6 /* RoughSwiftUI */; };
+		BAEF0FA72EDE5CD800C46DE6 /* Sketchy in Frameworks */ = {isa = PBXBuildFile; productRef = BAEF0FA62EDE5CD800C46DE6 /* Sketchy */; };
 		D2C5CBF127EF63D200BBE97D /* RoughSwiftAppApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2C5CBF027EF63D200BBE97D /* RoughSwiftAppApp.swift */; };
 		D2C5CBF327EF63D300BBE97D /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2C5CBF227EF63D200BBE97D /* ContentView.swift */; };
 		D2C5CBF527EF63D500BBE97D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D2C5CBF427EF63D500BBE97D /* Assets.xcassets */; };
@@ -120,8 +120,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				BA15ADD22EE3CB9200421BAF /* RoughSwiftUI in Frameworks */,
-				BAEF0FA72EDE5CD800C46DE6 /* RoughSwiftUI in Frameworks */,
+				BA15ADD22EE3CB9200421BAF /* Sketchy in Frameworks */,
+				BAEF0FA72EDE5CD800C46DE6 /* Sketchy in Frameworks */,
 				BACB84922EDE7B8D00878DDE /* Inject in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -275,9 +275,9 @@
 			);
 			name = RoughSwiftApp;
 			packageProductDependencies = (
-				BAEF0FA62EDE5CD800C46DE6 /* RoughSwiftUI */,
+				BAEF0FA62EDE5CD800C46DE6 /* Sketchy */,
 				BACB84912EDE7B8D00878DDE /* Inject */,
-				BA15ADD12EE3CB9200421BAF /* RoughSwiftUI */,
+				BA15ADD12EE3CB9200421BAF /* Sketchy */,
 			);
 			productName = RoughSwiftApp;
 			productReference = D2C5CBED27EF63D200BBE97D /* RoughSwiftApp.app */;
@@ -309,7 +309,7 @@
 			mainGroup = D2C5CBE427EF63D200BBE97D;
 			packageReferences = (
 				BACB84902EDE7B8D00878DDE /* XCRemoteSwiftPackageReference "Inject" */,
-				BA15ADD02EE3CB9200421BAF /* XCLocalSwiftPackageReference "../../../RoughSwiftUI" */,
+				BA15ADD02EE3CB9200421BAF /* XCLocalSwiftPackageReference "../.." */,
 			);
 			productRefGroup = D2C5CBEE27EF63D200BBE97D /* Products */;
 			projectDirPath = "";
@@ -590,9 +590,9 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		BA15ADD02EE3CB9200421BAF /* XCLocalSwiftPackageReference "../../../RoughSwiftUI" */ = {
+		BA15ADD02EE3CB9200421BAF /* XCLocalSwiftPackageReference "../.." */ = {
 			isa = XCLocalSwiftPackageReference;
-			relativePath = ../../../RoughSwiftUI;
+			relativePath = ../..;
 		};
 /* End XCLocalSwiftPackageReference section */
 
@@ -608,18 +608,18 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		BA15ADD12EE3CB9200421BAF /* RoughSwiftUI */ = {
+		BA15ADD12EE3CB9200421BAF /* Sketchy */ = {
 			isa = XCSwiftPackageProductDependency;
-			productName = RoughSwiftUI;
+			productName = Sketchy;
 		};
 		BACB84912EDE7B8D00878DDE /* Inject */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = BACB84902EDE7B8D00878DDE /* XCRemoteSwiftPackageReference "Inject" */;
 			productName = Inject;
 		};
-		BAEF0FA62EDE5CD800C46DE6 /* RoughSwiftUI */ = {
+		BAEF0FA62EDE5CD800C46DE6 /* Sketchy */ = {
 			isa = XCSwiftPackageProductDependency;
-			productName = RoughSwiftUI;
+			productName = Sketchy;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

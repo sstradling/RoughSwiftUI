@@ -1,25 +1,37 @@
-# RoughSwiftUI
+# Sketchy
 
 ![Hachure, cross-hatch, sunburst, and crayon on one paper card](docs/images/hero.png)
 
-RoughSwiftUI draws shapes, SVG paths, and text in a hand-drawn style, in SwiftUI. Strokes are built by a native Swift port of the rough.js algorithms, then painted with `Canvas`. A seed redraws the same picture. Fill lines, brushes, and a wax-crayon stroke are part of the same view.
+Sketchy draws shapes, SVG paths, and text in a hand-drawn style, in SwiftUI. Strokes are built by a native Swift port of the rough.js algorithms, then painted with `Canvas`. A seed redraws the same picture. Fill lines, brushes, and a wax-crayon stroke are part of the same view.
 
 For AI coding agents: [AGENTS.md](AGENTS.md) is how to work in this repo, and [llms.txt](llms.txt) is the library API cheat-sheet.
 
 ## Installation
 
-Add the package to your `Package.swift` dependencies. This line stays on 1.0.0 until the next tagged release.
+Add the package to your `Package.swift` dependencies and to the target that uses it. The package requires iOS 17 or later.
 
 ```swift
-.package(url: "https://github.com/sstradling/RoughSwiftUI", from: "1.0.0"),
+.package(url: "https://github.com/sstradling/Sketchy", from: "1.2.0"),
 ```
 
-Add `RoughSwiftUI` to your target, then import it. The package requires iOS 17 or later.
+```swift
+.product(name: "Sketchy", package: "Sketchy")
+```
 
 ```swift
 import SwiftUI
-import RoughSwiftUI
+import Sketchy
 ```
+
+## Renamed from RoughSwiftUI
+
+The package, library product, and module were renamed to Sketchy in 1.2.0. Public type names did not change.
+
+1. Point the package URL at `https://github.com/sstradling/Sketchy` and require `1.2.0`.
+2. Depend on `.product(name: "Sketchy", package: "Sketchy")`.
+3. Replace `import RoughSwiftUI` with `import Sketchy`.
+
+`RoughView`, `RoughText`, `AnimatedRoughView`, and the other public types keep their names.
 
 ## Quick start
 
@@ -220,10 +232,10 @@ Generators are cached by size. Drawings are cached by shape and by the options t
 
 ## Credits
 
-- [**RoughSwift**](https://github.com/onmyway133/RoughSwift) by [Khoa Pham](https://github.com/onmyway133). RoughSwiftUI keeps that SwiftUI API and replaces the JavaScript engine with a native generator.
+- [**RoughSwift**](https://github.com/onmyway133/RoughSwift) by [Khoa Pham](https://github.com/onmyway133). Sketchy keeps that SwiftUI API and replaces the JavaScript engine with a native generator.
 - [**rough.js**](https://github.com/pshihn/rough) by Prashant Sharma. The hand-drawn line, fill, and curve algorithms come from rough.js.
 - [**SVGPath**](https://github.com/timrwood/SVGPath) by Tim Wood. SVG path parsing.
 
 ## License
 
-RoughSwiftUI is available under the MIT license. See the [LICENSE](LICENSE) file for more info.
+Sketchy is available under the MIT license. See the [LICENSE](LICENSE) file for more info.
