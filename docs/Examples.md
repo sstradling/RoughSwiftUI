@@ -2,6 +2,8 @@
 
 Rendered by `scripts/render-docs.sh` from the `DocExample` catalog. Each example sets a fixed seed so the picture matches the snippet. Tiles are light paper cards.
 
+The pictures below are the full catalog. A shorter tour lives in the [README](../README.md).
+
 ## Contents
 
 - [Basics](#basics)
@@ -16,6 +18,8 @@ Rendered by `scripts/render-docs.sh` from the `DocExample` catalog. Each example
 - [Animation](#animation)
 
 ## Basics
+
+A seeded shape is the smallest useful drawing. Every tile on this page sets a seed so the picture matches the snippet.
 
 ### Hachure rectangle
 
@@ -36,6 +40,8 @@ RoughView()
 ```
 
 ## Shapes
+
+Rectangles, ellipses, lines, arcs, polygons, curves, rounded rectangles, and eggs. Coordinates are in the 184-point box inside the card.
 
 ### Ellipse
 
@@ -232,6 +238,8 @@ RoughView()
 ```
 
 ## Fills
+
+Hachure, solid, zigzag, cross-hatch, dots, dashed, zigzag-line, sunburst, and scribble. 0° is horizontal. Positive angles rotate clockwise.
 
 ### Horizontal hachure
 
@@ -544,6 +552,8 @@ RoughView()
 
 ## Strokes
 
+Width, colour, opacity, and several lines in one view. Each outline is drawn as two offset passes.
+
 ### Several strokes
 
 One view can draw several lines. Each outline is itself two offset passes.
@@ -617,6 +627,8 @@ RoughView()
 ```
 
 ## Roughness
+
+Roughness, bowing, and maxRandomnessOffset set how far those two passes wander from the true edge.
 
 ### Even outline
 
@@ -692,6 +704,8 @@ RoughView()
 ```
 
 ## Brushes
+
+Calligraphic, marker, and pen presets, plus crayon wax. A crayon brush textures fill lines as well as the outline.
 
 ### Calligraphic brush
 
@@ -805,6 +819,8 @@ RoughView()
 
 ## Seeding
 
+The same seed redraws the same strokes. A different seed is a different drawing of the same shape.
+
 ### Seed 7
 
 A circle pinned with seed 7.
@@ -864,6 +880,8 @@ RoughView()
 
 ## SVG
 
+Path strings are scaled to fit the card. Stroke width, fill weight, and fill alignment can be set for SVG paths alone.
+
 ### SVG star
 
 An SVG path string, scaled to the card. svgStrokeWidth overrides the outline width.
@@ -902,6 +920,8 @@ RoughView()
 ```
 
 ## Text
+
+Glyphs are drawn at the font size you set and placed in the card. Text is not scaled to fill the frame the way an SVG path is.
 
 ### Rough text
 
@@ -1035,6 +1055,8 @@ HStack(spacing: 12) {
 ```
 
 ## Animation
+
+AnimationConfig.seed replays the same wobble. Options.seed still pins the base drawing. The GIF rate follows the step speed.
 
 ### Breathing circle
 
