@@ -25,17 +25,64 @@ jobs:
       - name: Run Tests
         run: |
           set -euo pipefail
-          # GitHub runners do not have a fixed simulator UUID. Prefer an
-          # iPhone 16 Pro, then any available iPhone.
-          DEVICE=$(xcrun simctl list devices available | awk -F '[()]' '/iPhone 16 Pro \(/ && $0 !~ /Max/ { print $2; exit }')
-          if [ -z "${DEVICE}" ]; then
-            DEVICE=$(xcrun simctl list devices available | awk -F '[()]' '/iPhone \(/ && $0 !~ /Max/ { print $2; exit }')
-          fi
-          if [ -z "${DEVICE}" ]; then
-            echo "No iPhone simulator runtime is installed."
-            exit 1
-          fi
-          echo "Using simulator ${DEVICE}"
+          # Runners do not share a simulator UUID. Prefer iPhone 17 Pro, then
+          # iPhone 16 Pro, then any other iPhone. Within a name, use the newest
+          # iOS runtime. "Pro" does not match "Pro Max".
+          DEVICE=$(python3 - << 'PY'
+          import json, re, subprocess, sys
+
+          raw = subprocess.check_output(
+              ["xcrun", "simctl", "list", "devices", "available", "-j"],
+              text=True,
+          )
+          data = json.loads(raw)
+
+          def runtime_version(runtime):
+              match = re.search(r"iOS-(\d+)-(\d+)(?:-(\d+))?", runtime)
+              if not match:
+                  return (0, 0, 0)
+              return tuple(int(part or 0) for part in match.groups())
+
+          def name_rank(name):
+              if not name.startswith("iPhone"):
+                  return None
+              if name == "iPhone 17 Pro":
+                  return 0
+              if name == "iPhone 16 Pro":
+                  return 1
+              if "Max" not in name:
+                  return 2
+              return 3
+
+          best = None
+          best_key = None
+          for runtime, devices in data.get("devices", {}).items():
+              version = runtime_version(runtime)
+              for device in devices:
+                  if not device.get("isAvailable"):
+                      continue
+                  name = device.get("name", "")
+                  rank = name_rank(name)
+                  if rank is None:
+                      continue
+                  key = (rank, tuple(-part for part in version))
+                  if best_key is None or key < best_key:
+                      best_key = key
+                      best = (device["udid"], name, runtime, version)
+
+          if best is None:
+              print("No iPhone simulator runtime is installed.", file=sys.stderr)
+              sys.exit(1)
+
+          udid, name, runtime, version = best
+          major, minor, patch = version
+          ios = f"{major}.{minor}" if patch == 0 else f"{major}.{minor}.{patch}"
+          print(f"Using {name} ({udid}) on iOS {ios}", file=sys.stderr)
+          print(runtime, file=sys.stderr)
+          print(udid)
+          PY
+          )
+          echo "Destination id ${DEVICE}"
           xcodebuild test \
             -scheme RoughSwiftUI \
             -destination "platform=iOS Simulator,id=${DEVICE}" \
