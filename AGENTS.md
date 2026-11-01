@@ -1,29 +1,29 @@
-# Agents working on RoughSwiftUI
+# Agents working on Sketchy
 
 This file is for coding agents changing this repository. Agents generating app code that only consumes the library should read [llms.txt](llms.txt) instead.
 
-The package is iOS 17+ (`Package.swift`). Tests run on an iPhone simulator. Do not bump the package version or create a git tag unless a release task says so. The install line in the README stays on `from: "1.0.0"` until that release.
+The package is iOS 17+ (`Package.swift`). Tests run on an iPhone simulator. Do not create a git tag unless a release task says so. The install line in the README is `from: "1.2.0"`. The module is `Sketchy`. Public types such as `RoughView` keep their names.
 
 ## Layout
 
 | Path | Role |
 | --- | --- |
-| `Sources/RoughSwiftUI/RoughView.swift` | Public builder: options, shapes, text, brushes, `.animated` |
-| `Sources/RoughSwiftUI/RoughText.swift` | Self-sizing text view over the same engine |
-| `Sources/RoughSwiftUI/AnimatedRoughView.swift` | Looping wobble. `pinnedFrame(_:)` is internal and is how docs capture one frame |
-| `Sources/RoughSwiftUI/Engine/Options.swift` | Defaults for roughness, fill, seed, scribble, SVG, brush |
-| `Sources/RoughSwiftUI/Engine/FillStyle.swift` | Fill style cases |
-| `Sources/RoughSwiftUI/Engine/Drawable.swift` | Shape values passed to `.draw`, plus text alignment enums |
-| `Sources/RoughSwiftUI/Engine/NativeGenerator.swift` | Builds a `Drawing`. SVG paths stay `shape == "path"` and are fitted. `FullText` is emitted as `shape == "text"` and is not fitted |
-| `Sources/RoughSwiftUI/Engine/BrushProfile.swift` | Tips, thickness, caps, joins, crayon preset |
-| `Sources/RoughSwiftUI/Engine/CrayonStyle.swift` | Wax parameters and `defaultSeed` |
-| `Sources/RoughSwiftUI/Engine/AnimationOptions.swift` | `AnimationConfig`, speed, variance |
-| `Sources/RoughSwiftUI/Engine/Engine.swift` | Shared generator and drawing caches |
-| `Sources/RoughSwiftUI/Engine/Fillers/` | One filler per fill style. `sunBurst` and `starBurst` share `StarburstFiller` |
-| `Sources/RoughSwiftUI/Render/SwiftUIRenderer.swift` | Turns a `Drawing` into `Canvas` commands. Crayon on a view also textures hachure, zigzag, and scribble lines |
-| `Sources/RoughSwiftUI/Render/CrayonStroke.swift` | Wax passes for a stroke |
-| `Tests/RoughSwiftUITests/` | Unit tests. Docs catalog is under `Docs/` |
-| `Tests/RoughSwiftUITests/Docs/DocExampleCatalog.swift` | Paper colour, tile size, and the example list |
+| `Sources/Sketchy/RoughView.swift` | Public builder: options, shapes, text, brushes, `.animated` |
+| `Sources/Sketchy/RoughText.swift` | Self-sizing text view over the same engine |
+| `Sources/Sketchy/AnimatedRoughView.swift` | Looping wobble. `pinnedFrame(_:)` is internal and is how docs capture one frame |
+| `Sources/Sketchy/Engine/Options.swift` | Defaults for roughness, fill, seed, scribble, SVG, brush |
+| `Sources/Sketchy/Engine/FillStyle.swift` | Fill style cases |
+| `Sources/Sketchy/Engine/Drawable.swift` | Shape values passed to `.draw`, plus text alignment enums |
+| `Sources/Sketchy/Engine/NativeGenerator.swift` | Builds a `Drawing`. SVG paths stay `shape == "path"` and are fitted. `FullText` is emitted as `shape == "text"` and is not fitted |
+| `Sources/Sketchy/Engine/BrushProfile.swift` | Tips, thickness, caps, joins, crayon preset |
+| `Sources/Sketchy/Engine/CrayonStyle.swift` | Wax parameters and `defaultSeed` |
+| `Sources/Sketchy/Engine/AnimationOptions.swift` | `AnimationConfig`, speed, variance |
+| `Sources/Sketchy/Engine/Engine.swift` | Shared generator and drawing caches |
+| `Sources/Sketchy/Engine/Fillers/` | One filler per fill style. `sunBurst` and `starBurst` share `StarburstFiller` |
+| `Sources/Sketchy/Render/SwiftUIRenderer.swift` | Turns a `Drawing` into `Canvas` commands. Crayon on a view also textures hachure, zigzag, and scribble lines |
+| `Sources/Sketchy/Render/CrayonStroke.swift` | Wax passes for a stroke |
+| `Tests/SketchyTests/` | Unit tests. Docs catalog is under `Docs/` |
+| `Tests/SketchyTests/Docs/DocExampleCatalog.swift` | Paper colour, tile size, and the example list |
 | `scripts/render-docs.sh` | Renders the catalog into `docs/images` and `docs/Examples.md` |
 | `.github/workflows/tests.yml` | CI test job |
 
@@ -35,9 +35,9 @@ CI does not hard-code a simulator UUID. It prefers an available iPhone 17 Pro (n
 
 ```bash
 xcodebuild test \
-  -scheme RoughSwiftUI \
+  -scheme Sketchy \
   -destination "platform=iOS Simulator,id=${DEVICE}" \
-  -only-testing:RoughSwiftUITests \
+  -only-testing:SketchyTests \
   -parallel-testing-enabled NO
 ```
 
@@ -45,9 +45,9 @@ xcodebuild test \
 
 ```bash
 xcodebuild test \
-  -scheme RoughSwiftUI \
+  -scheme Sketchy \
   -destination 'platform=iOS Simulator,id=SIMULATOR_UDID' \
-  -only-testing:RoughSwiftUITests \
+  -only-testing:SketchyTests \
   -parallel-testing-enabled NO
 ```
 

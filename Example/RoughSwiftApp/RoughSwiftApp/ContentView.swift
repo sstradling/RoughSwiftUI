@@ -6,7 +6,7 @@
 //
 
 import SwiftUI
-import RoughSwiftUI
+import Sketchy
 
 struct ContentView: View {
     @State private var flag = false

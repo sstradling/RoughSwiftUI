@@ -146,11 +146,11 @@ echo "Log: $LOG"
 set +e
 run_with_timeout "$XCODEBUILD_TIMEOUT" "$LOG" \
   xcodebuild test \
-  -scheme RoughSwiftUI \
+  -scheme Sketchy \
   -destination "$DESTINATION" \
   -derivedDataPath "$DERIVED" \
   -resultBundlePath "$RESULT" \
-  -only-testing:RoughSwiftUITests/DocsGalleryTests \
+  -only-testing:SketchyTests/DocsGalleryTests \
   -parallel-testing-enabled NO \
   -enableCodeCoverage NO
 status=$?

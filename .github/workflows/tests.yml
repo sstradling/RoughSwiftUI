@@ -84,7 +84,7 @@ jobs:
           )
           echo "Destination id ${DEVICE}"
           xcodebuild test \
-            -scheme RoughSwiftUI \
+            -scheme Sketchy \
             -destination "platform=iOS Simulator,id=${DEVICE}" \
-            -only-testing:RoughSwiftUITests \
+            -only-testing:SketchyTests \
             -parallel-testing-enabled NO

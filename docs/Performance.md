@@ -1,6 +1,6 @@
 # Performance
 
-RoughSwiftUI draws with a native Swift generator. There is no JavaScript bridge. The engine caches generators and drawings so a view that has not changed does not rebuild its strokes.
+Sketchy draws with a native Swift generator. There is no JavaScript bridge. The engine caches generators and drawings so a view that has not changed does not rebuild its strokes.
 
 - **Generator caching.** Generators are cached by canvas size.
 - **Drawing caching.** Drawings are cached by drawable, size, and the options that affect geometry, including `seed`.
@@ -52,7 +52,7 @@ To view them:
 
 1. Open Instruments and choose the Blank template.
 2. Add the os_signpost instrument.
-3. Filter for `com.roughswiftui`.
+3. Filter for `com.sketchy`.
 4. Run the app and read the timeline.
 
 | Category | Operations |
@@ -66,7 +66,7 @@ To view them:
 `PerformanceStatistics` collects the same timings without Instruments:
 
 ```swift
-import RoughSwiftUI
+import Sketchy
 
 PerformanceStatistics.shared.printReport()
 ```
@@ -74,7 +74,7 @@ PerformanceStatistics.shared.printReport()
 A report looks like this:
 
 ```
-=== RoughSwiftUI Performance Report ===
+=== Sketchy Performance Report ===
 
 Duration Measurements:
   Generate Drawing:
