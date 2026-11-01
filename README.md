@@ -4,6 +4,8 @@
 
 RoughSwiftUI draws shapes, SVG paths, and text in a hand-drawn style, in SwiftUI. Strokes are built by a native Swift port of the rough.js algorithms, then painted with `Canvas`. A seed redraws the same picture. Fill lines, brushes, and a wax-crayon stroke are part of the same view.
 
+For AI coding agents: [AGENTS.md](AGENTS.md) is how to work in this repo, and [llms.txt](llms.txt) is the library API cheat-sheet.
+
 ## Installation
 
 Add the package to your `Package.swift` dependencies. This line stays on 1.0.0 until the next tagged release.
