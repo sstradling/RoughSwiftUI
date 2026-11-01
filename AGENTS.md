@@ -1,82 +1,86 @@
-# Agent guide for Swift and SwiftUI
+# Agents working on RoughSwiftUI
 
-This repository contains an Xcode project written with Swift and SwiftUI. Please follow the guidelines below so that the development experience is built on modern, safe API usage.
+This file is for coding agents changing this repository. Agents generating app code that only consumes the library should read [llms.txt](llms.txt) instead.
 
+The package is iOS 17+ (`Package.swift`). Tests run on an iPhone simulator. Do not bump the package version or create a git tag unless a release task says so. The install line in the README stays on `from: "1.0.0"` until that release.
 
-## Role
+## Layout
 
-You are a **Senior iOS Engineer**, specializing in SwiftUI, SwiftData, and related frameworks. Your code must always adhere to Apple's Human Interface Guidelines and App Review guidelines.
+| Path | Role |
+| --- | --- |
+| `Sources/RoughSwiftUI/RoughView.swift` | Public builder: options, shapes, text, brushes, `.animated` |
+| `Sources/RoughSwiftUI/RoughText.swift` | Self-sizing text view over the same engine |
+| `Sources/RoughSwiftUI/AnimatedRoughView.swift` | Looping wobble. `pinnedFrame(_:)` is internal and is how docs capture one frame |
+| `Sources/RoughSwiftUI/Engine/Options.swift` | Defaults for roughness, fill, seed, scribble, SVG, brush |
+| `Sources/RoughSwiftUI/Engine/FillStyle.swift` | Fill style cases |
+| `Sources/RoughSwiftUI/Engine/Drawable.swift` | Shape values passed to `.draw`, plus text alignment enums |
+| `Sources/RoughSwiftUI/Engine/NativeGenerator.swift` | Builds a `Drawing`. SVG paths stay `shape == "path"` and are fitted. `FullText` is emitted as `shape == "text"` and is not fitted |
+| `Sources/RoughSwiftUI/Engine/BrushProfile.swift` | Tips, thickness, caps, joins, crayon preset |
+| `Sources/RoughSwiftUI/Engine/CrayonStyle.swift` | Wax parameters and `defaultSeed` |
+| `Sources/RoughSwiftUI/Engine/AnimationOptions.swift` | `AnimationConfig`, speed, variance |
+| `Sources/RoughSwiftUI/Engine/Engine.swift` | Shared generator and drawing caches |
+| `Sources/RoughSwiftUI/Engine/Fillers/` | One filler per fill style. `sunBurst` and `starBurst` share `StarburstFiller` |
+| `Sources/RoughSwiftUI/Render/SwiftUIRenderer.swift` | Turns a `Drawing` into `Canvas` commands. Crayon on a view also textures hachure, zigzag, and scribble lines |
+| `Sources/RoughSwiftUI/Render/CrayonStroke.swift` | Wax passes for a stroke |
+| `Tests/RoughSwiftUITests/` | Unit tests. Docs catalog is under `Docs/` |
+| `Tests/RoughSwiftUITests/Docs/DocExampleCatalog.swift` | Paper colour, tile size, and the example list |
+| `scripts/render-docs.sh` | Renders the catalog into `docs/images` and `docs/Examples.md` |
+| `.github/workflows/tests.yml` | CI test job |
 
+`Example/` is a sample app. `DOCUMENTATION.md` is the long API reference. `docs/Examples.md` is generated. `docs/Performance.md` is the cache and signpost notes.
 
-## Core instructions
+## Tests
 
-- Target iOS 26.0 or later. (Yes, it definitely exists.)
-- Swift 6.2 or later, using modern Swift concurrency. Always choose async/await APIs over closure-based variants whenever they exist.
-- SwiftUI backed up by `@Observable` classes for shared data.
-- Do not introduce third-party frameworks without asking first.
-- Avoid UIKit unless requested.
-- Never use legacy `Formatter` subclasses such as `DateFormatter`, `NumberFormatter`, or `MeasurementFormatter`. Always use the modern `FormatStyle` API instead. For example, to format a date, use `myDate.formatted(date: .abbreviated, time: .shortened)`. To parse a date from a string, use `Date(inputString, strategy: .iso8601)`. For numbers, use `myNumber.formatted(.number)` or custom format styles.
+CI does not hard-code a simulator UUID. It prefers an available iPhone 17 Pro (not Pro Max), then iPhone 16 Pro, then any other iPhone, and within that name the newest iOS runtime. The job then runs:
 
-## Swift instructions
+```bash
+xcodebuild test \
+  -scheme RoughSwiftUI \
+  -destination "platform=iOS Simulator,id=${DEVICE}" \
+  -only-testing:RoughSwiftUITests \
+  -parallel-testing-enabled NO
+```
 
-- Always mark `@Observable` classes with `@MainActor`.
-- Assume strict Swift concurrency rules are being applied.
-- Prefer Swift-native alternatives to Foundation methods where they exist, such as using `replacing("hello", with: "world")` with strings rather than `replacingOccurrences(of: "hello", with: "world")`.
-- Prefer modern Foundation API, for example `URL.documentsDirectory` to find the app’s documents directory, and `appending(path:)` to append strings to a URL.
-- Never use C-style number formatting such as `Text(String(format: "%.2f", abs(myNumber)))`; always use `Text(abs(change), format: .number.precision(.fractionLength(2)))` instead.
-- Prefer static member lookup to struct instances where possible, such as `.circle` rather than `Circle()`, and `.borderedProminent` rather than `BorderedProminentButtonStyle()`.
-- Never use old-style Grand Central Dispatch concurrency such as `DispatchQueue.main.async()`. If behavior like this is needed, always use modern Swift concurrency.
-- Filtering text based on user-input must be done using `localizedStandardContains()` as opposed to `contains()`.
-- Avoid force unwraps and force `try` unless it is unrecoverable.
+`DEVICE` is the `udid` chosen by the Python block in `.github/workflows/tests.yml`. Locally, pick a booted or available iPhone the same way and pass its id. From the package root:
 
+```bash
+xcodebuild test \
+  -scheme RoughSwiftUI \
+  -destination 'platform=iOS Simulator,id=SIMULATOR_UDID' \
+  -only-testing:RoughSwiftUITests \
+  -parallel-testing-enabled NO
+```
 
-## SwiftUI instructions
+A normal run must stay green. The suite is 379 tests with `DocsGalleryTests` skipped. New tests are fine. Do not leave failures, and do not drop coverage so the count falls below 379 unless a test was intentionally removed and the PR says why.
 
-- Always use `foregroundStyle()` instead of `foregroundColor()`.
-- Always use `clipShape(.rect(cornerRadius:))` instead of `cornerRadius()`.
-- Always use the `Tab` API instead of `tabItem()`.
-- Never use `ObservableObject`; always prefer `@Observable` classes instead.
-- Never use the `onChange()` modifier in its 1-parameter variant; either use the variant that accepts two parameters or accepts none.
-- Never use `onTapGesture()` unless you specifically need to know a tap’s location or the number of taps. All other usages should use `Button`.
-- Never use `Task.sleep(nanoseconds:)`; always use `Task.sleep(for:)` instead.
-- Never use `UIScreen.main.bounds` to read the size of the available space.
-- Do not break views up using computed properties; place them into new `View` structs instead.
-- Do not force specific font sizes; prefer using Dynamic Type instead.
-- Use the `navigationDestination(for:)` modifier to specify navigation, and always use `NavigationStack` instead of the old `NavigationView`.
-- If using an image for a button label, always specify text alongside like this: `Button("Tap me", systemImage: "plus", action: myButtonAction)`.
-- When rendering SwiftUI views, always prefer using `ImageRenderer` to `UIGraphicsImageRenderer`.
-- Don’t apply the `fontWeight()` modifier unless there is good reason. If you want to make some text bold, always use `bold()` instead of `fontWeight(.bold)`.
-- Do not use `GeometryReader` if a newer alternative would work as well, such as `containerRelativeFrame()` or `visualEffect()`.
-- When making a `ForEach` out of an `enumerated` sequence, do not convert it to an array first. So, prefer `ForEach(x.enumerated(), id: \.element.id)` instead of `ForEach(Array(x.enumerated()), id: \.element.id)`.
-- When hiding scroll view indicators, use the `.scrollIndicators(.hidden)` modifier rather than using `showsIndicators: false` in the scroll view initializer.
-- Use the newest ScrollView APIs for item scrolling and positioning (e.g. `ScrollPosition` and `defaultScrollAnchor`); avoid older scrollView APIs like ScrollViewReader.
-- Place view logic into view models or similar, so it can be tested.
-- Avoid `AnyView` unless it is absolutely required.
-- Avoid specifying hard-coded values for padding and stack spacing unless requested.
-- Avoid using UIKit colors in SwiftUI code.
+`DocsGalleryTests` skips unless `TEST_RUNNER_RENDER_DOCS=1` or `RENDER_DOCS=1` is in the test process environment. Passing that name as an `xcodebuild` argument only sets a build setting. `scripts/render-docs.sh` sets it with `simctl spawn … launchctl setenv` on the booted simulator, and clears it when the script exits.
 
+## Docs images
 
-## SwiftData instructions
+Regenerate pictures and `docs/Examples.md` with:
 
-If SwiftData is configured to use CloudKit:
+```bash
+scripts/render-docs.sh
+```
 
-- Never use `@Attribute(.unique)`.
-- Model properties must always either have default values or be marked as optional.
-- All relationships must be marked optional.
+Requirements on `PATH`: `gifski`, `pngquant`, and `oxipng`. Do not start a Homebrew from-source build to get them.
 
+The script is deterministic. Two consecutive runs must be byte-identical for `docs/Examples.md` and every file under `docs/images`. Every catalog drawing sets `Options.seed`. GIFs also set `AnimationConfig.seed`. Do not render an unseeded example.
 
-## Project structure
+Budgets, enforced by the script:
 
-- Use a consistent project structure, with folder layout determined by app features.
-- Follow strict naming conventions for types, properties, methods, and SwiftData models.
-- Break different types up into different Swift files rather than placing multiple structs, classes, or enums into a single file.
-- Write unit tests for core application logic.
-- Only write UI tests if unit tests are not possible.
-- Add code comments and documentation comments as needed.
-- If the project requires secrets such as API keys, never include them in the repository.
-- When adding user-facing strings, declare them in the appropriate string catalog using symbol/dot-notation keys, access them via SwiftUI helpers (e.g. `Text(.myKey)`) or the compiler-generated `String(localized: .key(...))` helpers (instead of constructing resources manually or using string based keys). Translate new keys into every supported language as a final step while following the app’s tone guidelines.
+- each still PNG at most 120 KB
+- each GIF at most 800 KB
+- `docs/images` at most 10 MB
 
+No Git LFS. Tiles are light paper cards only (`DocExampleCatalog.paper`, colour scheme `.light`). Do not add a dark-mode variant. `docs/images/hero.png` is the wide banner and is omitted from `docs/Examples.md`.
 
-## PR instructions
+`docs/Examples.md` is generated. Change `DocExample` entries or the writer in `scripts/render-docs.sh`, then re-run the script. Do not hand-edit `docs/Examples.md`.
 
-- If installed, make sure SwiftLint returns no warnings or errors before committing.
+## Commits and pull requests
+
+Branch from current `master`. Open the pull request against `master`.
+
+Commit subjects are imperative and say what changed. Use a second paragraph when the reason is not obvious. Keep unrelated work in separate commits. One example from this repo: the text-placement bug fix landed on its own, and the new text tiles landed after it.
+
+Do not commit `build/` or DerivedData. Do not add the crayon duck fixture unless a task names it. Run the test suite before pushing. If SwiftLint is installed, it should be clean.
