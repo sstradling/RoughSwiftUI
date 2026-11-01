@@ -307,10 +307,25 @@ plan.append({
 plan_path = source_root / "publish-plan.json"
 plan_path.write_text(json.dumps(plan), encoding="utf-8")
 
+intros = {
+    "Basics": "A seeded shape is the smallest useful drawing. Every tile on this page sets a seed so the picture matches the snippet.",
+    "Shapes": "Rectangles, ellipses, lines, arcs, polygons, curves, rounded rectangles, and eggs. Coordinates are in the 184-point box inside the card.",
+    "Fills": "Hachure, solid, zigzag, cross-hatch, dots, dashed, zigzag-line, sunburst, and scribble. 0° is horizontal. Positive angles rotate clockwise.",
+    "Strokes": "Width, colour, opacity, and several lines in one view. Each outline is drawn as two offset passes.",
+    "Roughness": "Roughness, bowing, and maxRandomnessOffset set how far those two passes wander from the true edge.",
+    "Brushes": "Calligraphic, marker, and pen presets, plus crayon wax. A crayon brush textures fill lines as well as the outline.",
+    "Seeding": "The same seed redraws the same strokes. A different seed is a different drawing of the same shape.",
+    "SVG": "Path strings are scaled to fit the card. Stroke width, fill weight, and fill alignment can be set for SVG paths alone.",
+    "Text": "Glyphs are drawn at the font size you set and placed in the card. Text is not scaled to fill the frame the way an SVG path is.",
+    "Animation": "AnimationConfig.seed replays the same wobble. Options.seed still pins the base drawing. The GIF rate follows the step speed.",
+}
+
 lines = [
     "# Examples",
     "",
     "Rendered by `scripts/render-docs.sh` from the `DocExample` catalog. Each example sets a fixed seed so the picture matches the snippet. Tiles are light paper cards.",
+    "",
+    "The pictures below are the full catalog. A shorter tour lives in the [README](../README.md).",
     "",
     "## Contents",
     "",
@@ -320,6 +335,11 @@ for section in sections:
 lines.append("")
 for section in sections:
     lines.append(f"## {section}")
+    lines.append("")
+    intro = intros.get(section)
+    if not intro:
+        raise SystemExit(f"missing Examples intro for section {section}")
+    lines.append(intro)
     lines.append("")
     for example in grouped[section]:
         lines.append(f"### {example['title']}")
@@ -361,7 +381,6 @@ for item in plan:
 PY
 
 # Replace the gallery so a removed example does not linger and count against the budget.
-# Screenshots/ (the older README images) lives outside this directory.
 rm -rf "$DOCS_IMAGES"
 mkdir -p "$DOCS_IMAGES"
 
