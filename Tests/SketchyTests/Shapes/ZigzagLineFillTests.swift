@@ -118,7 +118,7 @@ final class ZigzagLineFillTests: XCTestCase {
     private func assertZigzagStaysInside(
         shape: String,
         angle: Float,
-        operations: [Operation],
+        operations: [Sketchy.Operation],
         lines: [FillLine],
         half: Float,
         maxOutside: Float,
@@ -329,7 +329,7 @@ final class ZigzagLineFillTests: XCTestCase {
         return best
     }
 
-    private func pathPoints(_ operations: [Operation]) -> [(x: Float, y: Float)] {
+    private func pathPoints(_ operations: [Sketchy.Operation]) -> [(x: Float, y: Float)] {
         var points: [(x: Float, y: Float)] = []
         for operation in operations {
             switch operation {
