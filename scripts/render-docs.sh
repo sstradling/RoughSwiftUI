@@ -17,6 +17,9 @@
 #   docs/images     <= 10 MB
 # No Git LFS.
 # hero.png is a wide banner. It is published beside the tiles and left out of Examples.md.
+# header.png is the README wordmark from scripts/readme-header. The gallery
+# replace keeps that file. It is wider than a tile, so the 120 KB still cap
+# does not apply. It still counts toward the 10 MB folder budget.
 
 set -euo pipefail
 
@@ -381,8 +384,18 @@ for item in plan:
 PY
 
 # Replace the gallery so a removed example does not linger and count against the budget.
+# header.png is the README wordmark, produced by scripts/readme-header.
+header_keep=""
+if [[ -f "$DOCS_IMAGES/header.png" ]]; then
+  header_keep="$(mktemp)"
+  cp "$DOCS_IMAGES/header.png" "$header_keep"
+fi
 rm -rf "$DOCS_IMAGES"
 mkdir -p "$DOCS_IMAGES"
+if [[ -n "$header_keep" ]]; then
+  cp "$header_keep" "$DOCS_IMAGES/header.png"
+  rm -f "$header_keep"
+fi
 
 while IFS=$'\t' read -r kind src dest extra; do
   [[ -z "${kind:-}" ]] && continue
@@ -405,6 +418,8 @@ while IFS= read -r -d '' file; do
   rel="${file#"$ROOT"/}"
   printf '  %s  %s bytes\n' "$rel" "$size"
   case "$file" in
+    "$DOCS_IMAGES/header.png")
+      ;;
     *.png)
       if [[ "$size" -gt "$MAX_STILL" ]]; then
         echo "error: still $rel is ${size} bytes (limit ${MAX_STILL})."
