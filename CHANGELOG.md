@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Zigzag-line fill stays inside the outline. Each hachure line is a centered sawtooth (`±zigzagOffset / 2`, pitch still `2 * zigzagOffset`) clipped so peaks and ramps do not cross circles, ellipses, or polygons.
+
 ## 1.2.0
 
 - The Swift package, library product, and module are named Sketchy. Import `Sketchy`. Public type names (`RoughView`, `RoughText`, `AnimatedRoughView`, and the rest) are unchanged. The previous module name was RoughSwiftUI.
