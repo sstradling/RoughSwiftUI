@@ -50,7 +50,7 @@ Modifiers write `Options`. Stored defaults:
 | `dashOffset`, `dashGap`, `zigzagOffset` | `-1` (automatic) |
 | `brushProfile` | `.default` |
 
-`FillStyle` cases: `.hachure`, `.solid`, `.zigzag`, `.crossHatch`, `.dots`, `.sunBurst`, `.starBurst`, `.dashed`, `.zigzagLine`, `.scribble`. `.sunBurst` and `.starBurst` use the same filler. Dots ignore `fillAngle` and stay on the horizontal grid. Sunburst is radial and ignores `fillAngle`. Scribble uses `scribbleOrigin` instead.
+`FillStyle` cases: `.hachure`, `.solid`, `.zigzag`, `.crossHatch`, `.dots`, `.sunBurst`, `.starBurst`, `.dashed`, `.zigzagLine`, `.scribble`. `.sunBurst` and `.starBurst` use the same filler. Dots ignore `fillAngle` and stay on the horizontal grid. Sunburst is radial and ignores `fillAngle`. Scribble uses `scribbleOrigin` instead. Ellipse and circle hachure lines are chords of the ellipse at `fillAngle`, spaced perpendicular to the lines. Zigzag, cross-hatch, dashed, zigzag-line, and dots on an ellipse reuse those chords.
 
 `.fill` and `.stroke` each have a `Color` overload and a `UIColor` overload. In a file that imports both SwiftUI and UIKit, write `Color.red` or `UIColor.red`. A bare `.red` is ambiguous.
 

@@ -463,7 +463,7 @@ public struct Options: Equatable, Hashable {
 }
 ```
 
-`fillAngle` is clockwise from the +x axis because Core Graphics y points down. `0` draws horizontal lines and `90` draws vertical lines for hachure, zigzag, cross-hatch, dashed, and zigzag-line. Dots always use that horizontal grid. Scribble strokes take their bearing from `scribbleOrigin`. Starburst and sunburst fills are radial and ignore `fillAngle`.
+`fillAngle` is clockwise from the +x axis because Core Graphics y points down. `0` draws horizontal lines and `90` draws vertical lines for hachure, zigzag, cross-hatch, dashed, and zigzag-line. On an ellipse or circle those lines are chords of the ellipse, and the gap is the perpendicular distance between them. Dots always use that horizontal grid, including on an ellipse. Scribble strokes take their bearing from `scribbleOrigin`. Starburst and sunburst fills are radial and ignore `fillAngle`.
 
 `.seed(42)` restarts a SplitMix64 sequence for each generate call. Leave it `nil` for a new random drawing on every cache miss. `CrayonStyle.seed` still owns wax grain unless it is left at `CrayonStyle.defaultSeed` (1), in which case a set `Options.seed` is copied onto the crayon. `AnimationConfig.seed` is separate and is passed through as `PathVarianceGenerator`'s base seed.
 
