@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Ellipse hachure lines are chords of the ellipse at `fillAngle`, spaced by the hachure gap measured perpendicular to the lines. A wide ellipse no longer fills a rotated copy that spills past the top and bottom and leaves the side ends empty. Cross-hatch, zigzag, dashed, dots, and zigzag-line ellipse fills use the same chords.
+
 ## 1.2.0
 
 - The Swift package, library product, and module are named Sketchy. Import `Sketchy`. Public type names (`RoughView`, `RoughText`, `AnimatedRoughView`, and the rest) are unchanged. The previous module name was RoughSwiftUI.

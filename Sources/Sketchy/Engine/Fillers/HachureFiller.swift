@@ -54,9 +54,9 @@ public struct HachureFiller: FillGenerator {
         let maxY = bounds.maxY
         
         // The scanner's slope is cot(angle). Passing the complement makes
-        // `fillAngle` the line direction: 0° horizontal, 90° vertical. That
-        // matches `hachureEllipse`, which rotates a horizontal chord by
-        // `fillAngle` (clockwise on screen, because y points down).
+        // `fillAngle` the line direction: 0° horizontal, 90° vertical,
+        // clockwise on screen because y points down. `hachureEllipse` draws
+        // chords in that same direction.
         let angle = (90 - options.fillAngle) * Float.pi / 180
         var gap = options.computedHachureGap
         if gap < 0 {
@@ -111,48 +111,67 @@ public struct HachureFiller: FillGenerator {
     }
     
     /// Generates hachure lines for an ellipse.
+    ///
+    /// Each line is a chord of the jittered ellipse at `options.fillAngle`.
+    /// `0` is horizontal and `90` is vertical, clockwise on screen because y
+    /// points down. Consecutive lines are one hachure gap apart, measured
+    /// perpendicular to that direction.
+    ///
+    /// The ellipse is scaled to a circle, vertical chords are laid on that
+    /// circle, and an affine map rotates them and scales y back. Rotating
+    /// horizontal chords of the ellipse itself would spin the filled region
+    /// whenever the radii differ.
     public func hachureEllipse(cx: Float, cy: Float, rx: Float, ry: Float, options: Options) -> [FillLine] {
-        var rx = rx
-        var ry = ry
-        
-        // Add slight randomness
+        var rx = abs(rx)
+        var ry = abs(ry)
+        guard rx > 0, ry > 0 else { return [] }
+
+        // Same ±5% radius jitter rough.js applies before measuring chords.
+        // Roughness scales it, so zero roughness leaves the radii unchanged.
         rx += RoughMath.randOffset(rx * 0.05, options: options)
         ry += RoughMath.randOffset(ry * 0.05, options: options)
-        
-        // 0° leaves the horizontal chords in place. 90° turns them vertical.
-        let angle = options.fillAngle * Float.pi / 180
+        guard rx > 0, ry > 0 else { return [] }
+
         var gap = options.computedHachureGap
         if gap <= 0 {
             gap = options.strokeWidth * 4
         }
-        
-        let fillWeight = options.effectiveFillWeight
-        
-        // Use parametric approach for ellipse hachure
-        let aspectRatio = ry / rx
-        let tanAngle = tan(angle)
-        let s = aspectRatio * tanAngle
-        let t = 1 / sqrt(s * s + 1)
-        let adjustedGap = gap / (rx * ry / sqrt(ry * t * ry * t + rx * s * t * rx * s * t) / rx)
-        
-        var lines: [FillLine] = []
-        var pos = cy - ry + adjustedGap
-        
-        while pos < cy + ry {
-            // Calculate x coordinates where horizontal line intersects ellipse
-            let yDist = pos - cy
-            let xDist = sqrt(max(0, rx * rx * (1 - (yDist * yDist) / (ry * ry))))
-            
-            if xDist > 0 {
-                // Rotate the line segment by the hachure angle
-                let p1 = rotatePoint(cx - xDist, pos, cx, cy, angle)
-                let p2 = rotatePoint(cx + xDist, pos, cx, cy, angle)
-                lines.append(FillLine(start: p1, end: p2))
-            }
-            
-            pos += adjustedGap
+        guard gap > 0 else { return [] }
+        guard let frame = ellipseHachureFrame(rx: rx, ry: ry, fillAngle: options.fillAngle, gap: gap) else {
+            return []
         }
-        
+
+        var lines: [FillLine] = []
+        var xPos = cx - rx + frame.gapPrime
+        let limit = cx + rx
+        while xPos < limit {
+            let delta = cx - xPos
+            let radicand = rx * rx - delta * delta
+            if radicand > 0 {
+                let halfLength = sqrt(radicand)
+                let start = mapCirclePoint(
+                    xPos, cy - halfLength,
+                    cx: cx, cy: cy,
+                    sinAlpha: frame.sinAlpha,
+                    cosAlpha: frame.cosAlpha,
+                    aspectRatio: frame.aspectRatio
+                )
+                let end = mapCirclePoint(
+                    xPos, cy + halfLength,
+                    cx: cx, cy: cy,
+                    sinAlpha: frame.sinAlpha,
+                    cosAlpha: frame.cosAlpha,
+                    aspectRatio: frame.aspectRatio
+                )
+                lines.append(FillLine(start: start, end: end))
+            }
+            let next = xPos + frame.gapPrime
+            if next <= xPos {
+                break
+            }
+            xPos = next
+        }
+
         return lines
     }
     
@@ -191,15 +210,56 @@ public struct HachureFiller: FillGenerator {
     
     // MARK: - Helpers
     
-    /// Rotates a point around a center.
-    private func rotatePoint(_ x: Float, _ y: Float, _ cx: Float, _ cy: Float, _ angle: Float) -> (Float, Float) {
-        let cos_a = cos(angle)
-        let sin_a = sin(angle)
+    /// Circle-space rotation and chord step for one ellipse hachure.
+    ///
+    /// `sinAlpha` and `cosAlpha` rotate vertical chords of the circle of
+    /// radius `rx` so that, after y is scaled by `ry / rx`, the chords sit at
+    /// `fillAngle`. `gapPrime` is the circle-space step whose image is `gap`
+    /// points apart, measured perpendicular to those lines. Sine and cosine
+    /// are used instead of tangent so 0° and 90° stay finite.
+    private func ellipseHachureFrame(
+        rx: Float,
+        ry: Float,
+        fillAngle: Float,
+        gap: Float
+    ) -> (sinAlpha: Float, cosAlpha: Float, gapPrime: Float, aspectRatio: Float)? {
+        let aspectRatio = ry / rx
+        let phi = fillAngle * Float.pi / 180
+        let sinPhi = sin(phi)
+        let cosPhi = cos(phi)
+        let hypot = sqrt(aspectRatio * cosPhi * aspectRatio * cosPhi + sinPhi * sinPhi)
+        guard hypot > 0, hypot.isFinite else { return nil }
+
+        let sinAlpha = aspectRatio * cosPhi / hypot
+        let cosAlpha = sinPhi / hypot
+        let scale = sqrt(
+            (ry * cosAlpha) * (ry * cosAlpha) + (rx * sinAlpha) * (rx * sinAlpha)
+        )
+        guard scale.isFinite, scale > 0 else { return nil }
+
+        let gapPrime = gap * scale / ry
+        guard gapPrime.isFinite, gapPrime > 0 else { return nil }
+        return (sinAlpha, cosAlpha, gapPrime, aspectRatio)
+    }
+
+    /// Maps a point on the circle of radius `rx` onto the ellipse.
+    ///
+    /// This is the rough.js affine step: rotate about the center, then scale
+    /// y by the aspect ratio so the circle becomes the ellipse.
+    private func mapCirclePoint(
+        _ x: Float,
+        _ y: Float,
+        cx: Float,
+        cy: Float,
+        sinAlpha: Float,
+        cosAlpha: Float,
+        aspectRatio: Float
+    ) -> (Float, Float) {
         let dx = x - cx
         let dy = y - cy
         return (
-            cx + dx * cos_a - dy * sin_a,
-            cy + dx * sin_a + dy * cos_a
+            cx + dx * cosAlpha + dy * sinAlpha,
+            cy + aspectRatio * (-dx * sinAlpha + dy * cosAlpha)
         )
     }
 }
