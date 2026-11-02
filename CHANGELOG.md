@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Rounded-rectangle outlines draw each corner across the full quarter circle, so the arcs meet the straight sides. Corners keep a double stroke and the same seeded roughness as the other edges.
 - Ellipse hachure lines are chords of the ellipse at `fillAngle`, spaced by the hachure gap measured perpendicular to the lines. A wide ellipse no longer fills a rotated copy that spills past the top and bottom and leaves the side ends empty. Cross-hatch, zigzag, dashed, dots, and zigzag-line ellipse fills use the same chords.
 
 ## 1.2.0
