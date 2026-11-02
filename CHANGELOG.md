@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Rounded-rectangle outlines draw each corner across the full quarter circle, so the arcs meet the straight sides. Corners keep a double stroke and the same seeded roughness as the other edges.
+
 ## 1.2.0
 
 - The Swift package, library product, and module are named Sketchy. Import `Sketchy`. Public type names (`RoughView`, `RoughText`, `AnimatedRoughView`, and the rest) are unchanged. The previous module name was RoughSwiftUI.

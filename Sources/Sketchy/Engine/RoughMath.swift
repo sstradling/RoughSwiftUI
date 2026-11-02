@@ -641,37 +641,66 @@ public struct RoughMath {
     }
     
     /// Generates rough operations for a corner arc (quarter circle).
+    ///
+    /// Two passes match the double stroke on the straight sides. Each pass
+    /// draws the whole quarter and meets the adjacent edges.
     private static func cornerArcOps(
         cx: Float, cy: Float, r: Float,
         startAngle: Float, endAngle: Float,
         options: Options
     ) -> [Operation] {
-        let steps = max(2, Int(options.curveStepCount / 4))
-        let increment = (endAngle - startAngle) / Float(steps)
-        
+        // `curveStepCount` is a full turn. A corner uses about half of that,
+        // and at least four samples, so the quarter stays curved after the
+        // padding points below are dropped from the visible curve.
+        let steps = max(4, Int(options.curveStepCount / 2))
+        let first = cornerArcPass(
+            cx: cx, cy: cy, r: r,
+            startAngle: startAngle, endAngle: endAngle,
+            steps: steps, offset: 1, options: options
+        )
+        let second = cornerArcPass(
+            cx: cx, cy: cy, r: r,
+            startAngle: startAngle, endAngle: endAngle,
+            steps: steps, offset: 1.5, options: options
+        )
+        return first + second
+    }
+
+    /// One hand-drawn pass of a corner quarter-circle.
+    ///
+    /// `bezierFromPoints` fits a Catmull-Rom spline and only draws from
+    /// points[1] through points[len-2]. The first and last samples continue
+    /// the circle past the quarter so they are controls, not gaps: the
+    /// visible arc starts and ends on the joins with the straight sides.
+    private static func cornerArcPass(
+        cx: Float, cy: Float, r: Float,
+        startAngle: Float, endAngle: Float,
+        steps: Int,
+        offset: Float,
+        options: Options
+    ) -> [Operation] {
+        let sweep = endAngle - startAngle
+        let increment = sweep / Float(max(steps, 1))
+        // Keep the joins inside a normal stroke's wobble. Interior samples
+        // use the full pass offset so the two strokes still read as a double line.
+        let joinJitter = max(0, min(offset, options.maxRandomnessOffset * 0.25))
+
+        func point(angle: Float, jitter: Float) -> [Float] {
+            [
+                cx + r * cos(angle) + randOffset(jitter, options: options),
+                cy + r * sin(angle) + randOffset(jitter, options: options)
+            ]
+        }
+
         var points: [[Float]] = []
-        var angle = startAngle
-        
-        while angle <= endAngle + 0.001 {
-            points.append([
-                cx + r * cos(angle) + randOffset(1, options: options),
-                cy + r * sin(angle) + randOffset(1, options: options)
-            ])
-            angle += increment
+        points.append(point(angle: startAngle - increment, jitter: offset))
+        for i in 0...steps {
+            let angle = i == steps ? endAngle : startAngle + increment * Float(i)
+            let jitter = (i == 0 || i == steps) ? joinJitter : offset
+            points.append(point(angle: angle, jitter: jitter))
         }
-        
-        // Ensure we hit the exact end angle
-        let lastPoint = [cx + r * cos(endAngle), cy + r * sin(endAngle)]
-        if points.isEmpty || (points.last![0] != lastPoint[0] || points.last![1] != lastPoint[1]) {
-            points.append(lastPoint)
-        }
-        
-        // Convert points to bezier curves
-        if points.count >= 2 {
-            return bezierFromPoints(points, close: nil, options: options)
-        }
-        
-        return []
+        points.append(point(angle: endAngle + increment, jitter: offset))
+        return bezierFromPoints(points, close: nil, options: options)
     }
     
     /// Generates polygon approximation points for a rounded rectangle (for fills).
