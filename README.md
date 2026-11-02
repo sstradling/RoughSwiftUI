@@ -1,4 +1,4 @@
-# Sketchy
+<h1 align="center"><img src="docs/images/header.png" alt="Sketchy!" width="800"></h1>
 
 ![Hachure, cross-hatch, sunburst, and crayon on one paper card](docs/images/hero.png)
 
