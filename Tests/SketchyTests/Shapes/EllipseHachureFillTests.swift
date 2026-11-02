@@ -254,15 +254,15 @@ final class EllipseHachureFillTests: XCTestCase {
         var points: [(x: Float, y: Float)] = []
         for operation in operations {
             switch operation {
-            case let move as Move:
+            case let move as Sketchy.Move:
                 points.append((move.point.x, move.point.y))
-            case let segment as LineTo:
+            case let segment as Sketchy.LineTo:
                 points.append((segment.point.x, segment.point.y))
-            case let curve as BezierCurveTo:
+            case let curve as Sketchy.BezierCurveTo:
                 points.append((curve.controlPoint1.x, curve.controlPoint1.y))
                 points.append((curve.controlPoint2.x, curve.controlPoint2.y))
                 points.append((curve.point.x, curve.point.y))
-            case let quad as QuadraticCurveTo:
+            case let quad as Sketchy.QuadraticCurveTo:
                 points.append((quad.controlPoint.x, quad.controlPoint.y))
                 points.append((quad.point.x, quad.point.y))
             default:
