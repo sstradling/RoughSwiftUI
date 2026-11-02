@@ -231,7 +231,7 @@ final class RoundedRectangleOutlineTests: XCTestCase {
         (center.0 + radius * cos(angle), center.1 + radius * sin(angle))
     }
 
-    private func strokeSubpaths(from ops: [Operation]) -> [StrokeSubpath] {
+    private func strokeSubpaths(from ops: [Sketchy.Operation]) -> [StrokeSubpath] {
         var result: [StrokeSubpath] = []
         var current: StrokeSubpath?
         for op in ops {
@@ -288,7 +288,7 @@ final class RoundedRectangleOutlineTests: XCTestCase {
         }
     }
 
-    private func coordinates(of ops: [Operation]) -> [Float] {
+    private func coordinates(of ops: [Sketchy.Operation]) -> [Float] {
         var values: [Float] = []
         for op in ops {
             if let move = op as? Move {
