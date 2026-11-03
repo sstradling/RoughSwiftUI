@@ -280,6 +280,41 @@ extension DocExampleCatalog {
                 .draw(Line(from: Point(x: 24, y: 140), to: Point(x: 160, y: 44)))
         },
         still(
+            "variable-marker",
+            section: "Brushes",
+            title: "Variable marker",
+            description: "Width swells between a minimum and maximum and thins at both ends. The marker seed repeats that wobble. The default marker stays an even width.",
+            snippet: """
+            RoughView()
+                .stroke(\(coral.snippet))
+                .strokeWidth(18)
+                .brushProfile(.marker(
+                    variation: 1,
+                    minimum: 0.25,
+                    maximum: 1.45,
+                    taperStart: 0.12,
+                    taperEnd: 0.16,
+                    seed: 19
+                ))
+                .seed(127)
+                .draw(Line(from: Point(x: 24, y: 100), to: Point(x: 168, y: 92)))
+            """
+        ) {
+            RoughView()
+                .stroke(coral.color)
+                .strokeWidth(18)
+                .brushProfile(.marker(
+                    variation: 1,
+                    minimum: 0.25,
+                    maximum: 1.45,
+                    taperStart: 0.12,
+                    taperEnd: 0.16,
+                    seed: 19
+                ))
+                .seed(127)
+                .draw(Line(from: Point(x: 24, y: 100), to: Point(x: 168, y: 92)))
+        },
+        still(
             "pen",
             section: "Brushes",
             title: "Pen pressure",

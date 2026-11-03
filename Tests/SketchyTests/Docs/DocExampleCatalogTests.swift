@@ -35,7 +35,7 @@ final class DocExampleCatalogTests: XCTestCase {
             if case .gif = example.kind { return true }
             return false
         }
-        XCTAssertEqual(stills.count, 57)
+        XCTAssertEqual(stills.count, 58)
         XCTAssertEqual(gifs.count, 7)
     }
 
@@ -86,6 +86,19 @@ final class DocExampleCatalogTests: XCTestCase {
         XCTAssertNotNil(example("crayon").view().options.brushProfile.crayon)
         XCTAssertNotNil(example("crayon-fill").view().options.brushProfile.crayon)
         XCTAssertEqual(example("crayon").view().options.brushProfile.crayon?.seed, 4)
+    }
+
+    func testVariableMarkerExampleKeepsTheMarkerTipAndSeed() {
+        let profile = example("variable-marker").view().options.brushProfile
+        XCTAssertEqual(profile.tip, .flat)
+        XCTAssertEqual(profile.cap, .butt)
+        guard case .variable(let width) = profile.thicknessProfile else {
+            return XCTFail("variable-marker should use a variable thickness profile")
+        }
+        XCTAssertEqual(width.seed, 19)
+        XCTAssertEqual(width.minimum, 0.25, accuracy: 0.0001)
+        XCTAssertEqual(width.maximum, 1.45, accuracy: 0.0001)
+        XCTAssertEqual(example("marker").view().options.brushProfile, .marker)
     }
 
     func testHeroIsAWideSeededPaperCard() {
