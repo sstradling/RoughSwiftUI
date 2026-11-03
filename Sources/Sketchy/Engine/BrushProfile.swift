@@ -92,12 +92,80 @@ public struct BrushTip: Equatable, Hashable, Sendable {
     }
 }
 
+// MARK: - Width Stop
+
+/// An absolute stroke width at one position along a stroke.
+///
+/// `position` is the fraction of the stroke length, 0 at the start and 1 at
+/// the end. `width` is points, not a multiple of `strokeWidth`.
+/// `ThicknessProfile.stops` sorts stops and interpolates between them.
+public struct WidthStop: Equatable, Hashable, Sendable {
+    /// Fraction of the stroke length. Clamped to 0...1.
+    public var position: CGFloat
+
+    /// Width in points at `position`. Clamped to at least 0.
+    public var width: CGFloat
+
+    /// Creates a stop.
+    ///
+    /// - Parameters:
+    ///   - position: Fraction of the stroke length. Values outside 0...1 are clamped.
+    ///   - width: Width in points. Negative values are clamped to 0.
+    public init(position: CGFloat, width: CGFloat) {
+        self.position = min(1, max(0, position))
+        self.width = max(0, width)
+    }
+
+    /// Linear width at `t` through `stops`, or `nil` when `stops` is empty.
+    ///
+    /// Stops are sorted by position. A later stop wins when two share a
+    /// position. Before the first stop and after the last, the end widths hold.
+    /// `t` is clamped to 0...1.
+    static func width(of stops: [WidthStop], at t: CGFloat) -> CGFloat? {
+        guard !stops.isEmpty else { return nil }
+        let t = min(1, max(0, t))
+        let sorted = stops.sorted { $0.position < $1.position }
+        var collapsed: [WidthStop] = []
+        collapsed.reserveCapacity(sorted.count)
+        for stop in sorted {
+            if let last = collapsed.last, last.position == stop.position {
+                collapsed[collapsed.count - 1] = stop
+            } else {
+                collapsed.append(stop)
+            }
+        }
+
+        guard let first = collapsed.first else { return nil }
+        if t <= first.position {
+            return first.width
+        }
+        guard let last = collapsed.last else { return nil }
+        if t >= last.position {
+            return last.width
+        }
+        for index in 1..<collapsed.count {
+            let right = collapsed[index]
+            if t <= right.position {
+                let left = collapsed[index - 1]
+                let span = right.position - left.position
+                if span <= 0 {
+                    return right.width
+                }
+                let fraction = (t - left.position) / span
+                return left.width + (right.width - left.width) * fraction
+            }
+        }
+        return last.width
+    }
+}
+
 // MARK: - Thickness Profile
 
 /// Defines how stroke thickness varies along the length of a stroke.
 ///
 /// Thickness profiles allow for effects like tapered ends, pressure simulation,
-/// or custom artistic variations.
+/// or custom artistic variations. A brush stores one profile. `.stops` and
+/// `.variable` do not multiply; setting one replaces the other.
 public enum ThicknessProfile: Equatable, Hashable, Sendable {
     /// Uniform thickness along the entire stroke.
     case uniform
@@ -120,9 +188,34 @@ public enum ThicknessProfile: Equatable, Hashable, Sendable {
     /// - Parameter values: Array of pressure values (0-1) to interpolate.
     case pressure([CGFloat])
     
-    /// Custom thickness values to interpolate along the stroke.
-    /// - Parameter values: Array of thickness multipliers (typically 0-1).
+    /// Evenly spaced multipliers of `strokeWidth`.
+    ///
+    /// The first value is the start of the stroke and the last value is the
+    /// end. Values are spaced by `1 / (count - 1)`. With `strokeWidth` 8,
+    /// `.custom([0.5, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.5])` is 4pt at the start,
+    /// 8pt at 10% of the length, 8pt through 90%, and 4pt at the end.
+    ///
+    /// For point widths at chosen positions, use `.stops`.
+    /// - Parameter values: Thickness multipliers. An empty list is a multiplier of 1.
     case custom([CGFloat])
+
+    /// Absolute widths in points at positions along the stroke.
+    ///
+    /// Each `WidthStop` is a position from 0 to 1 and a width in points.
+    /// Stops are sorted by position. Linear interpolation connects them.
+    /// Before the first stop and after the last, the end widths hold.
+    /// Positions are clamped to 0...1. An empty list is an even `strokeWidth`.
+    ///
+    /// A non-empty list ignores `strokeWidth` (and `fillWeight`, when a
+    /// scribble stroke uses this profile). The brush tip still scales the
+    /// result by stroke direction, so a flat marker is thinner when the stroke
+    /// runs along the tip. `.variable` noise is not applied on top: this case
+    /// replaces that profile. Closed contours ignore the stops and draw an
+    /// even `strokeWidth` so the join does not seam.
+    ///
+    /// `.custom([0.5, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.5])` at `strokeWidth` 8
+    /// matches `.stops` of 4pt, 8pt at 10%, 8pt at 90%, and 4pt at the end.
+    case stops([WidthStop])
 
     /// Seeded width along the stroke. See `VariableStrokeWidth`.
     ///
@@ -145,6 +238,11 @@ public enum ThicknessProfile: Equatable, Hashable, Sendable {
     public static let penPressure = ThicknessProfile.pressure([0.2, 0.6, 0.9, 1.0, 0.95, 0.8, 0.5, 0.2])
     
     /// Computes the thickness multiplier at a given position along the stroke.
+    ///
+    /// This is a fraction of `strokeWidth` for every case except `.stops`.
+    /// `.stops` stores point widths, so this returns `1` and the renderer uses
+    /// `width(at:strokeWidth:)` instead. That includes a non-empty stop list:
+    /// the point width is not a multiplier.
     ///
     /// - Parameter t: Position along the stroke, from 0 (start) to 1 (end).
     /// - Returns: Thickness multiplier (typically 0-1, but can exceed 1 for emphasis).
@@ -180,6 +278,65 @@ public enum ThicknessProfile: Equatable, Hashable, Sendable {
 
         case .variable(let width):
             return width.multiplier(at: clampedT)
+
+        case .stops:
+            return 1
+        }
+    }
+
+    /// Stroke width in points at `t`.
+    ///
+    /// Multiplier profiles, including `.custom` and `.variable`, scale
+    /// `strokeWidth`. Non-empty `.stops` return the interpolated point width
+    /// and ignore `strokeWidth`. Empty `.stops` return `strokeWidth`.
+    ///
+    /// The brush tip may still scale this width by stroke direction. Closed
+    /// contours do not call this with the stop list; they use an even
+    /// `strokeWidth`.
+    ///
+    /// - Parameters:
+    ///   - t: Position along the stroke, from 0 (start) to 1 (end). Clamped.
+    ///   - strokeWidth: Base width in points for multiplier profiles.
+    /// - Returns: Width in points.
+    public func width(at t: CGFloat, strokeWidth: CGFloat) -> CGFloat {
+        switch self {
+        case .stops(let stops):
+            return WidthStop.width(of: stops, at: t) ?? strokeWidth
+        default:
+            return multiplier(at: t) * strokeWidth
+        }
+    }
+
+    /// Multiplier of `strokeWidth` that produces `width(at:strokeWidth:)`.
+    ///
+    /// For `.stops`, this is the interpolated point width divided by
+    /// `strokeWidth`. Empty stops return `1`. A non-empty list and a
+    /// `strokeWidth` of `0` return `0` because the ratio is undefined; the
+    /// rendered width is still the point width from `width(at:strokeWidth:)`.
+    /// Every other profile returns `multiplier(at:)`.
+    public func multiplier(at t: CGFloat, strokeWidth: CGFloat) -> CGFloat {
+        switch self {
+        case .stops(let stops):
+            guard !stops.isEmpty else { return 1 }
+            guard strokeWidth != 0 else { return 0 }
+            return width(at: t, strokeWidth: strokeWidth) / strokeWidth
+        default:
+            return multiplier(at: t)
+        }
+    }
+
+    /// True when an open stroke should vary its width along the path.
+    ///
+    /// Empty `.stops` are uniform. An empty `.custom` or `.pressure` list is
+    /// still a distinct profile and stays on the variable-width path.
+    var variesAlongStroke: Bool {
+        switch self {
+        case .uniform:
+            return false
+        case .stops(let stops):
+            return !stops.isEmpty
+        default:
+            return true
         }
     }
     
@@ -313,6 +470,8 @@ public struct BrushProfile: Equatable, Hashable, Sendable {
     /// and then multiplied by the noisy body. `seed` repeats the wobble.
     ///
     /// Closed contours ignore this profile and keep an even width.
+    /// `.widthStops` replaces this profile, including the noise. The flat tip
+    /// stays, and it scales the stop width by stroke direction.
     ///
     /// - Parameters:
     ///   - variation: Fraction of `strokeWidth` the width may wander, 0...1. Default 0.
@@ -415,15 +574,16 @@ public struct BrushProfile: Equatable, Hashable, Sendable {
         }
         // Need custom rendering if:
         // 1. Brush tip is not circular and direction-sensitive
-        // 2. Thickness profile is not uniform
+        // 2. Thickness profile changes width along an open stroke
         let hasNonCircularTip = tip.directionSensitive && tip.roundness < 0.99
-        let hasVariableThickness = thicknessProfile != .uniform
+        let hasVariableThickness = thicknessProfile.variesAlongStroke
         
         return hasNonCircularTip || hasVariableThickness
     }
     
     /// Returns a copy of this profile with uniform thickness.
-    /// Used for closed paths where a taper or a width wobble would seam at the join.
+    /// Used for closed paths where a taper, width stops, or a width wobble would seam at the join.
+    /// The even width is `strokeWidth`.
     func withUniformThickness() -> BrushProfile {
         BrushProfile(
             tip: tip,

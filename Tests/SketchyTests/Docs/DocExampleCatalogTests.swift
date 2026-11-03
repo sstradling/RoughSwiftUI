@@ -35,7 +35,7 @@ final class DocExampleCatalogTests: XCTestCase {
             if case .gif = example.kind { return true }
             return false
         }
-        XCTAssertEqual(stills.count, 58)
+        XCTAssertEqual(stills.count, 59)
         XCTAssertEqual(gifs.count, 7)
     }
 
@@ -86,6 +86,17 @@ final class DocExampleCatalogTests: XCTestCase {
         XCTAssertNotNil(example("crayon").view().options.brushProfile.crayon)
         XCTAssertNotNil(example("crayon-fill").view().options.brushProfile.crayon)
         XCTAssertEqual(example("crayon").view().options.brushProfile.crayon?.seed, 4)
+    }
+
+    func testWidthStopsExampleUsesPointWidths() {
+        let view = example("width-stops").view()
+        XCTAssertEqual(view.options.strokeWidth, 2)
+        guard case .stops(let stops) = view.options.thicknessProfile else {
+            return XCTFail("width-stops should use positioned width stops")
+        }
+        XCTAssertEqual(stops.map(\.position), [0, 0.1, 0.9, 1])
+        XCTAssertEqual(stops.map(\.width), [4, 8, 8, 4])
+        XCTAssertTrue(example("width-stops").snippet.contains(".widthStops([(0, 4), (0.1, 8), (0.9, 8), (1, 4)])"))
     }
 
     func testVariableMarkerExampleKeepsTheMarkerTipAndSeed() {

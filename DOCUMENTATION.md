@@ -66,6 +66,7 @@ import Sketchy
 | `Size` | Dimensions | `Size(width: Float, height: Float)` |
 | `FillStyle` | Fill pattern enumeration | `.hachure`, `.solid`, etc. |
 | `BrushProfile` | Stroke styling configuration | Calligraphic, pen, and crayon effects |
+| `WidthStop` | Absolute stroke width at one position | `position` 0...1, `width` in points |
 | `CrayonStyle` | Wax-crayon grain, edge, and seed | Used by `BrushProfile.crayon` |
 | `AnimationConfig` | Animation settings | Steps, speed, variance |
 
@@ -245,7 +246,11 @@ func brushTip(
 
 func brushTip(_ tip: BrushTip) -> Self
 func thicknessProfile(_ profile: ThicknessProfile) -> Self
+func widthStops(_ stops: [(CGFloat, CGFloat)]) -> Self
+func widthStops(_ stops: [WidthStop]) -> Self
 ```
+
+`RoughText` has the same `.widthStops` methods. Most glyph outlines are closed, so they keep an even `strokeWidth`.
 
 ### Animation Modifier
 
@@ -596,7 +601,8 @@ public enum ThicknessProfile: Equatable, Hashable, Sendable {
     case taperOut(end: CGFloat)
     case taperBoth(start: CGFloat, end: CGFloat)
     case pressure([CGFloat])
-    case custom([CGFloat])
+    case custom([CGFloat])          // Evenly spaced multipliers of strokeWidth
+    case stops([WidthStop])        // Absolute point widths at positions 0...1
     case variable(VariableStrokeWidth)
     
     // Presets
@@ -604,8 +610,50 @@ public enum ThicknessProfile: Equatable, Hashable, Sendable {
     public static let brushStart    // taperIn(start: 0.25)
     public static let brushEnd      // taperOut(end: 0.25)
     public static let penPressure   // Simulated pressure curve
+
+    public func multiplier(at t: CGFloat) -> CGFloat
+    public func width(at t: CGFloat, strokeWidth: CGFloat) -> CGFloat
+    public func multiplier(at t: CGFloat, strokeWidth: CGFloat) -> CGFloat
 }
 ```
+
+`.custom` spaces its multipliers evenly from the start of the stroke to the end. With `strokeWidth` 8, `.custom([0.5, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.5])` is 4pt at the start, 8pt at 10% of the length, 8pt through 90%, and 4pt at the end. `multiplier(at:)` is that fraction. It is unchanged by width stops.
+
+### WidthStop
+
+```swift
+public struct WidthStop: Equatable, Hashable, Sendable {
+    public var position: CGFloat  // 0...1 along the stroke, clamped
+    public var width: CGFloat     // points, clamped to at least 0
+
+    public init(position: CGFloat, width: CGFloat)
+}
+```
+
+`.stops` sorts by `position`. Linear interpolation connects the stops. Before the first stop and after the last, the end widths hold. Two stops at the same position use the later one. An empty list is an even `strokeWidth`.
+
+A non-empty list is already in points. `width(at:strokeWidth:)` returns that width and ignores `strokeWidth`. `multiplier(at:strokeWidth:)` is `width / strokeWidth` (or `0` when `strokeWidth` is `0`). `multiplier(at:)` returns `1` for `.stops`, so a point width is not fed back through the multiplier path. The renderer calls `width(at:strokeWidth:)`.
+
+The brush tip still scales that point width by stroke direction. A circular tip draws the stop width. A flat marker draws `BrushTip.effectiveWidth(baseWidth: stopWidth, strokeAngle:)`.
+
+`.stops` and `.variable` share one `thicknessProfile`. `.widthStops` replaces the variable profile, including its noise, pressure, and taper. They are not multiplied. `.brushProfile` replaces the whole profile, so call `.widthStops` after it. Closed contours drop both and draw an even `strokeWidth`, then the tip. A crayon brush does not consult the thickness profile. Its width stays `strokeWidth` plus `CrayonStyle.widthVariation`.
+
+An open stroke with stops fills with the winding rule, same as an open `.variable` marker, so the two rough passes union into one solid mark and the point width stays visible. Closed contours stay even-odd. `.custom` and the tapers stay even-odd.
+
+```swift
+RoughView()
+    .stroke(.blue)
+    .strokeWidth(2)
+    .widthStops([(0, 4), (0.1, 8), (0.9, 8), (1, 4)])
+    .draw(Curve(points: [
+        Point(x: 10, y: 120),
+        Point(x: 58, y: 28),
+        Point(x: 112, y: 156),
+        Point(x: 174, y: 52)
+    ]))
+```
+
+`strokeWidth` 2 is unused for that ribbon. The same shape as multipliers is `.strokeWidth(8).thicknessProfile(.custom([0.5, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.5]))`.
 
 ### BrushCap
 
@@ -713,6 +761,8 @@ public enum CrayonStroke {
 `BrushProfile.marker` is still an even flat stroke. The factory below keeps that tip, the butt caps, and the bevel joins, and varies the width along an open stroke. `marker()` with the default arguments is equal to `.marker`.
 
 The width is `ThicknessProfile.variable(_:)`, which calls `VariableStrokeWidth.multiplier(at:)`. That reuses the existing taper ramps and the existing pressure interpolation, then multiplies them by a seeded noise value. An open stroke fills with the winding rule so the two rough passes union into one mark. `.marker` stays even-odd. Closed contours still drop the profile and draw an even width so the join does not seam.
+
+Width stops do not layer on that noise. `.widthStops` replaces `.variable` and the flat tip scales the point widths. A later `.brushProfile(.marker(variation:))` replaces the stops.
 
 | Parameter | Default | Range | Effect |
 |-----------|---------|-------|--------|
@@ -1093,6 +1143,14 @@ RoughView().draw(Text("Hello", font: .systemFont(ofSize: 32)))
 ```swift
 Engine.shared.clearCaches()
 ```
+
+### Issue: Width stops do not change the stroke
+
+**Causes & Solutions:**
+1. The shape is closed, or the text glyphs are closed outlines. Closed contours keep an even `strokeWidth` so the join does not seam.
+2. `.brushProfile(...)` was called after `.widthStops` and replaced the stops. Set the brush first.
+3. `.brushProfile(.crayon)` does not use thickness profiles. Crayon width is `strokeWidth` plus `widthVariation`.
+4. The numbers in `.widthStops` are points. A non-empty list ignores `strokeWidth`.
 
 ### Issue: Drawing Changes Every Redraw
 

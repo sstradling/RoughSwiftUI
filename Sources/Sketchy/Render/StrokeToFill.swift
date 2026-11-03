@@ -423,17 +423,21 @@ struct StrokeToFillConverter {
         var leftPoints: [CGPoint] = []
         var rightPoints: [CGPoint] = []
         
-        // For closed paths, we need uniform thickness (not tapered)
-        // to ensure the path joins seamlessly
+        // Closed paths stay an even strokeWidth so the join does not seam.
+        // Tapers, width stops, and variable noise are all dropped here.
         let effectiveProfile = isClosed ? profile.withUniformThickness() : profile
         
         for sample in samples {
-            // Calculate thickness at this point
-            let thicknessMultiplier = effectiveProfile.thicknessProfile.multiplier(at: sample.t)
+            // Point width. Stops are already points; other profiles scale baseWidth.
+            // Closed contours have replaced the profile with an even strokeWidth.
+            let localWidth = effectiveProfile.thicknessProfile.width(
+                at: sample.t,
+                strokeWidth: baseWidth
+            )
             
             // Calculate effective width based on brush tip and direction
             let effectiveWidth = effectiveProfile.tip.effectiveWidth(
-                baseWidth: baseWidth * thicknessMultiplier,
+                baseWidth: localWidth,
                 strokeAngle: sample.tangentAngle
             )
             
