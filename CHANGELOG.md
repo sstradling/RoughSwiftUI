@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Ellipse and circle fills use the same jittered radii as the outline. The fill is centered in that shape, and zigzag-line clips to it instead of a separate circle. Hachure chords are centered, so a row gap is split across both sides.
+- `fillPadding` (default `0`) insets every fill from the outline. Positive values shrink ellipse radii and offset polygon edges inward. Negative values grow the fill. A padding that collapses the shape draws no fill. `fillOffset` (default `.zero`) shifts the fill without moving the outline.
 - Rounded-rectangle outlines draw each corner across the full quarter circle, so the arcs meet the straight sides. Corners keep a double stroke and the same seeded roughness as the other edges.
 - Ellipse hachure lines are chords of the ellipse at `fillAngle`, spaced by the hachure gap measured perpendicular to the lines. A wide ellipse no longer fills a rotated copy that spills past the top and bottom and leaves the side ends empty. Cross-hatch, zigzag, dashed, dots, and zigzag-line ellipse fills use the same chords.
 - Zigzag-line fill stays inside the outline. Each hachure line is a centered sawtooth (`±zigzagOffset / 2`, pitch still `2 * zigzagOffset`) clipped so peaks and ramps do not cross circles, ellipses, or polygons.

@@ -31,9 +31,9 @@ public struct SolidFiller: FillGenerator {
                 fillEllipse(cx: cx, cy: cy, rx: rx, ry: ry, options: options)
             }
         }
-        // Generate a single closed ellipse for solid fill
-        // Use solidEllipseOps instead of ellipseOps to get one fillable path
-        let ellipseOps = RoughMath.solidEllipseOps(cx: cx, cy: cy, rx: rx, ry: ry, options: options)
+        // The generator already resolved these radii so they match the outline.
+        // `solidEllipseOps` would jitter them a second time.
+        let ellipseOps = RoughMath.solidEllipseStroke(cx: cx, cy: cy, rx: rx, ry: ry, options: options)
         
         // Convert the ellipse to a fillPath type
         return OperationSet(type: .fillPath, operations: ellipseOps, path: nil, size: nil)

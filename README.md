@@ -176,11 +176,15 @@ RoughView()
 | `.fillWeight` | half the stroke, at least 1 | Width of each fill line |
 | `.fillAngle` | 45 | Degrees clockwise from horizontal |
 | `.fillSpacing` | 4 | Gap as a multiple of the fill weight, from 0.5 to 100 |
+| `.fillPadding` | 0 | Inset of the fill from the outline, in points. Negative grows the fill |
+| `.fillOffset` | `.zero` | Shifts the fill relative to the outline |
 | `.seed` | `nil` | Stable random sequence. `nil` picks a new drawing on a cache miss |
 
 ### Fill angle
 
 `0` is horizontal and `90` is vertical for hachure, zigzag, cross-hatch, dashed, and zigzag-line. Positive angles rotate clockwise because Core Graphics y points down. Dots stay on the horizontal grid. Scribble strokes use `scribbleOrigin` with that same bearing. Sunburst fills are radial and ignore `fillAngle`.
+
+`.fillPadding(0)` keeps the fill on the outline. A positive padding insets it (ellipse radii shrink, polygon edges move inward) and a negative padding grows it past the stroke. A padding that collapses the shape draws no fill. `.fillOffset(x:y:)` moves the fill without moving the outline.
 
 ### Seed
 

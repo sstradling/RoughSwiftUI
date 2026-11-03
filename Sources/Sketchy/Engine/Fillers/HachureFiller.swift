@@ -112,24 +112,24 @@ public struct HachureFiller: FillGenerator {
     
     /// Generates hachure lines for an ellipse.
     ///
-    /// Each line is a chord of the jittered ellipse at `options.fillAngle`.
-    /// `0` is horizontal and `90` is vertical, clockwise on screen because y
-    /// points down. Consecutive lines are one hachure gap apart, measured
-    /// perpendicular to that direction.
+    /// Each line is a chord of the ellipse at `options.fillAngle`. `0` is
+    /// horizontal and `90` is vertical, clockwise on screen because y points
+    /// down. Consecutive lines are one hachure gap apart, measured
+    /// perpendicular to that direction. The chords are centered in the
+    /// ellipse: the same margin is left on both sides, instead of a full gap
+    /// on one side and a remainder on the other.
+    ///
+    /// Radii are used as given. `NativeGenerator` jitters them once and passes
+    /// that pair to both this fill and the outline. Jittering again here
+    /// would fill a different ellipse than the one the stroke draws.
     ///
     /// The ellipse is scaled to a circle, vertical chords are laid on that
     /// circle, and an affine map rotates them and scales y back. Rotating
     /// horizontal chords of the ellipse itself would spin the filled region
     /// whenever the radii differ.
     public func hachureEllipse(cx: Float, cy: Float, rx: Float, ry: Float, options: Options) -> [FillLine] {
-        var rx = abs(rx)
-        var ry = abs(ry)
-        guard rx > 0, ry > 0 else { return [] }
-
-        // Same ±5% radius jitter rough.js applies before measuring chords.
-        // Roughness scales it, so zero roughness leaves the radii unchanged.
-        rx += RoughMath.randOffset(rx * 0.05, options: options)
-        ry += RoughMath.randOffset(ry * 0.05, options: options)
+        let rx = abs(rx)
+        let ry = abs(ry)
         guard rx > 0, ry > 0 else { return [] }
 
         var gap = options.computedHachureGap
@@ -141,10 +141,24 @@ public struct HachureFiller: FillGenerator {
             return []
         }
 
+        let span = rx * 2
+        let step = frame.gapPrime
+        guard span.isFinite, step.isFinite, step > 0 else { return [] }
+        // `floor(span/step)` leaves up to a full gap of empty ellipse on each
+        // side. One extra chord still fits when the remainder is large, and
+        // the two outer gaps stay equal so the fill stays centered.
+        let packed = Int(((span - 0.5) / step).rounded(.down)) + 1
+        var count = max(1, packed)
+        while count > 1 && span - step * Float(count - 1) <= 0.5 {
+            count -= 1
+        }
+        let used = step * Float(max(0, count - 1))
+        let margin = max(0, (span - used) / 2)
+        var xPos = cx - rx + margin
+
         var lines: [FillLine] = []
-        var xPos = cx - rx + frame.gapPrime
-        let limit = cx + rx
-        while xPos < limit {
+        lines.reserveCapacity(count)
+        for _ in 0..<count {
             let delta = cx - xPos
             let radicand = rx * rx - delta * delta
             if radicand > 0 {
@@ -165,11 +179,7 @@ public struct HachureFiller: FillGenerator {
                 )
                 lines.append(FillLine(start: start, end: end))
             }
-            let next = xPos + frame.gapPrime
-            if next <= xPos {
-                break
-            }
-            xPos = next
+            xPos += step
         }
 
         return lines
