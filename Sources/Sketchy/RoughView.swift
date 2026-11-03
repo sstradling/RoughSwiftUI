@@ -174,6 +174,30 @@ public extension RoughView {
         return v
     }
 
+    /// Insets the fill from the outline by `value` points.
+    ///
+    /// `0` keeps the fill edge on the shape the outline draws. A positive
+    /// value shrinks ellipse radii and offsets polygon edges inward. A
+    /// negative value grows the fill past the outline. A padding that
+    /// collapses the shape draws no fill.
+    func fillPadding(_ value: CGFloat) -> Self {
+        var v = self
+        v.options.fillPadding = value
+        return v
+    }
+
+    /// Shifts the fill relative to the outline. `.zero` leaves it centered.
+    func fillOffset(_ value: CGSize) -> Self {
+        var v = self
+        v.options.fillOffset = value
+        return v
+    }
+
+    /// Shifts the fill by `x` and `y` points relative to the outline.
+    func fillOffset(x: CGFloat, y: CGFloat) -> Self {
+        fillOffset(CGSize(width: x, height: y))
+    }
+
     /// Fixes the random sequence used for roughness, bowing, and fill wobble.
     ///
     /// The same seed redraws the same strokes. `nil` keeps a new random

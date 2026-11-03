@@ -161,6 +161,21 @@ public extension RoughText {
         RoughText(roughView: roughView.fillAngle(value), textSize: textSize)
     }
 
+    /// Insets the fill from the outline. See `RoughView.fillPadding`.
+    func fillPadding(_ value: CGFloat) -> Self {
+        RoughText(roughView: roughView.fillPadding(value), textSize: textSize)
+    }
+
+    /// Shifts the fill relative to the outline. See `RoughView.fillOffset`.
+    func fillOffset(_ value: CGSize) -> Self {
+        RoughText(roughView: roughView.fillOffset(value), textSize: textSize)
+    }
+
+    /// Shifts the fill by `x` and `y` points relative to the outline.
+    func fillOffset(x: CGFloat, y: CGFloat) -> Self {
+        RoughText(roughView: roughView.fillOffset(x: x, y: y), textSize: textSize)
+    }
+
     /// Fixes the random sequence used for roughness, bowing, and fill wobble.
     func seed(_ value: UInt64?) -> Self {
         RoughText(roughView: roughView.seed(value), textSize: textSize)

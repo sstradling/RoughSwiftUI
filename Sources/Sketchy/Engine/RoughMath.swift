@@ -261,17 +261,43 @@ public struct RoughMath {
                 ellipseOps(cx: cx, cy: cy, rx: rx, ry: ry, options: options)
             }
         }
-        let increment = (2 * Float.pi) / options.curveStepCount
+        let resolved = resolvedEllipseRadii(rx: rx, ry: ry, options: options)
+        return ellipseStroke(cx: cx, cy: cy, rx: resolved.rx, ry: resolved.ry, options: options)
+    }
+
+    /// Radii shared by an ellipse outline and its fill.
+    ///
+    /// rough.js jitters each radius once in `generateEllipseParams`. The stroke
+    /// and the fill both use that pair. Jittering again for the fill draws a
+    /// different ellipse than the outline.
+    static func resolvedEllipseRadii(rx: Float, ry: Float, options: Options) -> (rx: Float, ry: Float) {
         var rx = rx
         var ry = ry
-        
-        // Add slight randomness to radii
         rx += randOffset(rx * 0.05, options: options)
         ry += randOffset(ry * 0.05, options: options)
-        
+        return (rx, ry)
+    }
+
+    /// Outline passes for an ellipse whose radii are already resolved.
+    ///
+    /// `ellipseOps` resolves the radii and then calls this. The generator
+    /// resolves them once and passes the same pair to the fill.
+    static func ellipseStroke(
+        cx: Float,
+        cy: Float,
+        rx: Float,
+        ry: Float,
+        options: Options
+    ) -> [Operation] {
+        let increment = (2 * Float.pi) / options.curveStepCount
+        let overlap = increment * randOffsetWithRange(
+            0.1,
+            randOffsetWithRange(0.4, 1, options: options),
+            options: options
+        )
         let o1 = ellipseWithParams(
             increment: increment, cx: cx, cy: cy, rx: rx, ry: ry,
-            offset: 1, overlap: increment * randOffsetWithRange(0.1, randOffsetWithRange(0.4, 1, options: options), options: options),
+            offset: 1, overlap: overlap,
             options: options
         )
         let o2 = ellipseWithParams(
@@ -524,23 +550,37 @@ public struct RoughMath {
                 solidEllipseOps(cx: cx, cy: cy, rx: rx, ry: ry, options: options)
             }
         }
+        let resolved = resolvedEllipseRadii(rx: rx, ry: ry, options: options)
+        return solidEllipseStroke(
+            cx: cx, cy: cy, rx: resolved.rx, ry: resolved.ry, options: options
+        )
+    }
+
+    /// One closed ellipse for a solid fill, using radii the caller already resolved.
+    ///
+    /// The generator shares those radii with the outline. Calling
+    /// `resolvedEllipseRadii` again here would fill a different ellipse.
+    static func solidEllipseStroke(
+        cx: Float,
+        cy: Float,
+        rx: Float,
+        ry: Float,
+        options: Options
+    ) -> [Operation] {
         let increment = (2 * Float.pi) / options.curveStepCount
-        var rxMod = rx
-        var ryMod = ry
-        
-        // Add slight randomness to radii to maintain hand-drawn aesthetic
-        rxMod += randOffset(rx * 0.05, options: options)
-        ryMod += randOffset(ry * 0.05, options: options)
-        
-        // Generate a single closed ellipse suitable for filling
+        let overlap = increment * randOffsetWithRange(
+            0.1,
+            randOffsetWithRange(0.4, 1, options: options),
+            options: options
+        )
         var ops = ellipseWithParams(
             increment: increment,
             cx: cx,
             cy: cy,
-            rx: rxMod,
-            ry: ryMod,
+            rx: rx,
+            ry: ry,
             offset: 1,
-            overlap: increment * randOffsetWithRange(0.1, randOffsetWithRange(0.4, 1, options: options), options: options),
+            overlap: overlap,
             options: options
         )
         

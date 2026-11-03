@@ -37,8 +37,9 @@ final class EllipseHachureFillTests: XCTestCase {
     }
 
     func testWideEllipseHachureJitterStaysNearTheOutline() {
-        // Roughness 1 jitters each radius by about 5% before the chords are cut.
-        // Endpoints stay near the requested ellipse, and the lines still span it.
+        // Radius jitter belongs to the generator, which shares one pair with the
+        // outline. The filler uses the radii it is given, so roughness does not
+        // move these endpoints off that ellipse.
         var options = quietOptions(angle: 0)
         options.roughness = 1
         options.seed = 11
@@ -59,7 +60,7 @@ final class EllipseHachureFillTests: XCTestCase {
                 radii: wideRadii,
                 angle: angle,
                 gap: gap,
-                insideLimit: 1.12,
+                insideLimit: 1.02,
                 shortfallAllowance: allowance
             )
         }

@@ -59,6 +59,17 @@ public struct Options: Equatable, Hashable {
     /// fills are radial and ignore this angle.
     public var fillAngle: Float = 45
 
+    /// How far the fill sits inside the outline, in points.
+    ///
+    /// `0` puts the fill edge on the same shape the outline draws. A positive
+    /// value insets every fill style: ellipse and circle radii shrink, and
+    /// polygon edges move inward. A negative value grows the fill past the
+    /// outline. When the inset collapses the shape, the fill is omitted.
+    public var fillPadding: CGFloat = 0
+
+    /// Shifts the fill relative to the outline. `.zero` leaves it centered.
+    public var fillOffset: CGSize = .zero
+
     /// Seed for roughness, bowing, and fill wobble.
     ///
     /// `nil` (the default) keeps the system random generator, so an uncached
@@ -219,6 +230,9 @@ public struct Options: Equatable, Hashable {
         hasher.combine(fillStyle)
         hasher.combine(fillWeight)
         hasher.combine(fillAngle)
+        hasher.combine(fillPadding)
+        hasher.combine(fillOffset.width)
+        hasher.combine(fillOffset.height)
         hasher.combine(fillSpacing)
         hasher.combine(fillSpacingPattern)
         hasher.combine(dashOffset)
@@ -264,6 +278,9 @@ public struct Options: Equatable, Hashable {
             "fillWeight": fillWeight,
             "hachureAngle": fillAngle,
             "hachureGap": computedHachureGap,
+            "fillPadding": Double(fillPadding),
+            "fillOffsetX": Double(fillOffset.width),
+            "fillOffsetY": Double(fillOffset.height),
             "dashOffset": dashOffset,
             "dashGap": dashGap,
             "zigzagOffset": zigzagOffset
@@ -293,6 +310,14 @@ public extension Options {
         curveStepCount <-? (dictionary["curveStepCount"] as? NSNumber)?.floatValue
         fillWeight <-? (dictionary["fillWeight"] as? NSNumber)?.floatValue
         fillAngle <-? (dictionary["hachureAngle"] as? NSNumber)?.floatValue
+        if let padding = (dictionary["fillPadding"] as? NSNumber)?.doubleValue {
+            fillPadding = CGFloat(padding)
+        }
+        let offsetX = (dictionary["fillOffsetX"] as? NSNumber)?.doubleValue ?? 0
+        let offsetY = (dictionary["fillOffsetY"] as? NSNumber)?.doubleValue ?? 0
+        if offsetX != 0 || offsetY != 0 {
+            fillOffset = CGSize(width: offsetX, height: offsetY)
+        }
         dashOffset <-? (dictionary["dashOffset"] as? NSNumber)?.floatValue
         dashGap <-? (dictionary["dashGap"] as? NSNumber)?.floatValue
         zigzagOffset <-? (dictionary["zigzagOffset"] as? NSNumber)?.floatValue

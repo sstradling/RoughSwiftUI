@@ -435,13 +435,18 @@ private extension SwiftUIRenderer {
         guard let shapePath = extractShapePath(from: drawing, svgTransform: svgTransform, isSVGPath: isSVGPath) else {
             return []
         }
+        guard let fillPath = FillGeometry.adjustedPath(
+            shapePath, padding: options.fillPadding, offset: options.fillOffset
+        ) else {
+            return []
+        }
         
         // Only use clip path for SVG paths (which may be concave shapes like stars)
         // Simple shapes like rectangles and circles don't need clipping
-        let clipPath: SwiftPath? = isSVGPath ? SwiftPath(shapePath) : nil
+        let clipPath: SwiftPath? = isSVGPath ? SwiftPath(fillPath) : nil
         
         // Generate scribble fill operation sets
-        let scribbleSets = ScribbleFillGenerator.generate(for: shapePath, options: options)
+        let scribbleSets = ScribbleFillGenerator.generate(for: fillPath, options: options)
         
         // Calculate fill weight
         let strokeWidth = isSVGPath ? options.effectiveSVGStrokeWidth : options.strokeWidth
