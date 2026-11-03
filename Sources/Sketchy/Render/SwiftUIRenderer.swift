@@ -77,6 +77,16 @@ public enum RoughFillRule: Equatable, Hashable, Sendable {
 
 /// Convert `Drawing`/`OperationSet` data into SwiftUI `Path` commands and render them.
 public struct SwiftUIRenderer {
+    /// Open variable-width strokes use winding so the two rough passes union
+    /// into one solid mark. Closed contours stay even-odd so the inner edge
+    /// of a ring stays a hole. Every other brush, including `.marker`, stays
+    /// even-odd and keeps its current output.
+    static func brushFillRule(operations: [Operation], profile: BrushProfile) -> RoughFillRule {
+        guard case .variable = profile.thicknessProfile else { return .evenOdd }
+        let closed = operations.contains { $0 is Close }
+        return closed ? .evenOdd : .winding
+    }
+
 
     /// Build a list of draw commands representing the given `Drawing`.
     ///
@@ -262,7 +272,8 @@ private extension SwiftUIRenderer {
                 return [
                     RoughRenderCommand(
                         path: finalPath,
-                        style: .fill(strokeColor)
+                        style: .fill(strokeColor),
+                        fillRule: Self.brushFillRule(operations: set.operations, profile: options.brushProfile)
                     )
                 ]
             } else {
@@ -489,7 +500,8 @@ private extension SwiftUIRenderer {
                         path: filledPath,
                         style: .fill(color),
                         clipPath: clipPath,
-                        inverseClip: false
+                        inverseClip: false,
+                        fillRule: Self.brushFillRule(operations: set.operations, profile: options.brushProfile)
                     )
                 ]
             } else {

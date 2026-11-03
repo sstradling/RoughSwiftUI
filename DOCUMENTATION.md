@@ -591,6 +591,7 @@ public enum ThicknessProfile: Equatable, Hashable, Sendable {
     case taperBoth(start: CGFloat, end: CGFloat)
     case pressure([CGFloat])
     case custom([CGFloat])
+    case variable(VariableStrokeWidth)
     
     // Presets
     public static let naturalPen    // taperBoth(start: 0.15, end: 0.15)
@@ -636,6 +637,16 @@ public struct BrushProfile: Equatable, Hashable, Sendable {
     public static let `default`     // Circular, uniform
     public static let calligraphic  // Flat tip, tapered
     public static let marker        // Flat tip, uniform, butt caps
+    public static func marker(
+        variation: CGFloat = 0,
+        minimum: CGFloat? = nil,
+        maximum: CGFloat? = nil,
+        taperStart: CGFloat = 0,
+        taperEnd: CGFloat = 0,
+        pressure: [CGFloat] = [],
+        seed: UInt64 = 1,
+        frequency: CGFloat = 3
+    ) -> BrushProfile
     public static let pen           // Pressure simulation
     public static let crayon        // Continuous wax base, dense grit, seed 1
 
@@ -690,6 +701,41 @@ public enum CrayonStroke {
 ```
 
 `RoughView` calls this when `brushProfile.crayon` is set. Use `CrayonStroke.passes` when drawing the marks yourself. Fill each pass with the winding rule.
+
+### Variable marker width
+
+`BrushProfile.marker` is still an even flat stroke. The factory below keeps that tip, the butt caps, and the bevel joins, and varies the width along an open stroke. `marker()` with the default arguments is equal to `.marker`.
+
+The width is `ThicknessProfile.variable(_:)`, which calls `VariableStrokeWidth.multiplier(at:)`. That reuses the existing taper ramps and the existing pressure interpolation, then multiplies them by a seeded noise value. An open stroke fills with the winding rule so the two rough passes union into one mark. `.marker` stays even-odd. Closed contours still drop the profile and draw an even width so the join does not seam.
+
+| Parameter | Default | Range | Effect |
+|-----------|---------|-------|--------|
+| `variation` | 0 | 0...1 | With no bounds, `0.35` keeps the noisy body in `[0.65, 1.35]` times `strokeWidth`. `0` is an even stroke |
+| `minimum` | nil | multiplier | Lower body width as a fraction of `strokeWidth`. Omitted becomes `1 - variation` |
+| `maximum` | nil | multiplier | Upper width as a fraction of `strokeWidth`. Omitted becomes `1 + variation` |
+| `taperStart` | 0 | 0...1 | Fraction of the stroke that thins to a point at the start |
+| `taperEnd` | 0 | 0...1 | Fraction of the stroke that thins to a point at the end |
+| `pressure` | `[]` | multipliers | Same interpolation as `ThicknessProfile.pressure`, then multiplied by the noisy body |
+| `seed` | 1 | any `UInt64` | Repeats the same wobble |
+| `frequency` | 3 | at least 0.5 | Noise cycles from the start of the stroke to the end |
+
+When `minimum` and `maximum` are both set and `variation` is `0`, the noise uses the whole span. When `variation` is also set, it is the fraction of that span used around the midpoint. A taper may fall below `minimum`, down to 0. The multiplier never exceeds `maximum`. Without a taper, every sample stays inside `[minimum, maximum]`.
+
+```swift
+RoughView()
+    .stroke(.red)
+    .strokeWidth(18)
+    .brushProfile(.marker(
+        variation: 1,
+        minimum: 0.25,
+        maximum: 1.45,
+        taperStart: 0.12,
+        taperEnd: 0.16,
+        seed: 19
+    ))
+    .seed(127)
+    .draw(Line(from: Point(x: 24, y: 100), to: Point(x: 168, y: 92)))
+```
 
 ### Brush Examples
 

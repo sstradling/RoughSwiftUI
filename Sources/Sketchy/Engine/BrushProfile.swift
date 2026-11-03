@@ -123,6 +123,12 @@ public enum ThicknessProfile: Equatable, Hashable, Sendable {
     /// Custom thickness values to interpolate along the stroke.
     /// - Parameter values: Array of thickness multipliers (typically 0-1).
     case custom([CGFloat])
+
+    /// Seeded width along the stroke. See `VariableStrokeWidth`.
+    ///
+    /// The marker factory builds this. Other brushes can use it through
+    /// `thicknessProfile(_:)`. Closed contours still render at an even width.
+    case variable(VariableStrokeWidth)
     
     // MARK: - Preset Profiles
     
@@ -171,6 +177,9 @@ public enum ThicknessProfile: Equatable, Hashable, Sendable {
             
         case .pressure(let values), .custom(let values):
             return interpolate(values: values, at: clampedT)
+
+        case .variable(let width):
+            return width.multiplier(at: clampedT)
         }
     }
     
@@ -283,13 +292,65 @@ public struct BrushProfile: Equatable, Hashable, Sendable {
         join: .round
     )
     
-    /// Marker-style brush with flat tip.
+    /// Marker-style brush with a flat tip, butt caps, and an even width.
+    ///
+    /// `marker(variation:minimum:maximum:taperStart:taperEnd:pressure:seed:)`
+    /// is the same tip with width that changes along an open stroke.
     public static let marker = BrushProfile(
         tip: .flat,
         thicknessProfile: .uniform,
         cap: .butt,
         join: .bevel
     )
+
+    /// Marker with width that changes along an open stroke.
+    ///
+    /// Defaults match `BrushProfile.marker`: flat tip, butt caps, bevel joins,
+    /// and a multiplier of 1. `variation` sizes the wobble when the bounds are
+    /// omitted. `minimum` and `maximum` are multipliers of `strokeWidth`.
+    /// Taper uses the same ramps as `ThicknessProfile.taperIn` and `taperOut`
+    /// and may reach 0. `pressure` is interpolated like `ThicknessProfile.pressure`
+    /// and then multiplied by the noisy body. `seed` repeats the wobble.
+    ///
+    /// Closed contours ignore this profile and keep an even width.
+    ///
+    /// - Parameters:
+    ///   - variation: Fraction of `strokeWidth` the width may wander, 0...1. Default 0.
+    ///   - minimum: Lower body multiplier. Default derived from `variation`, or the whole span when bounds are set and `variation` is 0.
+    ///   - maximum: Upper multiplier. Default derived from `variation`.
+    ///   - taperStart: Fraction of the stroke that thins at the start. Default 0.
+    ///   - taperEnd: Fraction of the stroke that thins at the end. Default 0.
+    ///   - pressure: Pressure multipliers along the stroke. Default empty.
+    ///   - seed: Stable noise seed. Default 1.
+    ///   - frequency: Noise cycles along the stroke. Default 3.
+    public static func marker(
+        variation: CGFloat = 0,
+        minimum: CGFloat? = nil,
+        maximum: CGFloat? = nil,
+        taperStart: CGFloat = 0,
+        taperEnd: CGFloat = 0,
+        pressure: [CGFloat] = [],
+        seed: UInt64 = 1,
+        frequency: CGFloat = 3
+    ) -> BrushProfile {
+        let width = VariableStrokeWidth(
+            variation: variation,
+            minimum: minimum,
+            maximum: maximum,
+            taperStart: taperStart,
+            taperEnd: taperEnd,
+            pressure: pressure,
+            seed: seed,
+            frequency: frequency
+        )
+        guard width.changesWidth else { return .marker }
+        return BrushProfile(
+            tip: .flat,
+            thicknessProfile: .variable(width),
+            cap: .butt,
+            join: .bevel
+        )
+    }
     
     /// Pen-style brush with pressure simulation.
     public static let pen = BrushProfile(
@@ -362,7 +423,7 @@ public struct BrushProfile: Equatable, Hashable, Sendable {
     }
     
     /// Returns a copy of this profile with uniform thickness.
-    /// Used for closed paths where tapered ends would cause visible seams.
+    /// Used for closed paths where a taper or a width wobble would seam at the join.
     func withUniformThickness() -> BrushProfile {
         BrushProfile(
             tip: tip,

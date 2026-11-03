@@ -742,6 +742,28 @@ RoughView()
     .draw(Line(from: Point(x: 24, y: 140), to: Point(x: 160, y: 44)))
 ```
 
+### Variable marker
+
+Width swells between a minimum and maximum and thins at both ends. The marker seed repeats that wobble. The default marker stays an even width.
+
+![Variable marker](images/brushes/variable-marker.png)
+
+```swift
+RoughView()
+    .stroke(Color(red: 0.76, green: 0.32, blue: 0.28))
+    .strokeWidth(18)
+    .brushProfile(.marker(
+        variation: 1,
+        minimum: 0.25,
+        maximum: 1.45,
+        taperStart: 0.12,
+        taperEnd: 0.16,
+        seed: 19
+    ))
+    .seed(127)
+    .draw(Line(from: Point(x: 24, y: 100), to: Point(x: 168, y: 92)))
+```
+
 ### Pen pressure
 
 The pen preset swells through the middle of the stroke.

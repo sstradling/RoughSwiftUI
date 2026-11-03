@@ -210,11 +210,22 @@ Crayon grain uses `CrayonStyle.seed`. When that seed is still `CrayonStyle.defau
 | --- | --- |
 | `.default` | Even round stroke |
 | `.calligraphic` | Flat tip at 45°, tapered ends |
-| `.marker` | Flat tip, butt caps |
+| `.marker` | Flat tip, butt caps. Even width |
 | `.pen` | Pressure swell through the middle |
 | `.crayon` | Continuous wax with grit on top |
 
-`.thicknessProfile(.naturalPen)` tapers an open stroke. Closed shapes keep an even width so the join does not seam.
+`.marker(variation:minimum:maximum:taperStart:taperEnd:pressure:seed:)` is that same marker with width that changes along an open stroke. `variation` of `0.35` keeps the body in `[0.65, 1.35]` times `strokeWidth`. `minimum` and `maximum` replace that range. They are multipliers, not points. `seed` repeats the wobble. `pressure` uses the same curve as `ThicknessProfile.pressure`. Taper may thin the ends to a point. The default `marker()` call is the even marker above.
+
+```swift
+RoughView()
+    .stroke(Color(red: 0.76, green: 0.32, blue: 0.28))
+    .strokeWidth(18)
+    .brushProfile(.marker(variation: 1, minimum: 0.25, maximum: 1.45, taperStart: 0.12, taperEnd: 0.16, seed: 19))
+    .seed(127)
+    .draw(Line(from: Point(x: 24, y: 100), to: Point(x: 168, y: 92)))
+```
+
+`.thicknessProfile(.naturalPen)` tapers an open stroke. Closed shapes keep an even width so the join does not seam. A variable marker does the same on a closed contour.
 
 ## Shapes
 
