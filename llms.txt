@@ -43,6 +43,8 @@ Modifiers write `Options`. Stored defaults:
 | `fillWeight` | `-1`, which resolves to `max(strokeWidth / 2, 1)` |
 | `fillAngle` | `45`. `0` is horizontal, `90` is vertical, positive is clockwise |
 | `fillSpacing` | `4`, clamped to `0.5...100`. Gap is the resolved fill weight times `fillSpacing` |
+| `fillPadding` | `0` (`CGFloat`). Positive insets the fill, negative grows it past the outline. A value that collapses the shape draws no fill. Ellipses shrink their radii; polygons offset inward |
+| `fillOffset` | `.zero` (`CGSize`). Shifts the fill after padding. `.fillOffset(x:y:)` is the same |
 | `fillSpacingPattern` | `nil` |
 | `curveTightness` | `0` |
 | `curveStepCount` | `9` |
@@ -50,7 +52,7 @@ Modifiers write `Options`. Stored defaults:
 | `dashOffset`, `dashGap`, `zigzagOffset` | `-1` (automatic) |
 | `brushProfile` | `.default` |
 
-`FillStyle` cases: `.hachure`, `.solid`, `.zigzag`, `.crossHatch`, `.dots`, `.sunBurst`, `.starBurst`, `.dashed`, `.zigzagLine`, `.scribble`. `.sunBurst` and `.starBurst` use the same filler. Dots ignore `fillAngle` and stay on the horizontal grid. Sunburst is radial and ignores `fillAngle`. Scribble uses `scribbleOrigin` instead. Ellipse and circle hachure lines are chords of the ellipse at `fillAngle`, spaced perpendicular to the lines. Zigzag, cross-hatch, dashed, zigzag-line, and dots on an ellipse reuse those chords.
+`FillStyle` cases: `.hachure`, `.solid`, `.zigzag`, `.crossHatch`, `.dots`, `.sunBurst`, `.starBurst`, `.dashed`, `.zigzagLine`, `.scribble`. `.sunBurst` and `.starBurst` use the same filler. Dots ignore `fillAngle` and stay on the horizontal grid. Sunburst is radial and ignores `fillAngle`. Scribble uses `scribbleOrigin` instead. Ellipse and circle hachure lines are chords of the same jittered ellipse the outline draws, at `fillAngle`, spaced perpendicular to the lines and centered in the ellipse. Zigzag, cross-hatch, dashed, zigzag-line, and dots on an ellipse reuse those chords. `fillPadding` and `fillOffset` change only the fill.
 
 `.fill` and `.stroke` each have a `Color` overload and a `UIColor` overload. In a file that imports both SwiftUI and UIKit, write `Color.red` or `UIColor.red`. A bare `.red` is ambiguous.
 

@@ -35,7 +35,7 @@ final class DocExampleCatalogTests: XCTestCase {
             if case .gif = example.kind { return true }
             return false
         }
-        XCTAssertEqual(stills.count, 54)
+        XCTAssertEqual(stills.count, 58)
         XCTAssertEqual(gifs.count, 7)
     }
 
@@ -52,6 +52,14 @@ final class DocExampleCatalogTests: XCTestCase {
         XCTAssertEqual(frameCount, 6)
         XCTAssertEqual(fps, 8)
         XCTAssertEqual(breathing.animation?.seed, 42)
+    }
+
+    func testFillPaddingExamplesCoverZeroPositiveAndNegative() {
+        XCTAssertEqual(example("fill-padding-zero").view().options.fillPadding, 0)
+        XCTAssertEqual(example("fill-padding").view().options.fillPadding, 16)
+        XCTAssertEqual(example("fill-padding-outset").view().options.fillPadding, -12)
+        XCTAssertEqual(example("fill-offset").view().options.fillOffset, CGSize(width: 18, height: -12))
+        XCTAssertEqual(example("fill-padding-zero").view().options.fillAngle, 0)
     }
 
     func testFillAnglesCoverHorizontalDiagonalAndVertical() {

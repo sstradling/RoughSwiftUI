@@ -146,6 +146,8 @@ Pass any `Drawable` type for precise positioning.
 | `.seed(_ value:)` | `UInt64?` | Stable random seed. `nil` keeps unseeded randomness |
 | `.fillSpacing(_ value:)` | `Float` (0.5-100) | Gap between fill lines |
 | `.fillSpacingPattern(_ pattern:)` | `[Float]` | Variable spacing for gradients |
+| `.fillPadding(_ value:)` | `CGFloat` | Inset of the fill from the outline. Default `0`. Negative grows the fill |
+| `.fillOffset(_ value:)` | `CGSize` | Shifts the fill. Default `.zero`. Also `.fillOffset(x:y:)` |
 
 ### Curve Modifiers
 
@@ -433,6 +435,8 @@ public struct Options: Equatable, Hashable {
     public var fillStyle: FillStyle = .hachure
     public var fillWeight: Float = -1      // -1 = auto (strokeWidth/2)
     public var fillAngle: Float = 45       // degrees; 0 horizontal, 90 vertical
+    public var fillPadding: CGFloat = 0    // inset; negative grows the fill
+    public var fillOffset: CGSize = .zero  // shifts the fill, not the outline
     public var seed: UInt64? = nil         // nil = system random
     public var fillSpacing: Float = 4.0    // multiplier of fillWeight
     public var fillSpacingPattern: [Float]? = nil
@@ -464,6 +468,8 @@ public struct Options: Equatable, Hashable {
 ```
 
 `fillAngle` is clockwise from the +x axis because Core Graphics y points down. `0` draws horizontal lines and `90` draws vertical lines for hachure, zigzag, cross-hatch, dashed, and zigzag-line. On an ellipse or circle those lines are chords of the ellipse, and the gap is the perpendicular distance between them. Dots always use that horizontal grid, including on an ellipse. Scribble strokes take their bearing from `scribbleOrigin`. Starburst and sunburst fills are radial and ignore `fillAngle`.
+
+`fillPadding` of `0` keeps the fill edge on the outline. A positive value insets the fill: ellipse and circle radii shrink by that many points, and polygon edges (rectangles, rounded rectangles, polygons, and SVG paths) offset inward. A negative value grows the fill past the outline. If the inset collapses the shape, no fill is drawn. `fillOffset` then shifts that region. `.zero` leaves the fill centered on the outline. Ellipse and circle outlines share one jittered radius pair with the fill, so the padding is measured from the shape the stroke actually draws.
 
 `.seed(42)` restarts a SplitMix64 sequence for each generate call. Leave it `nil` for a new random drawing on every cache miss. `CrayonStyle.seed` still owns wax grain unless it is left at `CrayonStyle.defaultSeed` (1), in which case a set `Options.seed` is copied onto the crayon. `AnimationConfig.seed` is separate and is passed through as `PathVarianceGenerator`'s base seed.
 

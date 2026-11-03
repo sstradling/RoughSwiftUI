@@ -156,18 +156,21 @@ public final class NativeGenerator {
             return nil
         }
         
-        let rx = width / 2
-        let ry = height / 2
+        let resolved = RoughMath.resolvedEllipseRadii(rx: width / 2, ry: height / 2, options: options)
         
         var sets: [OperationSet] = []
         
-        // Generate fill if needed
-        if let fillSet = generateEllipseFill(cx: cx, cy: cy, rx: rx, ry: ry, options: options) {
+        // Fill the same radii the outline will use. Padding and offset are
+        // applied inside the fill, so the stroke stays on the full ellipse.
+        if let fillSet = generateEllipseFill(
+            cx: cx, cy: cy, rx: resolved.rx, ry: resolved.ry, options: options
+        ) {
             sets.append(fillSet)
         }
         
-        // Generate stroke
-        let ops = RoughMath.ellipseOps(cx: cx, cy: cy, rx: rx, ry: ry, options: options)
+        let ops = RoughMath.ellipseStroke(
+            cx: cx, cy: cy, rx: resolved.rx, ry: resolved.ry, options: options
+        )
         sets.append(OperationSet(type: .path, operations: ops, path: nil, size: nil))
         
         return Drawing(shape: "ellipse", sets: sets, options: options)
@@ -182,17 +185,19 @@ public final class NativeGenerator {
             return nil
         }
         
-        let r = diameter / 2
+        let resolved = RoughMath.resolvedEllipseRadii(rx: diameter / 2, ry: diameter / 2, options: options)
         
         var sets: [OperationSet] = []
         
-        // Generate fill if needed
-        if let fillSet = generateEllipseFill(cx: cx, cy: cy, rx: r, ry: r, options: options) {
+        if let fillSet = generateEllipseFill(
+            cx: cx, cy: cy, rx: resolved.rx, ry: resolved.ry, options: options
+        ) {
             sets.append(fillSet)
         }
         
-        // Generate stroke
-        let ops = RoughMath.ellipseOps(cx: cx, cy: cy, rx: r, ry: r, options: options)
+        let ops = RoughMath.ellipseStroke(
+            cx: cx, cy: cy, rx: resolved.rx, ry: resolved.ry, options: options
+        )
         sets.append(OperationSet(type: .path, operations: ops, path: nil, size: nil))
         
         return Drawing(shape: "circle", sets: sets, options: options)
@@ -362,22 +367,45 @@ public final class NativeGenerator {
     /// Generates fill for an ellipse.
     /// Note: Fill is always generated (matching rough.js behavior), even if color is clear.
     private func generateEllipseFill(cx: Float, cy: Float, rx: Float, ry: Float, options: Options) -> OperationSet? {
+        guard let region = FillGeometry.ellipse(
+            cx: cx, cy: cy, rx: rx, ry: ry,
+            padding: options.fillPadding, offset: options.fillOffset
+        ) else {
+            return nil
+        }
         let filler = FillPatternFactory.filler(for: options.fillStyle)
-        return filler.fillEllipse(cx: cx, cy: cy, rx: rx, ry: ry, options: options)
+        return filler.fillEllipse(
+            cx: region.cx, cy: region.cy, rx: region.rx, ry: region.ry, options: options
+        )
     }
     
     /// Generates fill for a polygon.
     /// Note: Fill is always generated (matching rough.js behavior), even if color is clear.
+    /// A padding that collapses the polygon produces no fill.
     private func generatePolygonFill(points: [[Float]], options: Options) -> OperationSet? {
+        guard let region = FillGeometry.polygon(
+            points, padding: options.fillPadding, offset: options.fillOffset
+        ) else {
+            return nil
+        }
         let filler = FillPatternFactory.filler(for: options.fillStyle)
-        return filler.fillPolygon(points: points, options: options)
+        return filler.fillPolygon(points: region, options: options)
     }
     
     /// Generates fill for an arc.
     /// Note: Fill is always generated (matching rough.js behavior), even if color is clear.
     private func generateArcFill(cx: Float, cy: Float, rx: Float, ry: Float, start: Float, stop: Float, options: Options) -> OperationSet? {
+        guard let region = FillGeometry.ellipse(
+            cx: cx, cy: cy, rx: rx, ry: ry,
+            padding: options.fillPadding, offset: options.fillOffset
+        ) else {
+            return nil
+        }
         let filler = FillPatternFactory.filler(for: options.fillStyle)
-        return filler.fillArc(cx: cx, cy: cy, rx: rx, ry: ry, start: start, stop: stop, options: options)
+        return filler.fillArc(
+            cx: region.cx, cy: region.cy, rx: region.rx, ry: region.ry,
+            start: start, stop: stop, options: options
+        )
     }
     
     /// Generates fill for a rounded rectangle.
@@ -399,6 +427,28 @@ public final class NativeGenerator {
     /// Generates fill for an SVG path.
     /// Note: Fill is always generated (matching rough.js behavior), even if color is clear.
     private func generatePathFill(pathString: String, options: Options) -> OperationSet? {
+        let adjustsFill = options.fillPadding != 0 || options.fillOffset != .zero
+        if adjustsFill {
+            guard let contours = FillGeometry.svgContours(
+                pathString, padding: options.fillPadding, offset: options.fillOffset
+            ), let outer = contours.first else {
+                return nil
+            }
+            let clipped = FillGeometry.svgPath(from: contours)
+            if options.fillStyle == .solid {
+                return OperationSet(type: .path2DFill, operations: [], path: clipped, size: nil)
+            }
+            let filler = FillPatternFactory.filler(for: options.fillStyle)
+            guard let fillSet = filler.fillPolygon(points: outer, options: options) else { return nil }
+            let bounds = UIBezierPath(svgPath: clipped).cgPath.boundingBox
+            return OperationSet(
+                type: .path2DPattern,
+                operations: fillSet.operations,
+                path: clipped,
+                size: Size(width: Float(bounds.width), height: Float(bounds.height))
+            )
+        }
+
         if options.fillStyle == .solid {
             // Solid fill uses the path directly
             return OperationSet(type: .path2DFill, operations: [], path: pathString, size: nil)

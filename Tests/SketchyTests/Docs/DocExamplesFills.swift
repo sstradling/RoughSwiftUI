@@ -467,6 +467,122 @@ extension DocExampleCatalog {
                 .brushProfile(.calligraphic)
                 .seed(88)
                 .circle()
+        },
+        still(
+            "fill-padding-zero",
+            section: "Fills",
+            title: "Fill padding zero",
+            description: "fillPadding(0) puts the fill edge on the outline. The hachure meets the circle.",
+            snippet: """
+            RoughView()
+                .fill(\(inkBlue.snippet))
+                .fillStyle(.hachure)
+                .fillAngle(0)
+                .fillSpacing(2.5)
+                .fillPadding(0)
+                .stroke(\(charcoal.snippet))
+                .strokeWidth(2)
+                .seed(90)
+                .circle()
+            """
+        ) {
+            RoughView()
+                .fill(inkBlue.color)
+                .fillStyle(.hachure)
+                .fillAngle(0)
+                .fillSpacing(2.5)
+                .fillPadding(0)
+                .stroke(charcoal.color)
+                .strokeWidth(2)
+                .seed(90)
+                .circle()
+        },
+        still(
+            "fill-padding",
+            section: "Fills",
+            title: "Fill padding",
+            description: "fillPadding(16) insets the fill. Ellipse radii shrink and polygon edges move inward.",
+            snippet: """
+            RoughView()
+                .fill(\(leaf.snippet))
+                .fillStyle(.hachure)
+                .fillAngle(0)
+                .fillSpacing(2.5)
+                .fillPadding(16)
+                .stroke(\(charcoal.snippet))
+                .strokeWidth(2)
+                .seed(91)
+                .circle()
+            """
+        ) {
+            RoughView()
+                .fill(leaf.color)
+                .fillStyle(.hachure)
+                .fillAngle(0)
+                .fillSpacing(2.5)
+                .fillPadding(16)
+                .stroke(charcoal.color)
+                .strokeWidth(2)
+                .seed(91)
+                .circle()
+        },
+        still(
+            "fill-padding-outset",
+            section: "Fills",
+            title: "Negative fill padding",
+            description: "fillPadding(-12) grows the fill past the outline. A padding that collapses the shape draws nothing.",
+            snippet: """
+            RoughView()
+                .fill(\(coral.snippet))
+                .fillStyle(.hachure)
+                .fillAngle(0)
+                .fillSpacing(2.5)
+                .fillPadding(-12)
+                .stroke(\(charcoal.snippet))
+                .strokeWidth(2)
+                .seed(92)
+                .circle()
+            """
+        ) {
+            RoughView()
+                .fill(coral.color)
+                .fillStyle(.hachure)
+                .fillAngle(0)
+                .fillSpacing(2.5)
+                .fillPadding(-12)
+                .stroke(charcoal.color)
+                .strokeWidth(2)
+                .seed(92)
+                .circle()
+        },
+        still(
+            "fill-offset",
+            section: "Fills",
+            title: "Fill offset",
+            description: "fillOffset shifts the fill and leaves the outline where it is. Positive x moves right, negative y moves up.",
+            snippet: """
+            RoughView()
+                .fill(\(amber.snippet))
+                .fillStyle(.hachure)
+                .fillAngle(45)
+                .fillSpacing(2.5)
+                .fillOffset(x: 18, y: -12)
+                .stroke(\(charcoal.snippet))
+                .strokeWidth(2)
+                .seed(93)
+                .circle()
+            """
+        ) {
+            RoughView()
+                .fill(amber.color)
+                .fillStyle(.hachure)
+                .fillAngle(45)
+                .fillSpacing(2.5)
+                .fillOffset(x: 18, y: -12)
+                .stroke(charcoal.color)
+                .strokeWidth(2)
+                .seed(93)
+                .circle()
         }
     ]
 }

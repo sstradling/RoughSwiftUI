@@ -550,6 +550,82 @@ RoughView()
     .circle()
 ```
 
+### Fill padding zero
+
+fillPadding(0) puts the fill edge on the outline. The hachure meets the circle.
+
+![Fill padding zero](images/fills/fill-padding-zero.png)
+
+```swift
+RoughView()
+    .fill(Color(red: 0.18, green: 0.46, blue: 0.67))
+    .fillStyle(.hachure)
+    .fillAngle(0)
+    .fillSpacing(2.5)
+    .fillPadding(0)
+    .stroke(Color(red: 0.12, green: 0.14, blue: 0.18))
+    .strokeWidth(2)
+    .seed(90)
+    .circle()
+```
+
+### Fill padding
+
+fillPadding(16) insets the fill. Ellipse radii shrink and polygon edges move inward.
+
+![Fill padding](images/fills/fill-padding.png)
+
+```swift
+RoughView()
+    .fill(Color(red: 0.22, green: 0.48, blue: 0.34))
+    .fillStyle(.hachure)
+    .fillAngle(0)
+    .fillSpacing(2.5)
+    .fillPadding(16)
+    .stroke(Color(red: 0.12, green: 0.14, blue: 0.18))
+    .strokeWidth(2)
+    .seed(91)
+    .circle()
+```
+
+### Negative fill padding
+
+fillPadding(-12) grows the fill past the outline. A padding that collapses the shape draws nothing.
+
+![Negative fill padding](images/fills/fill-padding-outset.png)
+
+```swift
+RoughView()
+    .fill(Color(red: 0.76, green: 0.32, blue: 0.28))
+    .fillStyle(.hachure)
+    .fillAngle(0)
+    .fillSpacing(2.5)
+    .fillPadding(-12)
+    .stroke(Color(red: 0.12, green: 0.14, blue: 0.18))
+    .strokeWidth(2)
+    .seed(92)
+    .circle()
+```
+
+### Fill offset
+
+fillOffset shifts the fill and leaves the outline where it is. Positive x moves right, negative y moves up.
+
+![Fill offset](images/fills/fill-offset.png)
+
+```swift
+RoughView()
+    .fill(Color(red: 0.85, green: 0.55, blue: 0.18))
+    .fillStyle(.hachure)
+    .fillAngle(45)
+    .fillSpacing(2.5)
+    .fillOffset(x: 18, y: -12)
+    .stroke(Color(red: 0.12, green: 0.14, blue: 0.18))
+    .strokeWidth(2)
+    .seed(93)
+    .circle()
+```
+
 ## Strokes
 
 Width, colour, opacity, and several lines in one view. Each outline is drawn as two offset passes.
