@@ -35,30 +35,31 @@ enum WatercolorStroke {
         guard width >= 0.5, strokeOpacity > 0, style.pigment > 0 else { return [] }
         guard let primary = sets.first else { return [] }
         let lines = StrokeToFillConverter.centerlines(operations: primary, transform: transform)
-        guard !lines.isEmpty else { return [] }
+        // A rough outline is two offset passes. Painting both at full width
+        // makes the stroke flare where the passes separate, which is the wedge
+        // at the end of the curve. One smoothed centreline carries the wash.
+        guard let line = lines.max(by: { $0.samples.count < $1.samples.count }) else { return [] }
 
         var pieces: [RibbonPiece] = []
-        for line in lines {
-            for layer in 0..<style.layers {
-                pieces.append(contentsOf: glaze(
-                    line: line,
-                    width: width,
-                    brush: brush,
-                    style: style,
-                    strokeOpacity: strokeOpacity,
-                    layer: layer,
-                    edged: layer == 0,
-                    strength: 1 - 0.12 * CGFloat(layer)
-                ))
-            }
-            pieces.append(contentsOf: granules(
+        for layer in 0..<style.layers {
+            pieces.append(contentsOf: glaze(
                 line: line,
                 width: width,
                 brush: brush,
                 style: style,
-                strokeOpacity: strokeOpacity
+                strokeOpacity: strokeOpacity,
+                layer: layer,
+                edged: layer == 0,
+                strength: 1 - 0.12 * CGFloat(layer)
             ))
         }
+        pieces.append(contentsOf: granules(
+            line: line,
+            width: width,
+            brush: brush,
+            style: style,
+            strokeOpacity: strokeOpacity
+        ))
         return glazeCommands(pieces, color: color)
     }
 
@@ -275,7 +276,7 @@ enum WatercolorStroke {
         let sample = sampleCenter(center, at: t)
         let located = StrokeCenterSample(point: sample.point, tangent: sample.forward, t: sample.t)
         let half = halfWidth(at: located, forward: sample.forward, width: width, brush: brush, style: style, layer: 2, line: line)
-        let radius = half * (0.025 + 0.055 * size) * radiusScale
+        let radius = half * (0.04 + 0.07 * size) * radiusScale
         guard radius >= 0.3 else { return }
         let normal = sample.forward + .pi / 2
         let reach = across * half * 0.62
@@ -285,7 +286,7 @@ enum WatercolorStroke {
         )
         let fade = line.isClosed ? 1 : tipScale(sample.t)
         let profile = alongOpacity(sample.t, closed: line.isClosed, brush: brush, strokeOpacity: strokeOpacity)
-        let opacity = CGFloat(style.pigment) * profile * fade * (0.05 + 0.09 * tone) * radiusScale
+        let opacity = CGFloat(style.pigment) * profile * fade * (0.12 + 0.16 * tone) * radiusScale
         pieces.append(RibbonPiece(path: ellipse(center: dot, radius: radius), opacity: min(1, opacity), t: sample.t))
     }
 
@@ -352,30 +353,28 @@ enum WatercolorStroke {
         )
         let built = center.enumerated().map { index, sample -> Station in
             let half = halves[index]
-            let cap = max(0.9, sample.radius * 0.82)
+            let cap = max(0.9, sample.radius * 0.92)
             var left = half
             var right = half
-            if sample.curvature > 0.002 {
+            if sample.curvature > 0.004 {
                 left = min(half, cap)
-            } else if sample.curvature < -0.002 {
+            } else if sample.curvature < -0.004 {
                 right = min(half, cap)
             }
+            // The centreline stays smooth. Only the offset distance wobbles,
+            // and each side has its own seed so the edges do not mirror.
+            left += edgeWobble(at: sample.t, side: 1, width: width, style: style, layer: layer, closed: line.isClosed)
+            right += edgeWobble(at: sample.t, side: -1, width: width, style: style, layer: layer, closed: line.isClosed)
+            left = max(0.35, left)
+            right = max(0.35, right)
             let shift = shiftAmount(at: sample.t, closed: line.isClosed, style: style, width: width, layer: layer)
             let normalAngle = sample.forward + .pi / 2
             let nx = cos(normalAngle)
             let ny = sin(normalAngle)
-            var point = CGPoint(
+            let point = CGPoint(
                 x: sample.point.x + nx * shift,
                 y: sample.point.y + ny * shift
             )
-            // Slide the open tips out along the stroke so the semicircle sits
-            // past the shoulder. Both ends use the same fraction of the width.
-            if !line.isClosed, index == 0 || index == center.count - 1 {
-                let outward = index == 0 ? sample.forward + .pi : sample.forward
-                let reach = max(left, right) * 0.9
-                point.x += cos(outward) * reach
-                point.y += sin(outward) * reach
-            }
             let innerScale = 1 - 0.22 * CGFloat(style.edgeDarkening)
             return Station(
                 center: point,
@@ -389,7 +388,47 @@ enum WatercolorStroke {
                 t: sample.t
             )
         }
-        return smoothEdges(built, closed: line.isClosed)
+        return built
+    }
+
+    /// Irregular wet edge. Low-frequency drift, a smaller ripple, and an
+    /// occasional outward bleed. Amplitude follows `bleed` and `variation`
+    /// and the stroke width. It fades out through the tip taper.
+    private static func edgeWobble(
+        at t: CGFloat,
+        side: CGFloat,
+        width: CGFloat,
+        style: WatercolorStyle,
+        layer: Int,
+        closed: Bool
+    ) -> CGFloat {
+        let amount = CGFloat(style.bleed) * 0.7 + CGFloat(style.variation) * 0.55
+        guard amount > 0.02 else { return 0 }
+        let seed = style.seed &+ UInt64(layer) &* 19 &+ (side > 0 ? 5 : 31)
+        // Several bumps along the stroke, not one swell that fattens a whole arm.
+        let low = signed(t, cycles: 4.2, seed: seed, closed: closed)
+        let mid = signed(t, cycles: 8.5, seed: seed &+ 13, closed: closed)
+        let high = signed(t, cycles: 15, seed: seed &+ 27, closed: closed)
+        var wobble = (low * 0.5 + mid * 0.34 + high * 0.22) * width * 0.11 * amount
+        let gate = SeededNoise.unit(at: Float(t * 6.5 + (side > 0 ? 0.4 : 1.7)), seed: seed &+ 47)
+        if gate > 0.72 {
+            let bulge = (CGFloat(gate) - 0.72) / 0.28
+            wobble += bulge * width * 0.09 * amount
+        }
+        // Wet paint spreads out. A deep inward bite reads as a pinch before the tip.
+        let inward = -width * 0.035 * amount
+        if wobble < inward { wobble = inward }
+        let fade = closed ? 1 : tipFade(t)
+        return wobble * fade
+    }
+
+    /// 0 at the tip, 1 once the taper is over, so the round end stays smooth.
+    private static func tipFade(_ t: CGFloat) -> CGFloat {
+        let edge = min(max(0, t), max(0, 1 - t))
+        let window: CGFloat = 0.2
+        guard edge < window else { return 1 }
+        let mix = edge / window
+        return mix * mix * (3 - 2 * mix)
     }
 
     /// Averages the centreline in point space, then takes one stable tangent.
@@ -449,32 +488,6 @@ enum WatercolorStroke {
             return (0..<points.count).map { lengths[$0] / total }
         }
         return lengths.map { $0 / total }
-    }
-
-    /// Pulls each edge toward its neighbours so a leftover kink cannot tooth the rim.
-    private static func smoothEdges(_ stations: [Station], closed: Bool) -> [Station] {
-        guard stations.count >= 3 else { return stations }
-        var copy = stations
-        for _ in 0..<2 {
-            var next = copy
-            for index in copy.indices {
-                if !closed, index == 0 || index == copy.count - 1 { continue }
-                let previous = neighbor(index - 1, count: copy.count, closed: closed)
-                let following = neighbor(index + 1, count: copy.count, closed: closed)
-                next[index].outerLeft = mix(
-                    copy[index].outerLeft,
-                    midpoint(copy[previous].outerLeft, copy[following].outerLeft),
-                    0.5
-                )
-                next[index].outerRight = mix(
-                    copy[index].outerRight,
-                    midpoint(copy[previous].outerRight, copy[following].outerRight),
-                    0.5
-                )
-            }
-            copy = next
-        }
-        return copy
     }
 
     private static func halfWidth(
@@ -711,10 +724,6 @@ enum WatercolorStroke {
         }
     }
 
-    private static func midpoint(_ a: CGPoint, _ b: CGPoint) -> CGPoint {
-        CGPoint(x: (a.x + b.x) * 0.5, y: (a.y + b.y) * 0.5)
-    }
-
     private static func mix(_ from: CGPoint, _ to: CGPoint, _ amount: CGFloat) -> CGPoint {
         CGPoint(
             x: from.x + (to.x - from.x) * amount,
@@ -754,12 +763,12 @@ enum WatercolorStroke {
 
     /// Open strokes narrow into a round tip instead of a square cut.
     private static func tipScale(_ t: CGFloat) -> CGFloat {
-        let window: CGFloat = 0.18
+        let window: CGFloat = 0.2
         let edge = min(max(0, t), max(0, 1 - t))
         if edge >= window { return 1 }
         let mix = edge / window
         let smooth = mix * mix * (3 - 2 * mix)
-        return 0.42 + 0.58 * smooth
+        return 0.72 + 0.28 * smooth
     }
 
     private static func alongOpacity(

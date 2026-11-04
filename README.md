@@ -133,7 +133,7 @@ RoughView()
 
 ### Watercolor
 
-`.brushProfile(.watercolor)` paints a lighter wash with a broken darker rim, a little grain, and round tapered ends. The ribbon stays an even width on a tight bend. Passes stack, so a crossing goes darker. `.fillStyle(.watercolor)` clips a wash to the shape. When the brush is watercolor, the fill uses that style.
+`.brushProfile(.watercolor)` paints a lighter wash with a broken darker rim, a little grain, and round tapered ends. The base width stays even. `bleed` and `variation` make each edge wander, so the outline is not a smooth offset. Passes stack, so a crossing goes darker. `.fillStyle(.watercolor)` clips a wash to the shape. When the brush is watercolor, the fill uses that style.
 
 ![Watercolor stroke](docs/images/brushes/watercolor.png)
 
