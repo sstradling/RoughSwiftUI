@@ -25,13 +25,53 @@ public extension UIBezierPath {
 
 private extension UIBezierPath {
     func applyCommands(from svgPath: SVGPath) {
+        var currentPoint = CGPoint.zero
+        var subpathStartPoint: CGPoint?
+
         for command in svgPath.commands {
             switch command.type {
-            case .move: move(to: command.point)
-            case .line: addLine(to: command.point)
-            case .quadCurve: addQuadCurve(to: command.point, controlPoint: command.control1)
-            case .cubeCurve: addCurve(to: command.point, controlPoint1: command.control1, controlPoint2: command.control2)
-            case .close: close()
+            case .move:
+                move(to: command.point)
+                currentPoint = command.point
+                subpathStartPoint = command.point
+            case .line:
+                addLine(to: command.point)
+                currentPoint = command.point
+            case .quadCurve:
+                addQuadCurve(to: command.point, controlPoint: command.control1)
+                currentPoint = command.point
+            case .cubeCurve:
+                addCurve(to: command.point, controlPoint1: command.control1, controlPoint2: command.control2)
+                currentPoint = command.point
+            case .arc:
+                switch SVGArcConverter.convert(
+                    from: currentPoint,
+                    to: command.point,
+                    rx: command.rx,
+                    ry: command.ry,
+                    xAxisRotation: command.xAxisRotation,
+                    largeArc: command.largeArc,
+                    sweep: command.sweep
+                ) {
+                case .omitted:
+                    break
+                case .line:
+                    addLine(to: command.point)
+                case .cubic(let geometry):
+                    for curve in geometry.curves {
+                        addCurve(
+                            to: curve.point,
+                            controlPoint1: curve.control1,
+                            controlPoint2: curve.control2
+                        )
+                    }
+                }
+                currentPoint = command.point
+            case .close:
+                close()
+                if let subpathStartPoint {
+                    currentPoint = subpathStartPoint
+                }
             }
         }
     }
@@ -72,6 +112,8 @@ public class SVGPath {
             case "c": use(.relative, 6, cubeBroken)
             case "S": use(.absolute, 4, cubeSmooth)
             case "s": use(.relative, 4, cubeSmooth)
+            case "A": use(.absolute, 7, arc)
+            case "a": use(.relative, 7, arc)
             case "Z": use(.absolute, 0, close)
             case "z": use(.absolute, 0, close)
             default: numbers.append(char)
@@ -89,9 +131,29 @@ public class SVGPath {
     
     private func finishLastCommand () {
         for command in take(SVGPath.parseNumbers(numbers), increment: increment, coords: coords, last: commands.last, callback: builder) {
-            commands.append(coords == .relative ? command.relative(to: commands.last) : command)
+            var resolved = coords == .relative ? command.relative(to: commands.last) : command
+            if resolved.type == .close {
+                // The current point after Z is the subpath start (SVG path spec).
+                // A relative command, including `a`, adds to that point.
+                let start = subpathStartPoint()
+                resolved.point = start
+                resolved.control1 = start
+                resolved.control2 = start
+            }
+            commands.append(resolved)
         }
         numbers = ""
+    }
+
+    /// Initial point of the open subpath. After a closepath, the next subpath
+    /// starts at the same point until a moveto.
+    private func subpathStartPoint() -> CGPoint {
+        for command in commands.reversed() {
+            if command.type == .move || command.type == .close {
+                return command.point
+            }
+        }
+        return .zero
     }
 }
 
@@ -212,8 +274,24 @@ public struct SVGCommand {
         case line
         case cubeCurve
         case quadCurve
+        case arc
         case close
     }
+
+    /// Horizontal radius for elliptical arc commands.
+    public var rx: CGFloat
+
+    /// Vertical radius for elliptical arc commands.
+    public var ry: CGFloat
+
+    /// Arc x-axis rotation in degrees.
+    public var xAxisRotation: CGFloat
+
+    /// SVG large-arc flag.
+    public var largeArc: Bool
+
+    /// SVG sweep flag.
+    public var sweep: Bool
     
     public init () {
         let point = CGPoint()
@@ -239,10 +317,44 @@ public struct SVGCommand {
         self.control1 = control1
         self.control2 = control2
         self.type = type
+        self.rx = 0
+        self.ry = 0
+        self.xAxisRotation = 0
+        self.largeArc = false
+        self.sweep = false
+    }
+
+    public init(
+        rx: CGFloat,
+        ry: CGFloat,
+        xAxisRotation: CGFloat,
+        largeArc: Bool,
+        sweep: Bool,
+        point: CGPoint
+    ) {
+        self.point = point
+        self.control1 = .zero
+        self.control2 = .zero
+        self.type = .arc
+        self.rx = rx
+        self.ry = ry
+        self.xAxisRotation = xAxisRotation
+        self.largeArc = largeArc
+        self.sweep = sweep
     }
     
     fileprivate func relative (to other:SVGCommand?) -> SVGCommand {
         if let otherPoint = other?.point {
+            if type == .arc {
+                return SVGCommand(
+                    rx: rx,
+                    ry: ry,
+                    xAxisRotation: xAxisRotation,
+                    largeArc: largeArc,
+                    sweep: sweep,
+                    point: point + otherPoint
+                )
+            }
             return SVGCommand(control1 + otherPoint, control2 + otherPoint, point + otherPoint, type: type)
         }
         return self
@@ -275,7 +387,7 @@ private func take (_ numbers: [CGFloat], increment: Int, coords: Coordinates, la
     }
     
     let count = (numbers.count / increment) * increment
-    var nums:[CGFloat] = [0, 0, 0, 0, 0, 0];
+    var nums = [CGFloat](repeating: 0, count: max(increment, 1))
     
     for i in stride(from: 0, to: count, by: increment) {
         for j in 0 ..< increment {
@@ -352,6 +464,19 @@ private func cubeSmooth (_ numbers: [CGFloat], last: SVGCommand?, coords: Coordi
         control = control + lastPoint
     }
     return SVGCommand(control.x, control.y, numbers[0], numbers[1], numbers[2], numbers[3])
+}
+
+// MARK: Aa - Elliptical Arc To
+
+private func arc (_ numbers: [CGFloat], last: SVGCommand?, coords: Coordinates) -> SVGCommand {
+    SVGCommand(
+        rx: numbers[0],
+        ry: numbers[1],
+        xAxisRotation: numbers[2],
+        largeArc: numbers[3] != 0,
+        sweep: numbers[4] != 0,
+        point: CGPoint(x: numbers[5], y: numbers[6])
+    )
 }
 
 // MARK: Zz - Close Path
