@@ -396,6 +396,17 @@ public struct Path: Drawable {
 }
 ```
 
+Supported SVG path commands include:
+
+| Command | Description |
+|---|---|
+| `M` / `m` | Move to |
+| `L` / `l`, `H` / `h`, `V` / `v` | Line to, horizontal line, vertical line |
+| `Q` / `q`, `T` / `t` | Quadratic Bezier and smooth quadratic Bezier |
+| `C` / `c`, `S` / `s` | Cubic Bezier and smooth cubic Bezier |
+| `A` / `a` | Elliptical arc (converted to cubic Bezier segments) |
+| `Z` / `z` | Close path |
+
 **Example:**
 ```swift
 let svgPath = "M10 10 L100 10 L100 100 L10 100 Z"
@@ -403,6 +414,27 @@ RoughView()
     .fill(.red)
     .draw(Path(d: svgPath))
 ```
+
+**Elliptical arc example:**
+```swift
+let arcPath = "M20 80 A60 40 0 0 1 140 80"
+RoughView()
+    .stroke(.black)
+    .strokeWidth(2)
+    .draw(Path(d: arcPath))
+```
+
+`A` and `a` take `rx ry x-axis-rotation large-arc sweep x y`. A relative `a` adds `x y` to the current point and leaves the radii, rotation, and flags absolute. The arc follows the SVG 1.1 endpoint-to-center conversion (implementation notes F.6.5 and F.6.6) and is drawn as cubic segments of at most 90°. Roughness offsets those cubics the same way it offsets an authored `C`, starting from the unjittered path point.
+
+| Case | Result |
+|---|---|
+| Radii too small to reach the endpoint | Both radii scale by the same factor until the endpoints lie on the ellipse |
+| `rx` or `ry` is 0 | Straight line to the endpoint |
+| Endpoints are the same point | The segment is skipped, even if a radius is also 0 |
+| Negative radii | The absolute values are used |
+| Nonzero flag | Treated as 1 |
+
+After `Z` or `z`, the current point is the subpath start, so a following relative command (including `a`) is measured from there.
 
 ### Text
 

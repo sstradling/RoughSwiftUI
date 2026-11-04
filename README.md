@@ -208,6 +208,8 @@ Crayon grain uses `CrayonStyle.seed`. When that seed is still `CrayonStyle.defau
 
 `.draw(Path(d:))` scales the path to the view and keeps its aspect ratio. `.svgStrokeWidth`, `.svgFillWeight`, and `.svgFillStrokeAlignment` (`.center`, `.inside`, `.outside`) apply to that path. Text is also stored as a path, but it is placed in the view and is not scaled to fit.
 
+`A` and `a` draw elliptical arcs. A zero radius becomes a line, identical endpoints are skipped, and radii that cannot reach the endpoint scale up. The arc is split into cubic segments of at most 90° and roughened like the other path commands.
+
 ### Brushes
 
 | Profile | Look |

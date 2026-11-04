@@ -82,7 +82,7 @@ Placed with `.draw`:
 
 ## SVG
 
-`.draw(Path(d:))` scales the path to the view and keeps aspect ratio. Overrides, all optional except alignment:
+`.draw(Path(d:))` scales the path to the view and keeps aspect ratio. Path data accepts `M` `L` `H` `V` `Q` `T` `C` `S` `A` `Z` in upper or lower case. `A` / `a` is an elliptical arc (`rx ry rotation large-arc sweep x y`). Radii scale up when they cannot reach the endpoint, a zero radius is a line, and identical endpoints are skipped. The arc is drawn as cubics of at most 90°. A relative `a` offsets only the endpoint. Overrides, all optional except alignment:
 
 - `svgStrokeWidth: Float?` defaults `nil` and falls back to `strokeWidth`
 - `svgFillWeight: Float?` defaults `nil` and falls back to `fillWeight`
