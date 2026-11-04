@@ -503,6 +503,57 @@ extension DocExampleCatalog {
                 ]))
         },
         still(
+            "watercolor",
+            section: "Brushes",
+            title: "Watercolor stroke",
+            description: "A broken rim that fades in and out, darker where the pigment dries, with grain inside and round tapered ends. The same seed repeats the wash.",
+            snippet: """
+            RoughView()
+                .stroke(\(wash.snippet))
+                .strokeWidth(26)
+                .roughness(0.4)
+                .bowing(0.2)
+                .brushProfile(.watercolor(
+                    pigment: 0.82,
+                    wetness: 0.35,
+                    edgeDarkening: 0.9,
+                    layers: 3,
+                    variation: 0.5,
+                    bleed: 0.55,
+                    seed: 21
+                ))
+                .seed(21)
+                .draw(Curve(points: [
+                    Point(x: 22, y: 128),
+                    Point(x: 62, y: 36),
+                    Point(x: 112, y: 150),
+                    Point(x: 164, y: 58)
+                ]))
+            """
+        ) {
+            RoughView()
+                .stroke(wash.color)
+                .strokeWidth(26)
+                .roughness(0.4)
+                .bowing(0.2)
+                .brushProfile(.watercolor(
+                    pigment: 0.82,
+                    wetness: 0.35,
+                    edgeDarkening: 0.9,
+                    layers: 3,
+                    variation: 0.5,
+                    bleed: 0.55,
+                    seed: 21
+                ))
+                .seed(21)
+                .draw(Curve(points: [
+                    Point(x: 22, y: 128),
+                    Point(x: 62, y: 36),
+                    Point(x: 112, y: 150),
+                    Point(x: 164, y: 58)
+                ]))
+        },
+        still(
             "watercolor-fill",
             section: "Brushes",
             title: "Watercolor fill",
@@ -526,6 +577,47 @@ extension DocExampleCatalog {
                 .strokeWidth(1.6)
                 .seed(33)
                 .circle()
+        },
+        still(
+            "watercolor-overlap",
+            section: "Brushes",
+            title: "Watercolor overlap",
+            description: "Two washes cross. Pigment stacks in the crossing, so that patch is darker than either stroke alone.",
+            snippet: """
+            RoughView()
+                .stroke(\(wash.snippet))
+                .strokeWidth(20)
+                .roughness(0.35)
+                .brushProfile(.watercolor(
+                    pigment: 0.7,
+                    wetness: 0.3,
+                    edgeDarkening: 0.85,
+                    layers: 2,
+                    variation: 0.35,
+                    bleed: 0.4,
+                    seed: 27
+                ))
+                .seed(27)
+                .draw(Line(from: Point(x: 36, y: 40), to: Point(x: 150, y: 148)))
+                .draw(Line(from: Point(x: 36, y: 148), to: Point(x: 150, y: 40)))
+            """
+        ) {
+            RoughView()
+                .stroke(wash.color)
+                .strokeWidth(20)
+                .roughness(0.35)
+                .brushProfile(.watercolor(
+                    pigment: 0.7,
+                    wetness: 0.3,
+                    edgeDarkening: 0.85,
+                    layers: 2,
+                    variation: 0.35,
+                    bleed: 0.4,
+                    seed: 27
+                ))
+                .seed(27)
+                .draw(Line(from: Point(x: 36, y: 40), to: Point(x: 150, y: 148)))
+                .draw(Line(from: Point(x: 36, y: 148), to: Point(x: 150, y: 40)))
         }
     ]
 }

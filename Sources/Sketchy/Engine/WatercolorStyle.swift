@@ -2,15 +2,17 @@
 //  WatercolorStyle.swift
 //  Sketchy
 //
-//  Wet-wash settings for `.fillStyle(.watercolor)`.
+//  Wet-wash settings for `BrushProfile.watercolor` and `.fillStyle(.watercolor)`.
 //
 
 import Foundation
 
-/// Controls the watercolor fill.
+/// Controls a watercolor stroke or a watercolor fill.
 ///
-/// `.fillStyle(.watercolor)` uses these defaults. `Options.seed` replaces
-/// `defaultSeed`. Values are clamped. The same `seed` repeats the same wash.
+/// `BrushProfile.watercolor` stores one of these. `.fillStyle(.watercolor)`
+/// uses that style when the brush is watercolor, and these defaults otherwise.
+/// `Options.seed` replaces `defaultSeed`. Values are clamped. The same `seed`
+/// repeats the same wash.
 /// Nothing here reads the system random generator.
 ///
 /// The fill is several translucent glazes clipped to the shape. The rim is

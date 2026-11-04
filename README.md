@@ -131,6 +131,28 @@ RoughView()
     ]))
 ```
 
+### Watercolor
+
+`.brushProfile(.watercolor)` paints a lighter wash with a broken darker rim, a little grain, and round tapered ends. The base width stays even. `bleed` and `variation` make each edge wander, so the outline is not a smooth offset. Passes stack, so a crossing goes darker. `.fillStyle(.watercolor)` clips a wash to the shape. When the brush is watercolor, the fill uses that style.
+
+![Watercolor stroke](docs/images/brushes/watercolor.png)
+
+```swift
+RoughView()
+    .stroke(Color(red: 0.16, green: 0.40, blue: 0.66))
+    .strokeWidth(26)
+    .roughness(0.4)
+    .bowing(0.2)
+    .brushProfile(.watercolor(pigment: 0.82, wetness: 0.35, edgeDarkening: 0.9, layers: 3, variation: 0.5, bleed: 0.55, seed: 21))
+    .seed(21)
+    .draw(Curve(points: [
+        Point(x: 22, y: 128),
+        Point(x: 62, y: 36),
+        Point(x: 112, y: 150),
+        Point(x: 164, y: 58)
+    ]))
+```
+
 ### Watercolor fill
 
 `.fillStyle(.watercolor)` clips an uneven wash to the shape. Layers glaze, the dried edge is darker, and blooms are irregular puddles. `fillPadding` insets the fill. The same seed repeats the wash.
@@ -261,6 +283,7 @@ Crayon grain uses `CrayonStyle.seed`. When that seed is still `CrayonStyle.defau
 | `.marker` | Flat tip, butt caps. Even width |
 | `.pen` | Pressure swell through the middle |
 | `.crayon` | Continuous wax with grit on top |
+| `.watercolor` | Lighter wash with a broken darker rim |
 
 `.marker(variation:minimum:maximum:taperStart:taperEnd:pressure:seed:)` is that same marker with width that changes along an open stroke. `variation` of `0.35` keeps the body in `[0.65, 1.35]` times `strokeWidth`. `minimum` and `maximum` replace that range. They are multipliers, not points. `seed` repeats the wobble. `pressure` uses the same curve as `ThicknessProfile.pressure`. Taper may thin the ends to a point. The default `marker()` call is the even marker above.
 

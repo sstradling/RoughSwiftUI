@@ -961,6 +961,36 @@ RoughView()
     ]))
 ```
 
+### Watercolor stroke
+
+A broken rim that fades in and out, darker where the pigment dries, with grain inside and round tapered ends. The same seed repeats the wash.
+
+![Watercolor stroke](images/brushes/watercolor.png)
+
+```swift
+RoughView()
+    .stroke(Color(red: 0.16, green: 0.40, blue: 0.66))
+    .strokeWidth(26)
+    .roughness(0.4)
+    .bowing(0.2)
+    .brushProfile(.watercolor(
+        pigment: 0.82,
+        wetness: 0.35,
+        edgeDarkening: 0.9,
+        layers: 3,
+        variation: 0.5,
+        bleed: 0.55,
+        seed: 21
+    ))
+    .seed(21)
+    .draw(Curve(points: [
+        Point(x: 22, y: 128),
+        Point(x: 62, y: 36),
+        Point(x: 112, y: 150),
+        Point(x: 164, y: 58)
+    ]))
+```
+
 ### Watercolor fill
 
 fillStyle(.watercolor) is an uneven clipped wash: layered glazes, a darker dried edge, and a little grain. fillPadding insets it. The fill seed follows Options.seed.
@@ -976,6 +1006,31 @@ RoughView()
     .strokeWidth(1.6)
     .seed(33)
     .circle()
+```
+
+### Watercolor overlap
+
+Two washes cross. Pigment stacks in the crossing, so that patch is darker than either stroke alone.
+
+![Watercolor overlap](images/brushes/watercolor-overlap.png)
+
+```swift
+RoughView()
+    .stroke(Color(red: 0.16, green: 0.40, blue: 0.66))
+    .strokeWidth(20)
+    .roughness(0.35)
+    .brushProfile(.watercolor(
+        pigment: 0.7,
+        wetness: 0.3,
+        edgeDarkening: 0.85,
+        layers: 2,
+        variation: 0.35,
+        bleed: 0.4,
+        seed: 27
+    ))
+    .seed(27)
+    .draw(Line(from: Point(x: 36, y: 40), to: Point(x: 150, y: 148)))
+    .draw(Line(from: Point(x: 36, y: 148), to: Point(x: 150, y: 40)))
 ```
 
 ## Seeding

@@ -2,7 +2,7 @@ import CoreGraphics
 import XCTest
 @testable import Sketchy
 
-/// Opacity profiles, the watercolor fill, and the promise that older brushes stay put.
+/// Opacity profiles, the watercolor brush and fill, and the promise that older brushes stay put.
 @MainActor
 final class OpacityProfileTests: XCTestCase {
     func testUniformOpacityIsOne() {
@@ -142,6 +142,7 @@ final class OpacityProfileTests: XCTestCase {
 
     func testExistingBrushesDoNotGainAnOpacityMask() {
         for profile in [BrushProfile.default, .calligraphic, .marker, .pen, .crayon, .marker(variation: 0.4, seed: 3)] {
+            XCTAssertNil(profile.watercolor)
             XCTAssertEqual(profile.opacityProfile, .uniform)
             let commands = outlineCommands(profile: profile)
             XCTAssertTrue(commands.allSatisfy { $0.opacityMaskGroup == nil })
@@ -164,6 +165,83 @@ final class OpacityProfileTests: XCTestCase {
         XCTAssertNil(plain.first?.opacityMaskGroup)
         XCTAssertNil(withProfile.first?.opacityMaskGroup)
         XCTAssertEqual(plain.first?.path.boundingRect, withProfile.first?.path.boundingRect)
+    }
+
+    func testWatercolorFactoryClampsAndStaysSeeded() {
+        let profile = BrushProfile.watercolor(
+            pigment: 4,
+            wetness: -1,
+            edgeDarkening: 2,
+            layers: 9,
+            variation: -3,
+            bleed: 3,
+            seed: 8
+        )
+        XCTAssertEqual(profile.watercolor?.pigment, 1)
+        XCTAssertEqual(profile.watercolor?.wetness, 0)
+        XCTAssertEqual(profile.watercolor?.edgeDarkening, 1)
+        XCTAssertEqual(profile.watercolor?.layers, 5)
+        XCTAssertEqual(profile.watercolor?.variation, 0)
+        XCTAssertEqual(profile.watercolor?.bleed, 1)
+        XCTAssertEqual(profile.watercolor?.seed, 8)
+        XCTAssertEqual(profile.opacityProfile, .uniform)
+        XCTAssertEqual(profile.thicknessProfile, .uniform)
+        XCTAssertEqual(BrushProfile.watercolor(), .watercolor)
+        XCTAssertNotNil(BrushProfile.watercolor.watercolor)
+    }
+
+    func testTightBendKeepsTheRibbonOutOfTheCorner() {
+        var options = Options()
+        options.brushProfile = .watercolor(
+            pigment: 0.8,
+            wetness: 0.4,
+            edgeDarkening: 0.9,
+            layers: 2,
+            variation: 0.2,
+            bleed: 0.5,
+            seed: 3
+        )
+        options.strokeWidth = 18
+        options.roughness = 0
+        let operations: [Sketchy.Operation] = [
+            Move(data: [20, 40]),
+            LineTo(data: [140, 40]),
+            LineTo(data: [140, 120]),
+            LineTo(data: [20, 120])
+        ]
+        let pathSet = OperationSet(type: .path, operations: operations, path: nil, size: nil)
+        let drawing = Drawing(shape: "line", sets: [pathSet], options: options)
+        let commands = SwiftUIRenderer().commands(
+            for: drawing,
+            options: options,
+            in: CGSize(width: 180, height: 160)
+        )
+        let pocket = CGPoint(x: 118, y: 62)
+        for command in commands where command.fillRule != .evenOdd {
+            XCTAssertFalse(
+                command.path.cgPath.contains(pocket),
+                "tight bend filled across the inside of the corner"
+            )
+        }
+    }
+
+    func testWatercolorCommandsRepeatForASeedAndDifferForAnother() {
+        let first = watercolorCommands(seed: 4)
+        let second = watercolorCommands(seed: 4)
+        let other = watercolorCommands(seed: 9)
+        XCTAssertEqual(first.map { $0.path.boundingRect }, second.map { $0.path.boundingRect })
+        XCTAssertNotEqual(first.map { $0.path.boundingRect }, other.map { $0.path.boundingRect })
+        XCTAssertGreaterThan(first.count, 8)
+        XCTAssertTrue(first.allSatisfy { $0.opacityMaskGroup == nil })
+        XCTAssertTrue(first.allSatisfy { $0.opacityMaskBlur == 0 })
+    }
+
+    func testWatercolorGlazesInsteadOfMasking() {
+        let commands = watercolorCommands(seed: 4)
+        XCTAssertTrue(commands.allSatisfy { command in
+            if case .fill = command.style { return true }
+            return false
+        })
     }
 
     func testWatercolorFillIsClippedAndRespectsPadding() {
@@ -222,6 +300,14 @@ final class OpacityProfileTests: XCTestCase {
         let pathSet = OperationSet(type: .path, operations: operations, path: nil, size: nil)
         let drawing = Drawing(shape: "line", sets: [pathSet], options: options)
         return SwiftUIRenderer().commands(for: drawing, options: options, in: CGSize(width: 140, height: 120))
+    }
+
+    private func watercolorCommands(seed: UInt64) -> [RoughRenderCommand] {
+        var options = Options()
+        options.brushProfile = .watercolor(pigment: 0.7, wetness: 0.5, edgeDarkening: 0.8, layers: 3, variation: 0.5, bleed: 0.4, seed: seed)
+        options.strokeWidth = 18
+        options.strokeOpacity = 1
+        return outlineCommands(options: options)
     }
 
     private func fillCommands(_ drawable: Drawable, options: Options) -> [RoughRenderCommand] {

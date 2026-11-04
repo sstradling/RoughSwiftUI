@@ -65,11 +65,11 @@ import Sketchy
 | `Point` | 2D coordinate | `Point(x: Float, y: Float)` |
 | `Size` | Dimensions | `Size(width: Float, height: Float)` |
 | `FillStyle` | Fill pattern enumeration | `.hachure`, `.solid`, etc. |
-| `BrushProfile` | Stroke styling configuration | Calligraphic, pen, crayon, and opacity |
+| `BrushProfile` | Stroke styling configuration | Calligraphic, pen, crayon, opacity, and watercolor |
 | `WidthStop` | Absolute stroke width at one position | `position` 0...1, `width` in points |
 | `CrayonStyle` | Wax-crayon grain, edge, and seed | Used by `BrushProfile.crayon` |
 | `OpacityProfile` | Opacity along a stroke | Uniform, values, stops, or seeded noise |
-| `WatercolorStyle` | Wet-wash pigment, rim, and seed | Used by `.fillStyle(.watercolor)` |
+| `WatercolorStyle` | Wet-wash pigment, rim, and seed | Used by `BrushProfile.watercolor` and `.fillStyle(.watercolor)` |
 | `AnimationConfig` | Animation settings | Steps, speed, variance |
 
 ### Point
@@ -860,9 +860,15 @@ RoughView()
     .seed(128)
 ```
 
+### Watercolor
+
+`BrushProfile.watercolor(...)` paints a wash on the outline. `.watercolor` is that call with the defaults.
+
+The body is one ribbon around a smoothed centreline. The base width stays even, and both tips taper gradually into a round end. `bleed` and `variation` wobble the offset on each side separately: a slow drift, a finer ripple, and an occasional outward bleed. Later glazes use a different edge, so the rims do not line up. The darker rim follows that wobbled edge and fades along the stroke, with a fainter strip blending it into the body. It is not a continuous outline. Open strokes taper into a round tip. There is no blur. `variation` stores `ThicknessProfile.variable` and sets `OpacityProfile.noise`. The painted ribbon does not follow that thickness swell, so the width stays even and both tips taper the same way. `layers` is how many body glazes are laid down, from 1 to 5. Only the first glaze carries the rim. Each glaze is a translucent fill, so a crossing goes darker. The variable-opacity stroke still uses one mask. The same `seed` repeats the wash. `WatercolorStyle.defaultSeed` (`1`) yields to `Options.seed`.
+
 ### Watercolor fill
 
-`.fillStyle(.watercolor)` clips a wash to the same region as a solid fill, so `fillPadding` and `fillOffset` apply. The renderer uses `WatercolorStyle()`. `Options.seed` replaces `WatercolorStyle.defaultSeed` (`1`). Any other style seed would win, but the fill style does not take a custom style.
+`.fillStyle(.watercolor)` clips a wash to the same region as a solid fill, so `fillPadding` and `fillOffset` apply. When the brush is watercolor, the fill uses that style. Otherwise the renderer uses `WatercolorStyle()`. `Options.seed` replaces `WatercolorStyle.defaultSeed` (`1`).
 
 Layers are ordinary translucent fills, so they glaze. The edge is an uneven darker ring, and specks plus a few irregular blooms keep the interior from looking airbrushed. There is no blur. Sketch fills such as hachure stay as they are. The variable-opacity stroke is separate: it still uses one mask so joins stay even.
 

@@ -35,7 +35,7 @@ final class DocExampleCatalogTests: XCTestCase {
             if case .gif = example.kind { return true }
             return false
         }
-        XCTAssertEqual(stills.count, 62)
+        XCTAssertEqual(stills.count, 64)
         XCTAssertEqual(gifs.count, 7)
     }
 
@@ -99,6 +99,12 @@ final class DocExampleCatalogTests: XCTestCase {
         XCTAssertEqual(fill.options.fillStyle, .watercolor)
         XCTAssertEqual(fill.options.fillPadding, 12)
         XCTAssertEqual(fill.options.seed, 33)
+        let stroke = example("watercolor").view()
+        XCTAssertEqual(stroke.options.brushProfile.watercolor?.seed, 21)
+        XCTAssertEqual(stroke.options.seed, 21)
+        let overlap = example("watercolor-overlap").view()
+        XCTAssertEqual(overlap.drawables.count, 2)
+        XCTAssertEqual(overlap.options.brushProfile.watercolor?.seed, 27)
     }
 
     func testWidthStopsExampleUsesPointWidths() {

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- `BrushProfile.watercolor(pigment:wetness:edgeDarkening:layers:variation:bleed:seed:)` and `.watercolor` paint a wash along the outline. The body stays lighter. One broken rim is darker and fades along the stroke. The ribbon's base width stays even and both tips taper gradually. `bleed` and `variation` wobble each edge independently, with a low-frequency drift, a finer ripple, and an occasional outward bleed. Glaze layers do not share that edge. Specks are scattered from a seed. Glazes are ordinary translucent fills, so a crossing goes darker. `bleed` wanders the edge. It does not blur. The same seed repeats the wash. `WatercolorStyle.defaultSeed` (`1`) yields to `Options.seed`. A watercolor brush shares its style with `.fillStyle(.watercolor)`.
+
 ## [1.3.0] - 2026-11-03
 
 - Strokes can change opacity along their length. `OpacityProfile` is `.uniform` (the default, multiplier 1), `.values` (evenly spaced samples), `.stops` (`OpacityStop` positions in 0...1), or `.noise` (a seeded wobble between a minimum and a maximum). The profile multiplies `strokeOpacity`. A curve that changes along the stroke is painted into one mask: each piece is opaque gray at that opacity, `luminanceToAlpha` turns the gray into coverage, and the stroke colour tints the mask. Overlaps replace instead of adding, so segment joins do not go dark. `.uniform` keeps the existing stroke path. A watercolor fill does not use this mask.
