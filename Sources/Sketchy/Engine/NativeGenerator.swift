@@ -525,11 +525,14 @@ struct SVGPathRenderer {
             }
         }
 
+        /// Records the unjittered SVG point. The subpath start is set only by a moveto.
         func setSourcePosition(_ point: CGPoint) {
             sourcePosition = point
-            if firstSource == nil {
-                firstSource = point
-            }
+        }
+
+        func beginSourceSubpath(_ point: CGPoint) {
+            sourcePosition = point
+            firstSource = point
         }
     }
     
@@ -612,7 +615,7 @@ struct SVGPathRenderer {
             let x = Float(cmd.point.x) + RoughMath.randOffset(offsetScale, options: options)
             let y = Float(cmd.point.y) + RoughMath.randOffset(offsetScale, options: options)
             state.setPosition(x, y)
-            state.setSourcePosition(cmd.point)
+            state.beginSourceSubpath(cmd.point)
             // Always emit Move for the start of a contour
             ops.append(Move(data: [x, y]))
             
@@ -651,7 +654,7 @@ struct SVGPathRenderer {
 
         case .arc:
             let start = state.sourcePosition
-            let curves = SVGArcConverter.cubicCurves(
+            switch SVGArcConverter.convert(
                 from: start,
                 to: cmd.point,
                 rx: cmd.rx,
@@ -659,16 +662,17 @@ struct SVGPathRenderer {
                 xAxisRotation: cmd.xAxisRotation,
                 largeArc: cmd.largeArc,
                 sweep: cmd.sweep
-            )
-
-            if curves.isEmpty {
+            ) {
+            case .omitted:
+                state.setSourcePosition(cmd.point)
+            case .line:
                 let x = Float(cmd.point.x) + RoughMath.randOffset(offsetScale, options: options)
                 let y = Float(cmd.point.y) + RoughMath.randOffset(offsetScale, options: options)
                 ops.append(LineTo(data: [x, y]))
                 state.setPosition(x, y)
                 state.setSourcePosition(cmd.point)
-            } else {
-                for curve in curves {
+            case .cubic(let geometry):
+                for curve in geometry.curves {
                     let cp1x = Float(curve.control1.x) + RoughMath.randOffset(offsetScale, options: options)
                     let cp1y = Float(curve.control1.y) + RoughMath.randOffset(offsetScale, options: options)
                     let cp2x = Float(curve.control2.x) + RoughMath.randOffset(offsetScale, options: options)
@@ -682,16 +686,17 @@ struct SVGPathRenderer {
                 }
                 state.setSourcePosition(cmd.point)
             }
-            
+
         case .close:
             // Close the subpath - this draws a line back to the start point
-            // and marks the path as closed for proper fill rendering
+            // and marks the path as closed for proper fill rendering.
+            // The unjittered current point returns to the moveto. It stays
+            // there until the next moveto, so a later arc still starts there.
             ops.append(Close())
             state.first = nil
             if let firstSource = state.firstSource {
                 state.sourcePosition = firstSource
             }
-            state.firstSource = nil
         }
         
         return ops

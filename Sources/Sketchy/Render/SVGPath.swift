@@ -44,7 +44,7 @@ private extension UIBezierPath {
                 addCurve(to: command.point, controlPoint1: command.control1, controlPoint2: command.control2)
                 currentPoint = command.point
             case .arc:
-                let curves = SVGArcConverter.cubicCurves(
+                switch SVGArcConverter.convert(
                     from: currentPoint,
                     to: command.point,
                     rx: command.rx,
@@ -52,11 +52,13 @@ private extension UIBezierPath {
                     xAxisRotation: command.xAxisRotation,
                     largeArc: command.largeArc,
                     sweep: command.sweep
-                )
-                if curves.isEmpty {
+                ) {
+                case .omitted:
+                    break
+                case .line:
                     addLine(to: command.point)
-                } else {
-                    for curve in curves {
+                case .cubic(let geometry):
+                    for curve in geometry.curves {
                         addCurve(
                             to: curve.point,
                             controlPoint1: curve.control1,
@@ -129,9 +131,29 @@ public class SVGPath {
     
     private func finishLastCommand () {
         for command in take(SVGPath.parseNumbers(numbers), increment: increment, coords: coords, last: commands.last, callback: builder) {
-            commands.append(coords == .relative ? command.relative(to: commands.last) : command)
+            var resolved = coords == .relative ? command.relative(to: commands.last) : command
+            if resolved.type == .close {
+                // The current point after Z is the subpath start (SVG path spec).
+                // A relative command, including `a`, adds to that point.
+                let start = subpathStartPoint()
+                resolved.point = start
+                resolved.control1 = start
+                resolved.control2 = start
+            }
+            commands.append(resolved)
         }
         numbers = ""
+    }
+
+    /// Initial point of the open subpath. After a closepath, the next subpath
+    /// starts at the same point until a moveto.
+    private func subpathStartPoint() -> CGPoint {
+        for command in commands.reversed() {
+            if command.type == .move || command.type == .close {
+                return command.point
+            }
+        }
+        return .zero
     }
 }
 
@@ -461,175 +483,4 @@ private func arc (_ numbers: [CGFloat], last: SVGCommand?, coords: Coordinates) 
 
 private func close (_ numbers: [CGFloat], last: SVGCommand?, coords: Coordinates) -> SVGCommand {
     return SVGCommand()
-}
-
-// MARK: - SVG Elliptical Arc Conversion
-
-/// Converts SVG endpoint-parameterized elliptical arcs into cubic Bezier
-/// segments, following the SVG 1.1 implementation notes.
-///
-/// SVG stores arcs as: current point, `(rx, ry)`, x-axis rotation, large-arc
-/// flag, sweep flag, and endpoint. CoreGraphics and SwiftUI have no equivalent
-/// endpoint-arc path primitive, so we decompose each arc into one to four cubic
-/// Beziers (splitting at <=90° spans). This preserves curved geometry instead
-/// of approximating arcs with straight line segments.
-public enum SVGArcConverter {
-    public struct CubicCurve: Equatable {
-        public let control1: CGPoint
-        public let control2: CGPoint
-        public let point: CGPoint
-    }
-
-    public static func cubicCurves(
-        from start: CGPoint,
-        to end: CGPoint,
-        rx inputRx: CGFloat,
-        ry inputRy: CGFloat,
-        xAxisRotation: CGFloat,
-        largeArc: Bool,
-        sweep: Bool
-    ) -> [CubicCurve] {
-        guard start != end else { return [] }
-
-        var rx = abs(inputRx)
-        var ry = abs(inputRy)
-
-        guard rx > 0, ry > 0 else { return [] }
-
-        let phi = xAxisRotation * .pi / 180
-        let cosPhi = cos(phi)
-        let sinPhi = sin(phi)
-
-        let dx = (start.x - end.x) / 2
-        let dy = (start.y - end.y) / 2
-
-        let x1Prime = cosPhi * dx + sinPhi * dy
-        let y1Prime = -sinPhi * dx + cosPhi * dy
-
-        // Radii correction: if the requested radii are too small to connect
-        // the endpoints, scale them up uniformly (SVG 1.1 F.6.6.2).
-        let radiiScale = (x1Prime * x1Prime) / (rx * rx)
-            + (y1Prime * y1Prime) / (ry * ry)
-        if radiiScale > 1 {
-            let factor = sqrt(radiiScale)
-            rx *= factor
-            ry *= factor
-        }
-
-        let rx2 = rx * rx
-        let ry2 = ry * ry
-        let x1p2 = x1Prime * x1Prime
-        let y1p2 = y1Prime * y1Prime
-
-        let numerator = max(0, rx2 * ry2 - rx2 * y1p2 - ry2 * x1p2)
-        let denominator = rx2 * y1p2 + ry2 * x1p2
-        let sign: CGFloat = largeArc == sweep ? -1 : 1
-        let coefficient = denominator == 0 ? 0 : sign * sqrt(numerator / denominator)
-
-        let cxPrime = coefficient * (rx * y1Prime / ry)
-        let cyPrime = coefficient * (-ry * x1Prime / rx)
-
-        let center = CGPoint(
-            x: cosPhi * cxPrime - sinPhi * cyPrime + (start.x + end.x) / 2,
-            y: sinPhi * cxPrime + cosPhi * cyPrime + (start.y + end.y) / 2
-        )
-
-        let ux = (x1Prime - cxPrime) / rx
-        let uy = (y1Prime - cyPrime) / ry
-        let vx = (-x1Prime - cxPrime) / rx
-        let vy = (-y1Prime - cyPrime) / ry
-
-        let startAngle = vectorAngle(ux: 1, uy: 0, vx: ux, vy: uy)
-        var deltaAngle = vectorAngle(ux: ux, uy: uy, vx: vx, vy: vy)
-
-        if !sweep && deltaAngle > 0 {
-            deltaAngle -= 2 * .pi
-        } else if sweep && deltaAngle < 0 {
-            deltaAngle += 2 * .pi
-        }
-
-        let segmentCount = max(1, Int(ceil(abs(deltaAngle) / (.pi / 2))))
-        let segmentDelta = deltaAngle / CGFloat(segmentCount)
-
-        return (0..<segmentCount).map { segmentIndex in
-            let theta1 = startAngle + CGFloat(segmentIndex) * segmentDelta
-            let theta2 = theta1 + segmentDelta
-            return cubicCurve(
-                center: center,
-                rx: rx,
-                ry: ry,
-                phi: phi,
-                theta1: theta1,
-                theta2: theta2
-            )
-        }
-    }
-
-    private static func vectorAngle(ux: CGFloat, uy: CGFloat, vx: CGFloat, vy: CGFloat) -> CGFloat {
-        let dot = ux * vx + uy * vy
-        let length = sqrt((ux * ux + uy * uy) * (vx * vx + vy * vy))
-        guard length > 0 else { return 0 }
-
-        let clamped = max(-1, min(1, dot / length))
-        let sign: CGFloat = (ux * vy - uy * vx) < 0 ? -1 : 1
-        return sign * acos(clamped)
-    }
-
-    private static func cubicCurve(
-        center: CGPoint,
-        rx: CGFloat,
-        ry: CGFloat,
-        phi: CGFloat,
-        theta1: CGFloat,
-        theta2: CGFloat
-    ) -> CubicCurve {
-        let delta = theta2 - theta1
-        let alpha = (4 / 3) * tan(delta / 4)
-
-        let p1 = point(center: center, rx: rx, ry: ry, phi: phi, theta: theta1)
-        let p2 = point(center: center, rx: rx, ry: ry, phi: phi, theta: theta2)
-        let d1 = derivative(rx: rx, ry: ry, phi: phi, theta: theta1)
-        let d2 = derivative(rx: rx, ry: ry, phi: phi, theta: theta2)
-
-        return CubicCurve(
-            control1: CGPoint(x: p1.x + alpha * d1.x, y: p1.y + alpha * d1.y),
-            control2: CGPoint(x: p2.x - alpha * d2.x, y: p2.y - alpha * d2.y),
-            point: p2
-        )
-    }
-
-    private static func point(
-        center: CGPoint,
-        rx: CGFloat,
-        ry: CGFloat,
-        phi: CGFloat,
-        theta: CGFloat
-    ) -> CGPoint {
-        let cosPhi = cos(phi)
-        let sinPhi = sin(phi)
-        let cosTheta = cos(theta)
-        let sinTheta = sin(theta)
-
-        return CGPoint(
-            x: center.x + rx * cosTheta * cosPhi - ry * sinTheta * sinPhi,
-            y: center.y + rx * cosTheta * sinPhi + ry * sinTheta * cosPhi
-        )
-    }
-
-    private static func derivative(
-        rx: CGFloat,
-        ry: CGFloat,
-        phi: CGFloat,
-        theta: CGFloat
-    ) -> CGVector {
-        let cosPhi = cos(phi)
-        let sinPhi = sin(phi)
-        let cosTheta = cos(theta)
-        let sinTheta = sin(theta)
-
-        return CGVector(
-            dx: -rx * sinTheta * cosPhi - ry * cosTheta * sinPhi,
-            dy: -rx * sinTheta * sinPhi + ry * cosTheta * cosPhi
-        )
-    }
 }
