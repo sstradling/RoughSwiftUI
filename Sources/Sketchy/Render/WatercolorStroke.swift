@@ -41,7 +41,9 @@ enum WatercolorStroke {
         guard let line = lines.max(by: { $0.samples.count < $1.samples.count }) else { return [] }
 
         var pieces: [RibbonPiece] = []
-        for layer in 0..<style.layers {
+        // Paler, slightly larger passes go down first. The saturated body
+        // covers them, so only a thin fringe shows past the outline.
+        for layer in stride(from: style.layers - 1, through: 0, by: -1) {
             pieces.append(contentsOf: glaze(
                 line: line,
                 width: width,
@@ -235,17 +237,44 @@ enum WatercolorStroke {
             let sample = sampleCenter(center, at: t)
             let located = StrokeCenterSample(point: sample.point, tangent: sample.forward, t: sample.t)
             let half = halfWidth(at: located, forward: sample.forward, width: width, brush: brush, style: style, layer: 0, line: line)
+            let wobble = edgeWobble(at: sample.t, side: side, width: width, style: style, layer: 0, closed: line.isClosed)
+            let edge = max(half * 0.45, half + wobble)
+            let radius = half * (0.2 + 0.14 * size)
+            // Sit on the outline so most of the bloom overlaps the body.
+            let reach = edge - radius * 0.35
             let normal = sample.forward + .pi / 2
-            let reach = half * (1.15 + 0.45 * size)
             let dot = CGPoint(
                 x: sample.point.x + cos(normal) * side * reach,
                 y: sample.point.y + sin(normal) * side * reach
             )
-            let radius = half * (0.28 + 0.22 * size)
-            let opacity = CGFloat(style.pigment) * strokeOpacity * amount * (0.08 + 0.06 * size)
-            pieces.append(RibbonPiece(path: ellipse(center: dot, radius: radius), opacity: min(0.22, opacity), t: sample.t))
+            let opacity = min(0.5, CGFloat(style.pigment) * strokeOpacity * (0.4 + 0.18 * size))
+            pieces.append(RibbonPiece(
+                path: bleedBlob(center: dot, radius: radius, seed: seed),
+                opacity: opacity,
+                t: sample.t
+            ))
         }
         return pieces
+    }
+
+    /// A lumpy puddle, not a circle, so a bleed reads as wet pigment.
+    private static func bleedBlob(center: CGPoint, radius: CGFloat, seed: UInt64) -> SwiftUI.Path {
+        var path = SwiftUI.Path()
+        let count = 14
+        for index in 0...count {
+            let angle = CGFloat(index) / CGFloat(count) * 2 * .pi
+            let noise = 0.72 + 0.5 * CGFloat(SeededNoise.unit(at: Float(index) * 0.73, seed: seed &+ UInt64(index)))
+            let lump = 0.85 + 0.22 * sin(angle * 3 + CGFloat(seed % 7))
+            let distance = radius * lump * noise
+            let point = CGPoint(x: center.x + cos(angle) * distance, y: center.y + sin(angle) * distance)
+            if index == 0 {
+                path.move(to: point)
+            } else {
+                path.addLine(to: point)
+            }
+        }
+        path.closeSubpath()
+        return path
     }
 
     /// Fine grain inside the ribbon.
@@ -404,34 +433,51 @@ enum WatercolorStroke {
             reach: 6,
             closed: line.isClosed
         )
-        let built = center.enumerated().map { index, sample -> Station in
+        var lefts = halves
+        var rights = halves
+        for index in center.indices {
             let half = halves[index]
-            var left = half
-            var right = half
-            // Only a hairpin, where the offset would cross, pulls the inside in.
-            // A normal peak stays a smooth offset, so the crotch does not crease.
-            if sample.radius < half * 0.85 {
-                let limit = max(half * 0.62, sample.radius * 0.95)
-                if sample.curvature > 0 {
-                    left = min(left, limit)
-                } else if sample.curvature < 0 {
-                    right = min(right, limit)
-                }
+            let sample = center[index]
+            // Pull the inside back only where the offset would cross, then
+            // smooth that pull so the peak does not fold into a dark triangle.
+            guard sample.radius < half * 1.05 else { continue }
+            let limit = max(half * 0.72, sample.radius * 0.92)
+            if sample.curvature > 0 {
+                lefts[index] = min(half, limit)
+            } else if sample.curvature < 0 {
+                rights[index] = min(half, limit)
             }
-            // The centreline stays smooth. Only the offset distance wobbles,
-            // and each side has its own seed so the edges do not mirror.
-            left += edgeWobble(at: sample.t, side: 1, width: width, style: style, layer: layer, closed: line.isClosed)
-            right += edgeWobble(at: sample.t, side: -1, width: width, style: style, layer: layer, closed: line.isClosed)
+        }
+        lefts = smoothScalars(lefts, reach: 8, closed: line.isClosed)
+        rights = smoothScalars(rights, reach: 8, closed: line.isClosed)
+        let built = center.enumerated().map { index, sample -> Station in
+            var left = lefts[index]
+            var right = rights[index]
+            // Layer 0 is the ragged body. Later glazes share that edge and only
+            // step a little past it on both sides, so a pale layer cannot drift
+            // off and read as a drop shadow.
+            let leftWobble = edgeWobble(at: sample.t, side: 1, width: width, style: style, layer: 0, closed: line.isClosed)
+            let rightWobble = edgeWobble(at: sample.t, side: -1, width: width, style: style, layer: 0, closed: line.isClosed)
+            if layer == 0 {
+                left += leftWobble
+                right += rightWobble
+            } else {
+                let flutter = signed(
+                    sample.t,
+                    cycles: 11,
+                    seed: style.seed &+ UInt64(layer) &* 23,
+                    closed: line.isClosed
+                ) * width * 0.012
+                let step = width * 0.012 * CGFloat(layer) + flutter
+                left += leftWobble + step
+                right += rightWobble + step
+            }
             left = max(0.35, left)
             right = max(0.35, right)
-            let shift = shiftAmount(at: sample.t, closed: line.isClosed, style: style, width: width, layer: layer)
             let normalAngle = sample.forward + .pi / 2
             let nx = cos(normalAngle)
             let ny = sin(normalAngle)
-            let point = CGPoint(
-                x: sample.point.x + nx * shift,
-                y: sample.point.y + ny * shift
-            )
+            let point = sample.point
             let innerScale = 1 - 0.22 * CGFloat(style.edgeDarkening)
             return Station(
                 center: point,
@@ -800,20 +846,6 @@ enum WatercolorStroke {
         path.addLine(to: d)
         path.closeSubpath()
         return path
-    }
-
-    private static func shiftAmount(
-        at t: CGFloat,
-        closed: Bool,
-        style: WatercolorStyle,
-        width: CGFloat,
-        layer: Int
-    ) -> CGFloat {
-        let amount = CGFloat(style.wetness) * width * 0.07
-        let raw = signed(t, cycles: 2.2, seed: style.seed &+ UInt64(layer) &* 0x9E37_79B9_7F4A_7C15, closed: closed) * amount
-        guard closed else { return raw }
-        let join = signed(0, cycles: 2.2, seed: style.seed &+ UInt64(layer) &* 0x9E37_79B9_7F4A_7C15, closed: true) * amount
-        return seamBlend(value: raw, toward: join, t: t, window: 0.1)
     }
 
     private static func ellipse(center: CGPoint, radius: CGFloat) -> SwiftUI.Path {
