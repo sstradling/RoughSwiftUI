@@ -106,7 +106,31 @@ RoughView()
     .circle()
 ```
 
-Presets that are not crayon: `.calligraphic`, `.marker`, `.pen`, and `.default`.
+### Watercolor
+
+`.brushProfile(.watercolor)` is a wet wash: translucent passes, a darker rim, and width and opacity that wander along the stroke. `.fillStyle(.watercolor)` clips that wash to the shape. `fillPadding` insets it.
+
+![Watercolor stroke](docs/images/brushes/watercolor.png)
+
+```swift
+RoughView()
+    .stroke(Color(red: 0.16, green: 0.40, blue: 0.66))
+    .strokeWidth(30)
+    .roughness(0.55)
+    .bowing(0.35)
+    .brushProfile(.watercolor(pigment: 0.78, wetness: 0.7, edgeDarkening: 0.85, layers: 3, variation: 0.6, bleed: 0.65, seed: 21))
+    .seed(21)
+    .draw(Curve(points: [
+        Point(x: 22, y: 128),
+        Point(x: 62, y: 36),
+        Point(x: 112, y: 150),
+        Point(x: 164, y: 58)
+    ]))
+```
+
+`.opacityProfile` multiplies `strokeOpacity` along the outline. `.uniform` changes nothing. `.values` spaces samples evenly, `.stops` places `OpacityStop` values from 0 to 1, and `.noise` wobbles between a minimum and a maximum. The same noise seed repeats.
+
+Presets that are not crayon or watercolor: `.calligraphic`, `.marker`, `.pen`, and `.default`.
 
 ### Text
 
@@ -217,6 +241,7 @@ Crayon grain uses `CrayonStyle.seed`. When that seed is still `CrayonStyle.defau
 | `.marker` | Flat tip, butt caps. Even width |
 | `.pen` | Pressure swell through the middle |
 | `.crayon` | Continuous wax with grit on top |
+| `.watercolor` | Wet wash with a darker rim |
 
 `.marker(variation:minimum:maximum:taperStart:taperEnd:pressure:seed:)` is that same marker with width that changes along an open stroke. `variation` of `0.35` keeps the body in `[0.65, 1.35]` times `strokeWidth`. `minimum` and `maximum` replace that range. They are multipliers, not points. `seed` repeats the wobble. `pressure` uses the same curve as `ThicknessProfile.pressure`. Taper may thin the ends to a point. The default `marker()` call is the even marker above.
 

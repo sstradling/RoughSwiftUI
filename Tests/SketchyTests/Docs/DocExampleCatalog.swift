@@ -44,6 +44,7 @@ enum DocExampleCatalog {
     static let plum = DocInk(red: 0.45, green: 0.28, blue: 0.55)
     static let sea = DocInk(red: 0.20, green: 0.45, blue: 0.52)
     static let clay = DocInk(red: 0.55, green: 0.32, blue: 0.22)
+    static let wash = DocInk(red: 0.16, green: 0.40, blue: 0.66)
 
     static let examples: [DocExample] =
         basicExamples

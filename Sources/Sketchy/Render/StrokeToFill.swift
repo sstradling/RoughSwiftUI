@@ -831,3 +831,73 @@ struct StrokeToFillConverter {
     }
 }
 
+/// One point on a stroke centerline after an optional destination transform.
+struct StrokeCenterSample: Equatable, Sendable {
+    var point: CGPoint
+    var tangent: CGFloat
+    /// 0 at the start of this subpath, 1 at the end.
+    var t: CGFloat
+}
+
+extension StrokeToFillConverter {
+    /// Centerline samples for each subpath.
+    ///
+    /// `transform` maps source points into the destination. Tangents are taken
+    /// from that polyline. Width is not applied here, so a fitted SVG path can
+    /// keep `strokeWidth` in destination points.
+    static func centerlines(
+        operations: [Operation],
+        transform: CGAffineTransform = .identity
+    ) -> [(samples: [StrokeCenterSample], isClosed: Bool)] {
+        let elements = operationsToElements(operations)
+        guard !elements.isEmpty else { return [] }
+        return splitIntoSubpaths(elements).compactMap { subpath in
+            let closed = subpath.contains { element in
+                if case .closeSubpath = element { return true }
+                return false
+            }
+            let raw = sampleSubpath(subpath)
+            let samples = destinationSamples(raw, transform: transform)
+            guard samples.count >= 2 else { return nil }
+            return (samples, closed)
+        }
+    }
+
+    /// Maps samples into destination space and rebuilds tangents along the polyline.
+    private static func destinationSamples(
+        _ raw: [PathSample],
+        transform: CGAffineTransform
+    ) -> [StrokeCenterSample] {
+        guard raw.count >= 2 else { return [] }
+        let points = raw.map { $0.point.applying(transform) }
+        return raw.enumerated().map { index, sample in
+            let tangent = polylineTangent(
+                at: index,
+                points: points,
+                fallback: sample.tangentAngle
+            )
+            return StrokeCenterSample(point: points[index], tangent: tangent, t: sample.t)
+        }
+    }
+
+    /// Chord tangent. Endpoints use the outgoing or incoming segment.
+    private static func polylineTangent(
+        at index: Int,
+        points: [CGPoint],
+        fallback: CGFloat
+    ) -> CGFloat {
+        let count = points.count
+        guard count >= 2 else { return fallback }
+        let previous = index == 0 ? 0 : index - 1
+        let next = index == count - 1 ? count - 1 : index + 1
+        return angle(points[previous], points[next], fallback: fallback)
+    }
+
+    private static func angle(_ from: CGPoint, _ to: CGPoint, fallback: CGFloat) -> CGFloat {
+        let dx = to.x - from.x
+        let dy = to.y - from.y
+        if dx * dx + dy * dy < 0.000_001 { return fallback }
+        return atan2(dy, dx)
+    }
+}
+

@@ -915,6 +915,78 @@ RoughView()
     ]))
 ```
 
+### Watercolor stroke
+
+A wet wash: translucent passes, a darker rim, and width and opacity that wander. The watercolor seed repeats it.
+
+![Watercolor stroke](images/brushes/watercolor.png)
+
+```swift
+RoughView()
+    .stroke(Color(red: 0.16, green: 0.40, blue: 0.66))
+    .strokeWidth(30)
+    .roughness(0.55)
+    .bowing(0.35)
+    .brushProfile(.watercolor(
+        pigment: 0.78,
+        wetness: 0.7,
+        edgeDarkening: 0.85,
+        layers: 3,
+        variation: 0.6,
+        bleed: 0.65,
+        seed: 21
+    ))
+    .seed(21)
+    .draw(Curve(points: [
+        Point(x: 22, y: 128),
+        Point(x: 62, y: 36),
+        Point(x: 112, y: 150),
+        Point(x: 164, y: 58)
+    ]))
+```
+
+### Variable opacity
+
+Opacity stops run from faint to solid and back. The profile multiplies strokeOpacity, and one mask keeps the overlaps from turning dark.
+
+![Variable opacity](images/brushes/variable-opacity.png)
+
+```swift
+RoughView()
+    .stroke(Color(red: 0.18, green: 0.46, blue: 0.67))
+    .strokeWidth(18)
+    .opacityProfile(.stops([
+        OpacityStop(0.15, at: 0),
+        OpacityStop(1, at: 0.38),
+        OpacityStop(0.2, at: 0.72),
+        OpacityStop(0.95, at: 1)
+    ]))
+    .seed(128)
+    .draw(Curve(points: [
+        Point(x: 18, y: 118),
+        Point(x: 70, y: 42),
+        Point(x: 118, y: 142),
+        Point(x: 168, y: 64)
+    ]))
+```
+
+### Watercolor fill
+
+fillStyle(.watercolor) lays a clipped wash with a darker rim. fillPadding insets it from the outline. The fill seed follows Options.seed.
+
+![Watercolor fill](images/brushes/watercolor-fill.png)
+
+```swift
+RoughView()
+    .fill(Color(red: 0.16, green: 0.40, blue: 0.66))
+    .fillStyle(.watercolor)
+    .fillPadding(12)
+    .stroke(Color(red: 0.12, green: 0.14, blue: 0.18))
+    .strokeWidth(1.6)
+    .seed(33)
+    .circle()
+```
+
 ## Seeding
 
 The same seed redraws the same strokes. A different seed is a different drawing of the same shape.

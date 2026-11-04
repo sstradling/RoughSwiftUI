@@ -265,6 +265,15 @@ public struct BrushProfile: Equatable, Hashable, Sendable {
     ///
     /// `nil` keeps the existing stroke behavior. Default profiles leave this `nil`.
     public var crayon: CrayonStyle?
+
+    /// Opacity along the stroke. `.uniform` leaves existing strokes unchanged.
+    ///
+    /// The value multiplies `Options.strokeOpacity`. A profile that changes
+    /// along the stroke is painted into one mask so segment overlaps do not darken.
+    public var opacityProfile: OpacityProfile
+
+    /// Wet-wash settings. `nil` keeps the existing stroke. See `watercolor(...)`.
+    public var watercolor: WatercolorStyle?
     
     /// Creates a brush profile with the specified components.
     public init(
@@ -272,13 +281,17 @@ public struct BrushProfile: Equatable, Hashable, Sendable {
         thicknessProfile: ThicknessProfile = .uniform,
         cap: BrushCap = .round,
         join: BrushJoin = .round,
-        crayon: CrayonStyle? = nil
+        crayon: CrayonStyle? = nil,
+        opacityProfile: OpacityProfile = .uniform,
+        watercolor: WatercolorStyle? = nil
     ) {
         self.tip = tip
         self.thicknessProfile = thicknessProfile
         self.cap = cap
         self.join = join
         self.crayon = crayon
+        self.opacityProfile = opacityProfile
+        self.watercolor = watercolor
     }
     
     /// Default brush profile - circular tip with uniform thickness.
@@ -406,11 +419,90 @@ public struct BrushProfile: Equatable, Hashable, Sendable {
             )
         )
     }
+
+    /// Watercolor wash. Several translucent passes, a darker rim, and a soft width.
+    ///
+    /// `watercolor()` with the defaults equals `.watercolor`. `variation` feeds
+    /// `ThicknessProfile.variable` and an `OpacityProfile.noise` curve. `seed`
+    /// repeats the wash. `WatercolorStyle.defaultSeed` (`1`) yields to `Options.seed`.
+    ///
+    /// The outline is the wash. `.fillStyle(.watercolor)` uses this style for a
+    /// clipped interior when the brush carries one, and `WatercolorStyle()` when
+    /// it does not. Hachure and the other sketch fills are unchanged.
+    ///
+    /// - Parameters:
+    ///   - pigment: Wash strength, 0...1. Default 0.72.
+    ///   - wetness: How far passes drift, 0...1. Default 0.6.
+    ///   - edgeDarkening: Rim versus centre, 0...1. Default 0.75.
+    ///   - layers: Body passes, 1...5. Default 3. Bleed is an extra pass.
+    ///   - variation: Width and opacity wander, 0...1. Default 0.45.
+    ///   - bleed: Outer bloom, 0...1. Default 0.5.
+    ///   - seed: Stable wash seed. Default 1.
+    public static func watercolor(
+        pigment: Float = 0.72,
+        wetness: Float = 0.6,
+        edgeDarkening: Float = 0.75,
+        layers: Int = 3,
+        variation: Float = 0.45,
+        bleed: Float = 0.5,
+        seed: UInt64 = WatercolorStyle.defaultSeed
+    ) -> BrushProfile {
+        let style = WatercolorStyle(
+            pigment: pigment,
+            wetness: wetness,
+            edgeDarkening: edgeDarkening,
+            layers: layers,
+            variation: variation,
+            bleed: bleed,
+            seed: seed
+        )
+        let wander = CGFloat(style.variation)
+        let thickness: ThicknessProfile
+        let opacity: OpacityProfile
+        if wander > 0.001 {
+            thickness = .variable(VariableStrokeWidth(
+                variation: min(1, wander * 1.15),
+                minimum: 0.4,
+                maximum: 1.65,
+                seed: seed,
+                frequency: 1.5
+            ))
+            opacity = .noise(
+                minimum: 0.42,
+                maximum: 1,
+                variation: min(1, wander * 1.25),
+                seed: seed &+ 17,
+                frequency: 1.5
+            )
+        } else {
+            thickness = .uniform
+            opacity = .uniform
+        }
+        return BrushProfile(
+            tip: .circular,
+            thicknessProfile: thickness,
+            cap: .round,
+            join: .round,
+            opacityProfile: opacity,
+            watercolor: style
+        )
+    }
+
+    /// Watercolor preset. Same settings as `watercolor()` with default arguments.
+    public static let watercolor = BrushProfile.watercolor(
+        pigment: 0.72,
+        wetness: 0.6,
+        edgeDarkening: 0.75,
+        layers: 3,
+        variation: 0.45,
+        bleed: 0.5,
+        seed: WatercolorStyle.defaultSeed
+    )
     
     /// Whether this profile requires custom stroke-to-fill conversion.
     /// Returns false for simple profiles that can use standard stroke rendering.
     public var requiresCustomRendering: Bool {
-        if crayon != nil {
+        if crayon != nil || watercolor != nil || opacityProfile.variesAlongStroke {
             return true
         }
         // Need custom rendering if:
@@ -430,7 +522,9 @@ public struct BrushProfile: Equatable, Hashable, Sendable {
             thicknessProfile: .uniform,
             cap: cap,
             join: join,
-            crayon: crayon
+            crayon: crayon,
+            opacityProfile: opacityProfile,
+            watercolor: watercolor
         )
     }
 }

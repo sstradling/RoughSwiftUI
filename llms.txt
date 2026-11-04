@@ -52,7 +52,7 @@ Modifiers write `Options`. Stored defaults:
 | `dashOffset`, `dashGap`, `zigzagOffset` | `-1` (automatic) |
 | `brushProfile` | `.default` |
 
-`FillStyle` cases: `.hachure`, `.solid`, `.zigzag`, `.crossHatch`, `.dots`, `.sunBurst`, `.starBurst`, `.dashed`, `.zigzagLine`, `.scribble`. `.sunBurst` and `.starBurst` use the same filler. Dots ignore `fillAngle` and stay on the horizontal grid. Sunburst is radial and ignores `fillAngle`. Scribble uses `scribbleOrigin` instead. Ellipse and circle hachure lines are chords of the same jittered ellipse the outline draws, at `fillAngle`, spaced perpendicular to the lines and centered in the ellipse. Zigzag, cross-hatch, dashed, zigzag-line, and dots on an ellipse reuse those chords. `fillPadding` and `fillOffset` change only the fill.
+`FillStyle` cases: `.hachure`, `.solid`, `.zigzag`, `.crossHatch`, `.dots`, `.sunBurst`, `.starBurst`, `.dashed`, `.zigzagLine`, `.scribble`, `.watercolor`. `.sunBurst` and `.starBurst` use the same filler. Dots ignore `fillAngle` and stay on the horizontal grid. Sunburst is radial and ignores `fillAngle`. Scribble uses `scribbleOrigin` instead. Ellipse and circle hachure lines are chords of the same jittered ellipse the outline draws, at `fillAngle`, spaced perpendicular to the lines and centered in the ellipse. Zigzag, cross-hatch, dashed, zigzag-line, and dots on an ellipse reuse those chords. `fillPadding` and `fillOffset` change only the fill.
 
 `.fill` and `.stroke` each have a `Color` overload and a `UIColor` overload. In a file that imports both SwiftUI and UIKit, write `Color.red` or `UIColor.red`. A bare `.red` is ambiguous.
 
@@ -111,7 +111,7 @@ Also `text(attributedString:horizontalAlignment:verticalAlignment:offsetX:offset
 
 ## Brushes
 
-`BrushProfile` defaults: `tip` `.circular`, `thicknessProfile` `.uniform`, `cap` `.round`, `join` `.round`, `crayon` `nil`.
+`BrushProfile` defaults: `tip` `.circular`, `thicknessProfile` `.uniform`, `cap` `.round`, `join` `.round`, `crayon` `nil`, `opacityProfile` `.uniform`, `watercolor` `nil`.
 
 `BrushTip`: `roundness` `1` (clamped `0.01...1`), `angle` `0` radians, `directionSensitive` `true`. Presets: `.circular` (`directionSensitive: false`), `.calligraphic` (`roundness` `0.3`, `angle` `π/4`), `.flat` (`roundness` `0.2`, `angle` `0`).
 
@@ -128,6 +128,10 @@ Also `text(attributedString:horizontalAlignment:verticalAlignment:offsetX:offset
 `.crayon(grain:edgeRoughness:widthVariation:opacityVariation:passes:baseOpacity:baseSoftness:grit:flakeSize:seed:)` defaults: `grain` `0.28`, `edgeRoughness` `0.75`, `widthVariation` `0.18`, `opacityVariation` `0.35`, `passes` `2` (clamped `1...3`), `baseOpacity` `0.8` (clamped `0.2...1`), `baseSoftness` `0.5`, `grit` `0.92`, `flakeSize` `1.45` (clamped `0.35...3`), `seed` `1` (`CrayonStyle.defaultSeed`).
 
 When `Options.seed` is set and the crayon seed is still `1`, grain uses `Options.seed`. Any other crayon seed wins. A crayon brush textures sketch fills: hachure, zigzag, cross-hatch, dots, dashed, zigzag-line, sunburst, and scribble. A `.solid` fill stays flat. Fill-line width is `fillWeight` (or the automatic weight). The outline still uses `strokeWidth`. Closed contours do not taper, so a join does not seam.
+
+`OpacityProfile`: `.uniform` (multiplier `1`), `.values([CGFloat])` evenly spaced, `.stops([OpacityStop])` with `position` `0...1`, `.noise(minimum:maximum:variation:seed:frequency:)`. Values are clamped to `0...1` when sampled. The result multiplies `strokeOpacity`. `.noise` defaults: `minimum` `0.35`, `maximum` `1`, `variation` `1`, `seed` `1` (`OpacityNoise.defaultSeed`), `frequency` `3` (at least `0.5`). `variation` `0` is the midpoint. `Options.seed` replaces noise seed `1` only. A varying profile is one mask: opaque gray at that opacity, then `luminanceToAlpha`, then the stroke colour. Overlaps replace, so joins do not darken. `.uniform` keeps the old stroke. Closed contours blend the join. The profile applies to the outline, not to hachure.
+
+`.watercolor(pigment:wetness:edgeDarkening:layers:variation:bleed:seed:)` defaults: `pigment` `0.72`, `wetness` `0.6`, `edgeDarkening` `0.75`, `layers` `3` (clamped `1...5`), `variation` `0.45`, `bleed` `0.5`, `seed` `1` (`WatercolorStyle.defaultSeed`). `.watercolor` matches that call. `variation` above `0` sets `ThicknessProfile.variable` (body about `0.4...1.65` times `strokeWidth`, frequency `1.5`) and `OpacityProfile.noise` (minimum `0.42`, seed `style.seed &+ 17`). Wet passes drift by `wetness`. The rim is darker than the centre. `bleed` adds one blurred halo. `WatercolorStyle.defaultSeed` yields to `Options.seed`, and the baked width and opacity seeds follow. Any other watercolor seed wins. `.fillStyle(.watercolor)` clips a wash to the solid-fill region, so `fillPadding` and `fillOffset` apply. The fill uses the brush style when the brush is watercolor, otherwise `WatercolorStyle()` with `Options.seed`. Hachure is not a wash. A stroke thinner than `0.5` points is skipped.
 
 ## Scribble
 

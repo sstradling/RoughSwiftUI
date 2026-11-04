@@ -100,6 +100,9 @@ public struct FillPatternFactory {
         case .scribble:
             // Scribble is handled natively in SwiftUIRenderer
             newFiller = HachureFiller()
+        case .watercolor:
+            // The wash is painted by the renderer. The filler only supplies the shape.
+            newFiller = SolidFiller()
         }
         
         fillers[style] = newFiller
