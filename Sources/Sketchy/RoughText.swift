@@ -43,6 +43,9 @@ public struct RoughText: View {
     
     /// The underlying RoughView used for rendering.
     private var roughView: RoughView
+
+    /// Drawing options, including a width-stop profile set on this text.
+    var options: Options { roughView.options }
     
     /// The typographic size of the text (matching SwiftUI.Text dimensions).
     private let textSize: CGSize
@@ -251,6 +254,25 @@ public extension RoughText {
     /// - Returns: A view with the brush tip applied.
     func brushTip(_ tip: BrushTip) -> Self {
         RoughText(roughView: roughView.brushTip(tip), textSize: textSize)
+    }
+
+    /// Set absolute stroke widths at positions along an open stroke.
+    ///
+    /// Widths are points. See `RoughView.widthStops(_:)`. Most glyph outlines
+    /// are closed, and closed contours keep an even `strokeWidth`.
+    ///
+    /// - Parameter stops: `(position, width)` pairs. Position is 0...1, width is points.
+    /// - Returns: The text view with `ThicknessProfile.stops`.
+    func widthStops(_ stops: [(CGFloat, CGFloat)]) -> Self {
+        RoughText(roughView: roughView.widthStops(stops), textSize: textSize)
+    }
+
+    /// Set absolute stroke widths at positions along an open stroke.
+    ///
+    /// - Parameter stops: Stops along the stroke. An empty list is uniform.
+    /// - Returns: The text view with `ThicknessProfile.stops`.
+    func widthStops(_ stops: [WidthStop]) -> Self {
+        RoughText(roughView: roughView.widthStops(stops), textSize: textSize)
     }
     
     // MARK: - SVG-specific modifiers

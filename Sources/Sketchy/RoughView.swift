@@ -640,6 +640,46 @@ public extension RoughView {
         v.options.opacityProfile = profile
         return v
     }
+
+    /// Set absolute stroke widths at positions along an open stroke.
+    ///
+    /// Positions run from 0 at the start to 1 at the end and are clamped.
+    /// Widths are points. `strokeWidth` does not scale a non-empty list.
+    /// With `strokeWidth` 8, `.custom([0.5, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.5])`
+    /// matches:
+    ///
+    /// ```swift
+    /// .widthStops([(0, 4), (0.1, 8), (0.9, 8), (1, 4)])
+    /// ```
+    ///
+    /// That stroke is 4pt at the start, 8pt from 10% to 90% of its length,
+    /// and 4pt at the end. Stops are sorted. The width holds before the first
+    /// stop and after the last. An empty list is an even `strokeWidth`.
+    ///
+    /// This replaces the current thickness profile, including `.variable`
+    /// noise, pressure, and taper. The brush tip stays, so a marker's flat
+    /// tip still changes width with direction. Closed contours ignore the
+    /// stops and keep an even `strokeWidth`. A crayon brush does not use
+    /// thickness profiles.
+    ///
+    /// - Parameter stops: `(position, width)` pairs. Position is 0...1, width is points.
+    /// - Returns: The view with `ThicknessProfile.stops`.
+    func widthStops(_ stops: [(CGFloat, CGFloat)]) -> Self {
+        widthStops(stops.map { WidthStop(position: $0.0, width: $0.1) })
+    }
+
+    /// Set absolute stroke widths at positions along an open stroke.
+    ///
+    /// See `widthStops(_:)` for the tuple form. The same rules apply: point
+    /// widths, sorted positions, and no scaling by `strokeWidth`.
+    ///
+    /// - Parameter stops: Stops along the stroke. An empty list is uniform.
+    /// - Returns: The view with `ThicknessProfile.stops`.
+    func widthStops(_ stops: [WidthStop]) -> Self {
+        var v = self
+        v.options.thicknessProfile = .stops(stops)
+        return v
+    }
     
     /// Set the stroke cap style for line endings.
     ///

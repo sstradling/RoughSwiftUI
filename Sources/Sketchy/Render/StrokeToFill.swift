@@ -423,17 +423,21 @@ struct StrokeToFillConverter {
         var leftPoints: [CGPoint] = []
         var rightPoints: [CGPoint] = []
         
-        // For closed paths, we need uniform thickness (not tapered)
-        // to ensure the path joins seamlessly
+        // Closed paths stay an even strokeWidth so the join does not seam.
+        // Tapers, width stops, and variable noise are all dropped here.
         let effectiveProfile = isClosed ? profile.withUniformThickness() : profile
         
         for sample in samples {
-            // Calculate thickness at this point
-            let thicknessMultiplier = effectiveProfile.thicknessProfile.multiplier(at: sample.t)
+            // Point width. Stops are already points; other profiles scale baseWidth.
+            // Closed contours have replaced the profile with an even strokeWidth.
+            let localWidth = effectiveProfile.thicknessProfile.width(
+                at: sample.t,
+                strokeWidth: baseWidth
+            )
             
             // Calculate effective width based on brush tip and direction
             let effectiveWidth = effectiveProfile.tip.effectiveWidth(
-                baseWidth: baseWidth * thicknessMultiplier,
+                baseWidth: localWidth,
                 strokeAngle: sample.tangentAngle
             )
             
@@ -492,9 +496,17 @@ struct StrokeToFillConverter {
                 path.addLine(to: leftPoints[i])
             }
             
-            // Add end cap
+            // Add end cap. It has to bulge along the leaving tangent. The
+            // other semicircle folds back between the corners and leaves a V.
             if let lastLeft = leftPoints.last, let lastRight = rightPoints.last {
-                addCap(to: &path, from: lastLeft, to: lastRight, cap: cap, isEnd: true)
+                addCap(
+                    to: &path,
+                    from: lastLeft,
+                    to: lastRight,
+                    cap: cap,
+                    isEnd: true,
+                    tangent: samples.last?.tangentAngle ?? 0
+                )
             }
             
             // Draw along the right side (backward)
@@ -502,9 +514,16 @@ struct StrokeToFillConverter {
                 path.addLine(to: rightPoints[i])
             }
             
-            // Add start cap
+            // Add start cap, bulging back against the travel direction.
             if let firstLeft = leftPoints.first, let firstRight = rightPoints.first {
-                addCap(to: &path, from: firstRight, to: firstLeft, cap: cap, isEnd: false)
+                addCap(
+                    to: &path,
+                    from: firstRight,
+                    to: firstLeft,
+                    cap: cap,
+                    isEnd: false,
+                    tangent: samples.first?.tangentAngle ?? 0
+                )
             }
             
             path.closeSubpath()
@@ -514,12 +533,19 @@ struct StrokeToFillConverter {
     }
     
     /// Adds a cap (end or start) to the path.
+    ///
+    /// `tangent` is the centerline direction of travel at this end, in radians.
+    /// A round cap uses it to pick the outward semicircle. SwiftUI's
+    /// `clockwise: false` follows the increasing-angle semicircle, which folds
+    /// the end cap back into the stroke and leaves the two corners sticking
+    /// out as a notch.
     private static func addCap(
         to path: inout SwiftUI.Path,
         from: CGPoint,
         to: CGPoint,
         cap: BrushCap,
-        isEnd: Bool
+        isEnd: Bool,
+        tangent: CGFloat
     ) {
         switch cap {
         case .butt:
@@ -527,20 +553,25 @@ struct StrokeToFillConverter {
             path.addLine(to: to)
             
         case .round:
-            // Semicircular arc
             let center = CGPoint(
                 x: (from.x + to.x) / 2,
                 y: (from.y + to.y) / 2
             )
             let radius = distance(from, to) / 2
             let startAngle = atan2(from.y - center.y, from.x - center.x)
+            // End cap bulges along travel. Start cap bulges back against it.
+            let outward = isEnd ? tangent : tangent + .pi
+            let increasingMid = startAngle + .pi / 2
+            let decreasingMid = startAngle - .pi / 2
+            let useDecreasing = abs(signedAngleDelta(decreasingMid, outward))
+                <= abs(signedAngleDelta(increasingMid, outward))
             
             path.addArc(
                 center: center,
                 radius: radius,
                 startAngle: .radians(startAngle),
                 endAngle: .radians(startAngle + .pi),
-                clockwise: !isEnd
+                clockwise: useDecreasing
             )
             
         case .square:
@@ -558,6 +589,15 @@ struct StrokeToFillConverter {
             path.addLine(to: CGPoint(x: to.x + offsetX, y: to.y + offsetY))
             path.addLine(to: to)
         }
+    }
+
+    /// Signed difference `to - from`, wrapped into (-π, π].
+    private static func signedAngleDelta(_ from: CGFloat, _ to: CGFloat) -> CGFloat {
+        var delta = to - from
+        let turn = CGFloat.pi * 2
+        while delta > .pi { delta -= turn }
+        while delta <= -.pi { delta += turn }
+        return delta
     }
     
     // MARK: - Adaptive Bezier Sampling

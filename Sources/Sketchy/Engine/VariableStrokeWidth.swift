@@ -22,6 +22,10 @@ import Foundation
 ///
 /// Closed contours still drop this profile. `StrokeToFillConverter` uses an
 /// even width there so the join does not seam.
+///
+/// `.stops` is a different profile. It does not multiply this noise: a brush
+/// stores one thickness profile, and `.widthStops` replaces `.variable`. The
+/// brush tip still runs on whichever width that profile produces.
 public struct VariableStrokeWidth: Equatable, Hashable, Sendable {
     /// Fraction of `[minimum, maximum]` used by the noise, centered on the span.
     /// `1` uses the whole span. `0` leaves the body at multiplier 1.
