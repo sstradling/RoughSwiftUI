@@ -6,7 +6,7 @@
 //
 
 import SwiftUI
-import RoughSwiftUI
+import Sketchy
 
 struct ContentView: View {
     @State private var flag = false
@@ -955,6 +955,20 @@ struct BrushStrokeView: View {
                                 .frame(width: 100, height: 100)
                             
                             SwiftUI.Text("Pen")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        // Crayon preset
+                        VStack(spacing: 8) {
+                            RoughView()
+                                .stroke(Color.black)
+                                .strokeWidth(6)
+                                .brushProfile(.crayon)
+                                .circle()
+                                .frame(width: 100, height: 100)
+
+                            SwiftUI.Text("Crayon")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }

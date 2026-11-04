@@ -1,6 +1,6 @@
-# RoughSwiftUI API Documentation
+# Sketchy API Documentation
 
-> **Optimized for coding agents and LLMs.** This document provides structured, comprehensive API reference for the RoughSwiftUI package.
+> **Optimized for coding agents and LLMs.** This document provides structured, comprehensive API reference for the Sketchy package.
 
 ## Table of Contents
 
@@ -25,7 +25,7 @@
 
 ```swift
 import SwiftUI
-import RoughSwiftUI
+import Sketchy
 
 struct ContentView: View {
     var body: some View {
@@ -42,7 +42,7 @@ struct ContentView: View {
 ### Import Statement
 
 ```swift
-import RoughSwiftUI
+import Sketchy
 ```
 
 ### Platform Requirements
@@ -65,7 +65,8 @@ import RoughSwiftUI
 | `Point` | 2D coordinate | `Point(x: Float, y: Float)` |
 | `Size` | Dimensions | `Size(width: Float, height: Float)` |
 | `FillStyle` | Fill pattern enumeration | `.hachure`, `.solid`, etc. |
-| `BrushProfile` | Stroke styling configuration | Calligraphic effects |
+| `BrushProfile` | Stroke styling configuration | Calligraphic, pen, and crayon effects |
+| `CrayonStyle` | Wax-crayon grain, edge, and seed | Used by `BrushProfile.crayon` |
 | `AnimationConfig` | Animation settings | Steps, speed, variance |
 
 ### Point
@@ -141,9 +142,12 @@ Pass any `Drawable` type for precise positioning.
 |----------|-----------|-------------|
 | `.fillStyle(_ value:)` | `FillStyle` | Pattern type (hachure, solid, etc.) |
 | `.fillWeight(_ value:)` | `Float` | Fill line thickness |
-| `.fillAngle(_ value:)` | `Float` (0-360) | Fill line angle in degrees |
+| `.fillAngle(_ value:)` | `Float` | Fill line angle in degrees. 0° is horizontal, 90° is vertical |
+| `.seed(_ value:)` | `UInt64?` | Stable random seed. `nil` keeps unseeded randomness |
 | `.fillSpacing(_ value:)` | `Float` (0.5-100) | Gap between fill lines |
 | `.fillSpacingPattern(_ pattern:)` | `[Float]` | Variable spacing for gradients |
+| `.fillPadding(_ value:)` | `CGFloat` | Inset of the fill from the outline. Default `0`. Negative grows the fill |
+| `.fillOffset(_ value:)` | `CGSize` | Shifts the fill. Default `.zero`. Also `.fillOffset(x:y:)` |
 
 ### Curve Modifiers
 
@@ -450,7 +454,10 @@ public struct Options: Equatable, Hashable {
     public var fillOpacity: Float = 1.0    // 0.0 - 1.0
     public var fillStyle: FillStyle = .hachure
     public var fillWeight: Float = -1      // -1 = auto (strokeWidth/2)
-    public var fillAngle: Float = 45       // degrees
+    public var fillAngle: Float = 45       // degrees; 0 horizontal, 90 vertical
+    public var fillPadding: CGFloat = 0    // inset; negative grows the fill
+    public var fillOffset: CGSize = .zero  // shifts the fill, not the outline
+    public var seed: UInt64? = nil         // nil = system random
     public var fillSpacing: Float = 4.0    // multiplier of fillWeight
     public var fillSpacingPattern: [Float]? = nil
     
@@ -479,6 +486,12 @@ public struct Options: Equatable, Hashable {
     public var brushProfile: BrushProfile = .default
 }
 ```
+
+`fillAngle` is clockwise from the +x axis because Core Graphics y points down. `0` draws horizontal lines and `90` draws vertical lines for hachure, zigzag, cross-hatch, dashed, and zigzag-line. On an ellipse or circle those lines are chords of the ellipse, and the gap is the perpendicular distance between them. Dots always use that horizontal grid, including on an ellipse. Scribble strokes take their bearing from `scribbleOrigin`. Starburst and sunburst fills are radial and ignore `fillAngle`.
+
+`fillPadding` of `0` keeps the fill edge on the outline. A positive value insets the fill: ellipse and circle radii shrink by that many points, and polygon edges (rectangles, rounded rectangles, polygons, and SVG paths) offset inward. A negative value grows the fill past the outline. If the inset collapses the shape, no fill is drawn. `fillOffset` then shifts that region. `.zero` leaves the fill centered on the outline. Ellipse and circle outlines share one jittered radius pair with the fill, so the padding is measured from the shape the stroke actually draws.
+
+`.seed(42)` restarts a SplitMix64 sequence for each generate call. Leave it `nil` for a new random drawing on every cache miss. `CrayonStyle.seed` still owns wax grain unless it is left at `CrayonStyle.defaultSeed` (1), in which case a set `Options.seed` is copied onto the crayon. `AnimationConfig.seed` is separate and is passed through as `PathVarianceGenerator`'s base seed.
 
 ---
 
@@ -516,8 +529,9 @@ RoughView().fill(.green).fillStyle(.crossHatch).rectangle()
 // Dots
 RoughView().fill(.purple).fillStyle(.dots).circle()
 
-// Scribble (continuous zig-zag)
-RoughView().fill(.orange).fillStyle(.scribble).scribbleTightness(15).circle()
+// Scribble (continuous zig-zag). scribbleOrigin is the stroke bearing:
+// 0 runs to the right, 90 runs straight down, positive angles rotate clockwise.
+RoughView().fill(.orange).fillStyle(.scribble).scribbleOrigin(85).scribbleTightness(15).circle()
 ```
 
 ---
@@ -566,6 +580,8 @@ RoughView()
     .frame(width: 200, height: 100)
 ```
 
+Text is drawn at that position and at the font size you set. It is not scaled to fill the frame. An SVG `Path` still is.
+
 ---
 
 ## Brush Profiles
@@ -601,6 +617,7 @@ public enum ThicknessProfile: Equatable, Hashable, Sendable {
     case taperBoth(start: CGFloat, end: CGFloat)
     case pressure([CGFloat])
     case custom([CGFloat])
+    case variable(VariableStrokeWidth)
     
     // Presets
     public static let naturalPen    // taperBoth(start: 0.15, end: 0.15)
@@ -639,12 +656,111 @@ public struct BrushProfile: Equatable, Hashable, Sendable {
     public var cap: BrushCap
     public var join: BrushJoin
     
+    /// Wax-crayon texture. `nil` on every preset except `.crayon`.
+    public var crayon: CrayonStyle?
+
     // Presets
     public static let `default`     // Circular, uniform
     public static let calligraphic  // Flat tip, tapered
     public static let marker        // Flat tip, uniform, butt caps
+    public static func marker(
+        variation: CGFloat = 0,
+        minimum: CGFloat? = nil,
+        maximum: CGFloat? = nil,
+        taperStart: CGFloat = 0,
+        taperEnd: CGFloat = 0,
+        pressure: [CGFloat] = [],
+        seed: UInt64 = 1,
+        frequency: CGFloat = 3
+    ) -> BrushProfile
     public static let pen           // Pressure simulation
+    public static let crayon        // Continuous wax base, dense grit, seed 1
+
+    public static func crayon(
+        grain: Float = 0.28,
+        edgeRoughness: Float = 0.75,
+        widthVariation: Float = 0.18,
+        opacityVariation: Float = 0.35,
+        passes: Int = 2,
+        baseOpacity: Float = 0.8,
+        baseSoftness: Float = 0.5,
+        grit: Float = 0.92,
+        flakeSize: Float = 1.45,
+        seed: UInt64 = 1
+    ) -> BrushProfile
 }
+```
+
+### CrayonStyle
+
+A crayon stroke is continuous. A soft translucent halo and a greasy core are drawn first, then denser flakes and edge crumbs are laid on top. Nothing in the preset opens a paper break along the stroke. `strokeWidth` is the wax width in points and is not scaled again when an SVG path is fitted to the view, matching a normal stroke. The same `seed` repeats the same texture. Closed contours are sampled through the closing segment so the join does not seam.
+
+When `brushProfile.crayon` is set, hachure, zigzag, and scribble fill lines use the same wax. The fill-line width is `fillWeight` (or half the stroke width when `fillWeight` is automatic). Outline strokes still use `strokeWidth`. Flakes, specks, and the stamp spacing scale with that width, down to a fraction of a point, so a thin fill line still shows grit instead of a smooth tube.
+
+| Parameter | Default | Range | Effect |
+|-----------|---------|-------|--------|
+| `grain` | 0.28 | 0...1 | Thins the grit into speckle. Does not break the base |
+| `edgeRoughness` | 0.75 | 0...1 | Ragged edge and detached flakes |
+| `widthVariation` | 0.18 | 0...1 | Width swell along the stroke |
+| `opacityVariation` | 0.35 | 0...1 | How much later grit passes fade |
+| `passes` | 2 | 1...3 | Grit layers on top of the base |
+| `baseOpacity` | 0.8 | 0.2...1 | Opacity of the greasy base |
+| `baseSoftness` | 0.5 | 0...1 | Width of the soft halo |
+| `grit` | 0.92 | 0...1 | Density of flakes on the base |
+| `flakeSize` | 1.45 | 0.35...3 | Clump and speck size as a fraction of the stroke width |
+| `seed` | 1 (`defaultSeed`) | any `UInt64` | Stable grain. Yields to `Options.seed` only while it is still `defaultSeed` |
+
+```swift
+public struct CrayonStrokePass: Equatable, Sendable {
+    public var path: SwiftUI.Path
+    public var opacity: CGFloat
+}
+
+public enum CrayonStroke {
+    public static func passes(
+        operations: [Operation],
+        width: CGFloat,
+        style: CrayonStyle,
+        transform: CGAffineTransform = .identity
+    ) -> [CrayonStrokePass]
+}
+```
+
+`RoughView` calls this when `brushProfile.crayon` is set. Use `CrayonStroke.passes` when drawing the marks yourself. Fill each pass with the winding rule.
+
+### Variable marker width
+
+`BrushProfile.marker` is still an even flat stroke. The factory below keeps that tip, the butt caps, and the bevel joins, and varies the width along an open stroke. `marker()` with the default arguments is equal to `.marker`.
+
+The width is `ThicknessProfile.variable(_:)`, which calls `VariableStrokeWidth.multiplier(at:)`. That reuses the existing taper ramps and the existing pressure interpolation, then multiplies them by a seeded noise value. An open stroke fills with the winding rule so the two rough passes union into one mark. `.marker` stays even-odd. Closed contours still drop the profile and draw an even width so the join does not seam.
+
+| Parameter | Default | Range | Effect |
+|-----------|---------|-------|--------|
+| `variation` | 0 | 0...1 | With no bounds, `0.35` keeps the noisy body in `[0.65, 1.35]` times `strokeWidth`. `0` is an even stroke |
+| `minimum` | nil | multiplier | Lower body width as a fraction of `strokeWidth`. Omitted becomes `1 - variation` |
+| `maximum` | nil | multiplier | Upper width as a fraction of `strokeWidth`. Omitted becomes `1 + variation` |
+| `taperStart` | 0 | 0...1 | Fraction of the stroke that thins to a point at the start |
+| `taperEnd` | 0 | 0...1 | Fraction of the stroke that thins to a point at the end |
+| `pressure` | `[]` | multipliers | Same interpolation as `ThicknessProfile.pressure`, then multiplied by the noisy body |
+| `seed` | 1 | any `UInt64` | Repeats the same wobble |
+| `frequency` | 3 | at least 0.5 | Noise cycles from the start of the stroke to the end |
+
+When `minimum` and `maximum` are both set and `variation` is `0`, the noise uses the whole span. When `variation` is also set, it is the fraction of that span used around the midpoint. A taper may fall below `minimum`, down to 0. The multiplier never exceeds `maximum`. Without a taper, every sample stays inside `[minimum, maximum]`.
+
+```swift
+RoughView()
+    .stroke(.red)
+    .strokeWidth(18)
+    .brushProfile(.marker(
+        variation: 1,
+        minimum: 0.25,
+        maximum: 1.45,
+        taperStart: 0.12,
+        taperEnd: 0.16,
+        seed: 19
+    ))
+    .seed(127)
+    .draw(Line(from: Point(x: 24, y: 100), to: Point(x: 168, y: 92)))
 ```
 
 ### Brush Examples
@@ -667,6 +783,30 @@ RoughView()
 RoughView()
     .stroke(.green)
     .brushProfile(.calligraphic)
+    .rectangle()
+
+// Wax crayon. strokeWidth is the wax width in points.
+RoughView()
+    .stroke(.black)
+    .strokeWidth(8)
+    .brushProfile(.crayon)
+    .draw(Line(from: Point(x: 10, y: 20), to: Point(x: 180, y: 20)))
+
+// Same texture every redraw; a different seed is a different crayon.
+RoughView()
+    .stroke(.orange)
+    .strokeWidth(6)
+    .brushProfile(.crayon(baseOpacity: 0.7, grit: 0.95, flakeSize: 1.6, seed: 4))
+    .circle()
+
+// Zigzag shading picks up the same crayon. fillWeight is the wax width of each line.
+RoughView()
+    .fill(.gray)
+    .fillStyle(.zigzag)
+    .fillWeight(3)
+    .fillSpacing(2.5)
+    .stroke(.clear)
+    .brushProfile(.crayon)
     .rectangle()
 ```
 
@@ -702,11 +842,13 @@ public struct AnimationConfig: Sendable {
     public let steps: Int
     public let speed: AnimationSpeed
     public let variance: AnimationVariance
+    public let seed: UInt64?    // nil randomizes each animation run
     
     public init(
         steps: Int = 4,          // Minimum 2
         speed: AnimationSpeed = .medium,
-        variance: AnimationVariance = .medium
+        variance: AnimationVariance = .medium,
+        seed: UInt64? = nil      // passed to PathVarianceGenerator as baseSeed
     )
     
     public static let `default`
@@ -972,6 +1114,10 @@ RoughView().draw(Text("Hello", font: .systemFont(ofSize: 32)))
 Engine.shared.clearCaches()
 ```
 
+### Issue: Drawing Changes Every Redraw
+
+**Solution:** Set `.seed(_)` (or `Options.seed`) so roughness and fill wobble repeat. Crayon grain repeats from `CrayonStyle.seed`. Animation frames repeat when `AnimationConfig.seed` is set.
+
 ### Issue: Fill Pattern Too Dense/Sparse
 
 **Adjust:**
@@ -990,7 +1136,8 @@ Engine.shared.clearCaches()
 
 ## Version Information
 
-- **Package:** RoughSwiftUI
+- **Package:** Sketchy
+- **Version:** 1.2.0
 - **Minimum iOS:** 17.0
 - **Swift:** 5.9+
 - **Rendering:** Native Swift (no JavaScript bridge)
