@@ -432,7 +432,7 @@ extension DocExampleCatalog {
             "watercolor",
             section: "Brushes",
             title: "Watercolor stroke",
-            description: "A crisp uneven edge, darker where the pigment dries, with grain inside and round tapered ends. The same seed repeats the wash.",
+            description: "A broken rim that fades in and out, darker where the pigment dries, with grain inside and round tapered ends. The same seed repeats the wash.",
             snippet: """
             RoughView()
                 .stroke(\(wash.snippet))

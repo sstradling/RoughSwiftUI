@@ -190,6 +190,41 @@ final class OpacityProfileTests: XCTestCase {
         XCTAssertNotNil(BrushProfile.watercolor.watercolor)
     }
 
+    func testTightBendKeepsTheRibbonOutOfTheCorner() {
+        var options = Options()
+        options.brushProfile = .watercolor(
+            pigment: 0.8,
+            wetness: 0.4,
+            edgeDarkening: 0.9,
+            layers: 2,
+            variation: 0.2,
+            bleed: 0.5,
+            seed: 3
+        )
+        options.strokeWidth = 18
+        options.roughness = 0
+        let operations: [Sketchy.Operation] = [
+            Move(data: [20, 40]),
+            LineTo(data: [140, 40]),
+            LineTo(data: [140, 120]),
+            LineTo(data: [20, 120])
+        ]
+        let pathSet = OperationSet(type: .path, operations: operations, path: nil, size: nil)
+        let drawing = Drawing(shape: "line", sets: [pathSet], options: options)
+        let commands = SwiftUIRenderer().commands(
+            for: drawing,
+            options: options,
+            in: CGSize(width: 180, height: 160)
+        )
+        let pocket = CGPoint(x: 118, y: 62)
+        for command in commands where command.fillRule != .evenOdd {
+            XCTAssertFalse(
+                command.path.cgPath.contains(pocket),
+                "tight bend filled across the inside of the corner"
+            )
+        }
+    }
+
     func testWatercolorCommandsRepeatForASeedAndDifferForAnother() {
         let first = watercolorCommands(seed: 4)
         let second = watercolorCommands(seed: 4)

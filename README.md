@@ -108,7 +108,7 @@ RoughView()
 
 ### Watercolor
 
-`.brushProfile(.watercolor)` paints a wet wash with a crisp uneven edge, darker where the pigment dries, grain in the body, and round tapered ends. Passes stack, so a crossing goes darker. `.fillStyle(.watercolor)` clips that kind of wash to the shape. `fillPadding` insets it. `bleed` wanders the edge. It does not blur.
+`.brushProfile(.watercolor)` paints a wash with a thin broken rim that fades along the stroke, grain in the body, and round tapered ends. Tight curves keep a ribbon width. Passes stack, so a crossing goes darker. `.fillStyle(.watercolor)` clips that wash to the shape. Blooms are irregular puddles. `fillPadding` insets the fill. `bleed` wanders the edge. It does not blur.
 
 ![Watercolor stroke](docs/images/brushes/watercolor.png)
 

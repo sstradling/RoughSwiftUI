@@ -34,13 +34,13 @@ enum WatercolorFill {
         let center = CGPoint(x: bounds.midX, y: bounds.midY)
         for layer in 0..<style.layers {
             let seed = style.seed &+ UInt64(layer + 1) &* 0x9E37_79B9_7F4A_7C15
-            let reach = CGFloat(style.wetness) * min(bounds.width, bounds.height) * 0.04
+        let reach = CGFloat(style.wetness) * min(bounds.width, bounds.height) * 0.015
             let dx = SeededNoise.signed(at: 0.4 + CGFloat(layer), seed: seed) * reach
             let dy = SeededNoise.signed(at: 1.7 + CGFloat(layer), seed: seed &+ 9) * reach
-            let factor = 0.9 + 0.06 * CGFloat(SeededNoise.unit(at: Float(layer) + 0.2, seed: seed))
+            let factor = 0.985
             let moved = shape
                 .applying(scaledAbout(center, factor: factor))
-                .applying(CGAffineTransform(translationX: dx, y: dy))
+                .applying(CGAffineTransform(translationX: dx * 0.35, y: dy * 0.35))
             let opacity = pigment * (0.08 + 0.05 * CGFloat(layer % 2)) * fillOpacity
             pieces.append(RibbonPiece(path: moved, opacity: min(1, opacity), t: CGFloat(layer)))
         }
@@ -82,27 +82,30 @@ enum WatercolorFill {
         let darkening = CGFloat(style.edgeDarkening)
         guard darkening > 0.02, outline.count >= 2 else { return [] }
         var pieces: [RibbonPiece] = []
-        for index in 0..<(outline.count - 1) {
+        let count = outline.count
+        for index in 0..<count {
+            let next = (index + 1) % count
             let start = outline[index]
-            let end = outline[index + 1]
+            let end = outline[next]
+            let span = hypot(end.point.x - start.point.x, end.point.y - start.point.y)
+            if span < 0.4 || span > 28 { continue }
             let unit0 = SeededNoise.unit(at: Float(index) * 0.23, seed: style.seed &+ 41)
-            let unit1 = SeededNoise.unit(at: Float(index + 1) * 0.23, seed: style.seed &+ 41)
-            let band = (2.2 + 5.5 * darkening) * (0.55 + CGFloat(style.bleed) * 0.35)
-            let startInner = step(from: start.point, toward: toward, distance: band * (0.65 + CGFloat(unit0)))
-            let endInner = step(from: end.point, toward: toward, distance: band * (0.65 + CGFloat(unit1)))
-            var path = SwiftUI.Path()
-            path.move(to: start.point)
-            path.addLine(to: end.point)
-            path.addLine(to: endInner)
-            path.addLine(to: startInner)
-            path.closeSubpath()
-            let opacity = pigment * (0.14 + 0.28 * darkening) * fillOpacity * (0.75 + 0.35 * CGFloat(unit0))
+            let unit1 = SeededNoise.unit(at: Float(next) * 0.23, seed: style.seed &+ 41)
+            let bandWidth = (1.6 + 3.2 * darkening) * (0.7 + CGFloat(style.bleed) * 0.25)
+            let startInner = step(from: start.point, toward: toward, distance: bandWidth * (0.75 + 0.4 * CGFloat(unit0)))
+            let endInner = step(from: end.point, toward: toward, distance: bandWidth * (0.75 + 0.4 * CGFloat(unit1)))
+            let area = shoelace(start.point, end.point, endInner, startInner)
+            if abs(area) < 0.5 { continue }
+            let path = area > 0
+                ? band(start.point, end.point, endInner, startInner)
+                : band(start.point, startInner, endInner, end.point)
+            let opacity = pigment * (0.16 + 0.26 * darkening) * fillOpacity * (0.7 + 0.3 * CGFloat(unit0))
             pieces.append(RibbonPiece(path: path, opacity: min(1, opacity), t: CGFloat(index)))
         }
         return pieces
     }
 
-    /// A few low-opacity puddles near the edge. Overlapping ellipses glaze into one blot.
+    /// Two irregular puddles. The edge is lumpy, not a stack of discs.
     private static func backruns(
         outline: [PerimeterSample],
         toward: CGPoint,
@@ -112,26 +115,46 @@ enum WatercolorFill {
         fillOpacity: CGFloat
     ) -> [RibbonPiece] {
         guard style.bleed > 0.05, outline.count >= 8 else { return [] }
-        let blooms = 3
-        var pieces: [RibbonPiece] = []
         let reach = min(bounds.width, bounds.height)
-        for bloom in 0..<blooms {
+        var pieces: [RibbonPiece] = []
+        for bloom in 0..<2 {
             let seed = style.seed &+ UInt64(bloom) &* 0xC2B2_AE3D
             let slot = Int(SeededNoise.unit(at: Float(bloom) + 0.4, seed: seed) * Float(outline.count - 1))
             let anchor = outline[min(outline.count - 1, max(0, slot))]
-            let inward = step(from: anchor.point, toward: toward, distance: reach * (0.12 + 0.05 * CGFloat(bloom)))
-            for puff in 0..<3 {
-                let jitter = SeededNoise.signed(at: CGFloat(puff) + 0.2, seed: seed &+ UInt64(puff))
-                let center = CGPoint(
-                    x: inward.x + cos(anchor.tangent) * jitter * 8,
-                    y: inward.y + sin(anchor.tangent) * jitter * 8
-                )
-                let radius = reach * (0.06 + 0.03 * CGFloat(style.bleed)) * (0.8 + 0.35 * CGFloat(puff))
-                let opacity = pigment * 0.07 * fillOpacity
-                pieces.append(RibbonPiece(path: circle(center, radius), opacity: opacity, t: CGFloat(bloom)))
-            }
+            let inward = step(from: anchor.point, toward: toward, distance: reach * (0.16 + 0.05 * CGFloat(bloom)))
+            let radius = reach * (0.11 + 0.04 * CGFloat(style.bleed))
+            pieces.append(RibbonPiece(
+                path: cauliflower(center: inward, radius: radius, seed: seed),
+                opacity: pigment * 0.09 * fillOpacity,
+                t: CGFloat(bloom)
+            ))
+            pieces.append(RibbonPiece(
+                path: cauliflower(center: inward, radius: radius * 0.62, seed: seed &+ 5),
+                opacity: pigment * 0.06 * fillOpacity,
+                t: CGFloat(bloom)
+            ))
         }
         return pieces
+    }
+
+    /// A lumpy closed outline. Radius wobbles so the edge reads as a backrun, not a circle.
+    private static func cauliflower(center: CGPoint, radius: CGFloat, seed: UInt64) -> SwiftUI.Path {
+        var path = SwiftUI.Path()
+        let count = 22
+        for index in 0...count {
+            let angle = CGFloat(index) / CGFloat(count) * 2 * .pi
+            let noise = 0.78 + 0.42 * CGFloat(SeededNoise.unit(at: Float(index) * 0.41 + Float(angle), seed: seed))
+            let lump = 0.88 + 0.18 * sin(angle * 2 + CGFloat(seed % 5))
+            let distance = radius * lump * noise
+            let point = CGPoint(x: center.x + cos(angle) * distance, y: center.y + sin(angle) * distance)
+            if index == 0 {
+                path.move(to: point)
+            } else {
+                path.addLine(to: point)
+            }
+        }
+        path.closeSubpath()
+        return path
     }
 
     /// Small seeded specks. Points that fall outside the shape are skipped.
@@ -143,7 +166,7 @@ enum WatercolorFill {
         fillOpacity: CGFloat
     ) -> [RibbonPiece] {
         let path = shape.cgPath
-        let count = 22 + Int(CGFloat(style.variation) * 10)
+        let count = 8 + Int(CGFloat(style.variation) * 6)
         var pieces: [RibbonPiece] = []
         pieces.reserveCapacity(count)
         var attempt = 0
@@ -156,8 +179,8 @@ enum WatercolorFill {
             attempt += 1
             guard path.contains(point) else { continue }
             let unit = SeededNoise.unit(at: Float(attempt) * 0.2, seed: seed &+ 9)
-            let radius = 1.1 + CGFloat(unit) * (1.6 + CGFloat(style.variation) * 1.4)
-            let opacity = pigment * fillOpacity * (0.035 + 0.06 * CGFloat(unit))
+            let radius = 0.8 + CGFloat(unit) * (2.8 + CGFloat(style.variation) * 2)
+            let opacity = pigment * fillOpacity * (0.02 + 0.05 * CGFloat(unit))
             pieces.append(RibbonPiece(path: circle(point, radius), opacity: min(1, opacity), t: CGFloat(placed)))
             placed += 1
         }
@@ -250,6 +273,20 @@ enum WatercolorFill {
         let length = hypot(dx, dy)
         guard length > 0.001 else { return from }
         return CGPoint(x: from.x + dx / length * distance, y: from.y + dy / length * distance)
+    }
+
+    private static func band(_ a: CGPoint, _ b: CGPoint, _ c: CGPoint, _ d: CGPoint) -> SwiftUI.Path {
+        var path = SwiftUI.Path()
+        path.move(to: a)
+        path.addLine(to: b)
+        path.addLine(to: c)
+        path.addLine(to: d)
+        path.closeSubpath()
+        return path
+    }
+
+    private static func shoelace(_ a: CGPoint, _ b: CGPoint, _ c: CGPoint, _ d: CGPoint) -> CGFloat {
+        (a.x * b.y - b.x * a.y) + (b.x * c.y - c.x * b.y) + (c.x * d.y - d.x * c.y) + (d.x * a.y - a.x * d.y)
     }
 
     private static func circle(_ center: CGPoint, _ radius: CGFloat) -> SwiftUI.Path {

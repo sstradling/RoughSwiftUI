@@ -780,11 +780,11 @@ RoughView()
 
 ### Watercolor
 
-`BrushProfile.watercolor(...)` paints a crisp wash on the outline. `.watercolor` is that call with the defaults.
+`BrushProfile.watercolor(...)` paints a wash on the outline. `.watercolor` is that call with the defaults.
 
-The rim is a darker band and the core is a lighter fill. They do not cover each other, so the dried edge stays darker. The edge wanders (`bleed`) and granules break up the interior. Open strokes taper into a round tip. There is no blur halo. `variation` sets `ThicknessProfile.variable` and `OpacityProfile.noise`. `layers` is how many body glazes are laid down, from 1 to 5. Each glaze is an ordinary translucent fill, so where a stroke crosses itself, or where two watercolor strokes cross, the pigment stacks and the overlap goes darker. The variable-opacity stroke does not do this: it still uses one mask so joins stay even. The same `seed` repeats the wash. `WatercolorStyle.defaultSeed` (`1`) yields to `Options.seed`, and the width and opacity baked from that default follow it.
+The body is a ribbon. On a tight bend the inside edge is held to the curve so it does not cross and fill the corner. The round tip is drawn from the real edge points, so a peak does not pinch. The rim is a thin broken band: its width and darkness fade along the stroke, and a fainter inner strip blends it into the body. It is not a continuous outline. The edge wanders (`bleed`) and granules break up the interior. Open strokes taper into a round tip. There is no blur halo. `variation` sets `ThicknessProfile.variable` and `OpacityProfile.noise`. `layers` is how many body glazes are laid down, from 1 to 5. Each glaze is an ordinary translucent fill, so where a stroke crosses itself, or where two watercolor strokes cross, the pigment stacks and the overlap goes darker. The variable-opacity stroke does not do this: it still uses one mask so joins stay even. The same `seed` repeats the wash. `WatercolorStyle.defaultSeed` (`1`) yields to `Options.seed`, and the width and opacity baked from that default follow it.
 
-The two rough outline passes are not both given a rim. The first pass carries the dried edge. Later passes add a lighter body so the sketch wobble glazes instead of drawing a second tube.
+The first rough outline carries the wash. A second rough pass is not given its own rim.
 
 `.fillStyle(.watercolor)` clips a wash to the same region as a solid fill, so `fillPadding` and `fillOffset` apply. Layers glaze, the edge is an uneven darker ring, and specks plus a few backruns keep the interior from looking airbrushed. When the brush is watercolor, the fill uses that style. Otherwise it uses `WatercolorStyle()` and `Options.seed`.
 

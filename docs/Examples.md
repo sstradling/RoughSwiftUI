@@ -917,7 +917,7 @@ RoughView()
 
 ### Watercolor stroke
 
-A crisp uneven edge, darker where the pigment dries, with grain inside and round tapered ends. The same seed repeats the wash.
+A broken rim that fades in and out, darker where the pigment dries, with grain inside and round tapered ends. The same seed repeats the wash.
 
 ![Watercolor stroke](images/brushes/watercolor.png)
 
