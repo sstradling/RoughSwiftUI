@@ -77,12 +77,19 @@ public enum RoughFillRule: Equatable, Hashable, Sendable {
 
 /// Convert `Drawing`/`OperationSet` data into SwiftUI `Path` commands and render them.
 public struct SwiftUIRenderer {
-    /// Open variable-width strokes use winding so the two rough passes union
-    /// into one solid mark. Closed contours stay even-odd so the inner edge
-    /// of a ring stays a hole. Every other brush, including `.marker`, stays
-    /// even-odd and keeps its current output.
+    /// Open `.variable` and `.stops` strokes use winding so the two rough
+    /// passes union into one solid mark. Closed contours stay even-odd so
+    /// the inner edge of a ring stays a hole. Tapers, `.custom`, and an even
+    /// `.marker` stay even-odd.
     static func brushFillRule(operations: [Operation], profile: BrushProfile) -> RoughFillRule {
-        guard case .variable = profile.thicknessProfile else { return .evenOdd }
+        switch profile.thicknessProfile {
+        case .variable:
+            break
+        case .stops(let stops) where !stops.isEmpty:
+            break
+        default:
+            return .evenOdd
+        }
         let closed = operations.contains { $0 is Close }
         return closed ? .evenOdd : .winding
     }
@@ -490,7 +497,7 @@ private extension SwiftUIRenderer {
             // Check if brush strokes are enabled and profile needs custom rendering
             let useBrushStroke = options.scribbleUseBrushStroke && 
                 (options.brushProfile.requiresCustomRendering || 
-                 options.thicknessProfile != .uniform ||
+                 options.thicknessProfile.variesAlongStroke ||
                  options.brushTip.roundness < 0.99)
             
             if useBrushStroke {

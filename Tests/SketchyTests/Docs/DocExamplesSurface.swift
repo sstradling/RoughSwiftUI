@@ -427,6 +427,39 @@ extension DocExampleCatalog {
                     Point(x: 118, y: 146),
                     Point(x: 162, y: 64)
                 ]))
+        },
+        still(
+            "width-stops",
+            section: "Brushes",
+            title: "Width stops",
+            description: "widthStops sets point widths on an open curve: 4pt, 8pt from 10% to 90%, then 4pt. strokeWidth stays 2 and does not scale them.",
+            snippet: """
+            RoughView()
+                .stroke(\(inkBlue.snippet))
+                .strokeWidth(2)
+                .roughness(0.25)
+                .widthStops([(0, 4), (0.1, 8), (0.9, 8), (1, 4)])
+                .seed(149)
+                .draw(Curve(points: [
+                    Point(x: 10, y: 120),
+                    Point(x: 58, y: 28),
+                    Point(x: 112, y: 156),
+                    Point(x: 174, y: 52)
+                ]))
+            """
+        ) {
+            RoughView()
+                .stroke(inkBlue.color)
+                .strokeWidth(2)
+                .roughness(0.25)
+                .widthStops([(0, 4), (0.1, 8), (0.9, 8), (1, 4)])
+                .seed(149)
+                .draw(Curve(points: [
+                    Point(x: 10, y: 120),
+                    Point(x: 58, y: 28),
+                    Point(x: 112, y: 156),
+                    Point(x: 174, y: 52)
+                ]))
         }
     ]
 }

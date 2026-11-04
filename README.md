@@ -233,6 +233,25 @@ RoughView()
 
 `.thicknessProfile(.naturalPen)` tapers an open stroke. Closed shapes keep an even width so the join does not seam. A variable marker does the same on a closed contour.
 
+`.widthStops([(0, 4), (0.1, 8), (0.9, 8), (1, 4)])` sets those widths in points: 4pt at the start, 8pt from 10% to 90% of the length, then 4pt. `strokeWidth` does not scale a non-empty list. `.custom([0.5, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.5])` with `strokeWidth` 8 is the same curve, as evenly spaced multipliers. Stops replace a `.variable` wobble. The marker's flat tip still changes width with direction. Closed contours ignore the stops.
+
+![Width stops](docs/images/brushes/width-stops.png)
+
+```swift
+RoughView()
+    .stroke(Color(red: 0.18, green: 0.46, blue: 0.67))
+    .strokeWidth(2)
+    .roughness(0.25)
+    .widthStops([(0, 4), (0.1, 8), (0.9, 8), (1, 4)])
+    .seed(149)
+    .draw(Curve(points: [
+        Point(x: 10, y: 120),
+        Point(x: 58, y: 28),
+        Point(x: 112, y: 156),
+        Point(x: 174, y: 52)
+    ]))
+```
+
 ## Shapes
 
 Auto-sized, filling the view: `.rectangle()`, `.circle()`, `.roundedRectangle(cornerRadius:)`, `.egg(tilt:)`, and `.text`.
