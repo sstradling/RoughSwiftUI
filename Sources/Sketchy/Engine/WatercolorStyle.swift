@@ -12,9 +12,10 @@ import Foundation
 /// Values are clamped. The same `seed` repeats the same offsets, width wobble,
 /// and opacity wobble. Nothing in the preset reads the system random generator.
 ///
-/// A stroke is several translucent passes, each a little offset, with a darker
-/// rim and a lighter centre. `bleed` adds one soft outer pass. A fill is a
-/// clipped wash with the same pooling.
+/// A stroke is several translucent glazes. The rim is darker than the centre,
+/// the edge wanders, and granules break up the interior. Glazes stack where
+/// they cross, so a second wash goes darker. `bleed` is that uneven edge and
+/// the backruns, not a blur. A fill is the same kind of wash clipped to the shape.
 public struct WatercolorStyle: Equatable, Hashable, Sendable {
     /// How strong the pigment is, from 0 (paper) to 1 (a heavy wash). Default 0.72.
     public var pigment: Float
@@ -25,15 +26,15 @@ public struct WatercolorStyle: Equatable, Hashable, Sendable {
     /// How much darker the rim is than the centre, from 0 (flat) to 1. Default 0.75.
     public var edgeDarkening: Float
 
-    /// Translucent body passes, clamped to 1...5. Default 3.
-    ///
-    /// The soft bleed pass is extra and does not count toward this.
+    /// The body passes. Clamped to 1...5. Default 3.
     public var layers: Int
 
     /// How much width and opacity wander along the stroke, from 0 to 1. Default 0.45.
     public var variation: Float
 
-    /// Softness of the outer bloom, from 0 (no bloom) to 1. Default 0.5.
+    /// How far the dried edge wanders, and how many backruns appear, from 0 to 1.
+    ///
+    /// This does not blur the stroke. Default 0.5.
     public var bleed: Float
 
     /// Preset seed. `Options.seed` replaces this only while a style is still here.

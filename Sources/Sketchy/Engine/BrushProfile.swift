@@ -434,9 +434,9 @@ public struct BrushProfile: Equatable, Hashable, Sendable {
     ///   - pigment: Wash strength, 0...1. Default 0.72.
     ///   - wetness: How far passes drift, 0...1. Default 0.6.
     ///   - edgeDarkening: Rim versus centre, 0...1. Default 0.75.
-    ///   - layers: Body passes, 1...5. Default 3. Bleed is an extra pass.
-    ///   - variation: Width and opacity wander, 0...1. Default 0.45.
-    ///   - bleed: Outer bloom, 0...1. Default 0.5.
+    ///   - layers: Body passes, 1...5. Default 3. Crossings stack.
+    ///   - variation: Width, opacity, and grain, 0...1. Default 0.45.
+    ///   - bleed: Uneven edge and backruns, 0...1. Default 0.5. Not a blur.
     ///   - seed: Stable wash seed. Default 1.
     public static func watercolor(
         pigment: Float = 0.72,

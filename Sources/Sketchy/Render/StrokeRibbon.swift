@@ -14,6 +14,8 @@ struct RibbonPiece: Equatable {
     var path: SwiftUI.Path
     var opacity: CGFloat
     var t: CGFloat
+    /// Even-odd fill. Watercolor uses this so the rim can cut out its core.
+    var evenOdd: Bool = false
 }
 
 /// Builds non-overlapping quads (plus end caps) from centerline samples.
@@ -202,6 +204,27 @@ enum OpacityRibbon {
             let blended = closed ? seamBlend(value: raw, toward: join, t: t, window: 0.06) : raw
             return min(1, max(0, blended))
         }
+    }
+}
+
+/// Fills each piece with source-over. Overlaps darken, which is the glaze for watercolor.
+///
+/// Variable opacity does not use this. It keeps `maskCommands`, so joins stay even.
+func glazeCommands(
+    _ pieces: [RibbonPiece],
+    color: Color,
+    clip: SwiftUI.Path? = nil,
+    fillRule: RoughFillRule = .winding
+) -> [RoughRenderCommand] {
+    pieces.compactMap { piece in
+        let opacity = min(1, max(0, piece.opacity))
+        guard opacity > 0.004 else { return nil }
+        return RoughRenderCommand(
+            path: piece.path,
+            style: .fill(color.opacity(Double(opacity))),
+            clipPath: clip,
+            fillRule: piece.evenOdd ? .evenOdd : fillRule
+        )
     }
 }
 

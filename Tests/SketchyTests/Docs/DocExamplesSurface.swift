@@ -432,20 +432,20 @@ extension DocExampleCatalog {
             "watercolor",
             section: "Brushes",
             title: "Watercolor stroke",
-            description: "A wet wash: translucent passes, a darker rim, and width and opacity that wander. The watercolor seed repeats it.",
+            description: "A crisp uneven edge, darker where the pigment dries, with grain inside and round tapered ends. The same seed repeats the wash.",
             snippet: """
             RoughView()
                 .stroke(\(wash.snippet))
-                .strokeWidth(30)
-                .roughness(0.55)
-                .bowing(0.35)
+                .strokeWidth(26)
+                .roughness(0.4)
+                .bowing(0.2)
                 .brushProfile(.watercolor(
-                    pigment: 0.78,
-                    wetness: 0.7,
-                    edgeDarkening: 0.85,
+                    pigment: 0.82,
+                    wetness: 0.35,
+                    edgeDarkening: 0.9,
                     layers: 3,
-                    variation: 0.6,
-                    bleed: 0.65,
+                    variation: 0.5,
+                    bleed: 0.55,
                     seed: 21
                 ))
                 .seed(21)
@@ -459,16 +459,16 @@ extension DocExampleCatalog {
         ) {
             RoughView()
                 .stroke(wash.color)
-                .strokeWidth(30)
-                .roughness(0.55)
-                .bowing(0.35)
+                .strokeWidth(26)
+                .roughness(0.4)
+                .bowing(0.2)
                 .brushProfile(.watercolor(
-                    pigment: 0.78,
-                    wetness: 0.7,
-                    edgeDarkening: 0.85,
+                    pigment: 0.82,
+                    wetness: 0.35,
+                    edgeDarkening: 0.9,
                     layers: 3,
-                    variation: 0.6,
-                    bleed: 0.65,
+                    variation: 0.5,
+                    bleed: 0.55,
                     seed: 21
                 ))
                 .seed(21)
@@ -524,7 +524,7 @@ extension DocExampleCatalog {
             "watercolor-fill",
             section: "Brushes",
             title: "Watercolor fill",
-            description: "fillStyle(.watercolor) lays a clipped wash with a darker rim. fillPadding insets it from the outline. The fill seed follows Options.seed.",
+            description: "fillStyle(.watercolor) is an uneven clipped wash: layered glazes, a darker dried edge, and a little grain. fillPadding insets it. The fill seed follows Options.seed.",
             snippet: """
             RoughView()
                 .fill(\(wash.snippet))
@@ -544,6 +544,47 @@ extension DocExampleCatalog {
                 .strokeWidth(1.6)
                 .seed(33)
                 .circle()
+        },
+        still(
+            "watercolor-overlap",
+            section: "Brushes",
+            title: "Watercolor overlap",
+            description: "Two washes cross. Pigment stacks in the crossing, so that patch is darker than either stroke alone.",
+            snippet: """
+            RoughView()
+                .stroke(\(wash.snippet))
+                .strokeWidth(20)
+                .roughness(0.35)
+                .brushProfile(.watercolor(
+                    pigment: 0.7,
+                    wetness: 0.3,
+                    edgeDarkening: 0.85,
+                    layers: 2,
+                    variation: 0.35,
+                    bleed: 0.4,
+                    seed: 27
+                ))
+                .seed(27)
+                .draw(Line(from: Point(x: 36, y: 40), to: Point(x: 150, y: 148)))
+                .draw(Line(from: Point(x: 36, y: 148), to: Point(x: 150, y: 40)))
+            """
+        ) {
+            RoughView()
+                .stroke(wash.color)
+                .strokeWidth(20)
+                .roughness(0.35)
+                .brushProfile(.watercolor(
+                    pigment: 0.7,
+                    wetness: 0.3,
+                    edgeDarkening: 0.85,
+                    layers: 2,
+                    variation: 0.35,
+                    bleed: 0.4,
+                    seed: 27
+                ))
+                .seed(27)
+                .draw(Line(from: Point(x: 36, y: 40), to: Point(x: 150, y: 148)))
+                .draw(Line(from: Point(x: 36, y: 148), to: Point(x: 150, y: 40)))
         }
     ]
 }

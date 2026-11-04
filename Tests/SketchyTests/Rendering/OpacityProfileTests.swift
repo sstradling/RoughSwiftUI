@@ -194,18 +194,19 @@ final class OpacityProfileTests: XCTestCase {
         let first = watercolorCommands(seed: 4)
         let second = watercolorCommands(seed: 4)
         let other = watercolorCommands(seed: 9)
-        XCTAssertEqual(first.map(\.maskOpacity), second.map(\.maskOpacity))
-        XCTAssertEqual(first.map(\.opacityMaskBlur), second.map(\.opacityMaskBlur))
         XCTAssertEqual(first.map { $0.path.boundingRect }, second.map { $0.path.boundingRect })
-        XCTAssertNotEqual(first.map(\.maskOpacity), other.map(\.maskOpacity))
-        XCTAssertTrue(first.allSatisfy { $0.opacityMaskGroup != nil })
-        for command in first {
-            XCTAssertGreaterThanOrEqual(command.maskOpacity, 0)
-            XCTAssertLessThanOrEqual(command.maskOpacity, 1)
-        }
-        let groups = Set(first.compactMap(\.opacityMaskGroup))
-        XCTAssertGreaterThan(groups.count, 1)
-        XCTAssertTrue(first.contains { $0.opacityMaskBlur > 0 })
+        XCTAssertNotEqual(first.map { $0.path.boundingRect }, other.map { $0.path.boundingRect })
+        XCTAssertGreaterThan(first.count, 8)
+        XCTAssertTrue(first.allSatisfy { $0.opacityMaskGroup == nil })
+        XCTAssertTrue(first.allSatisfy { $0.opacityMaskBlur == 0 })
+    }
+
+    func testWatercolorGlazesInsteadOfMasking() {
+        let commands = watercolorCommands(seed: 4)
+        XCTAssertTrue(commands.allSatisfy { command in
+            if case .fill = command.style { return true }
+            return false
+        })
     }
 
     func testWatercolorFillIsClippedAndRespectsPadding() {
@@ -236,11 +237,8 @@ final class OpacityProfileTests: XCTestCase {
         let commands = fillCommands(Circle(x: 40, y: 40, diameter: 60), options: options)
         XCTAssertFalse(commands.isEmpty)
         XCTAssertTrue(commands.allSatisfy { $0.clipPath != nil })
-        XCTAssertTrue(commands.allSatisfy { $0.opacityMaskGroup != nil })
-        for command in commands {
-            XCTAssertLessThanOrEqual(command.maskOpacity, 0.5 + 0.0001)
-            XCTAssertGreaterThan(command.maskOpacity, 0)
-        }
+        XCTAssertTrue(commands.allSatisfy { $0.opacityMaskGroup == nil })
+        XCTAssertGreaterThan(commands.count, 8)
     }
 
     private func outlineCommands(
@@ -284,7 +282,7 @@ final class OpacityProfileTests: XCTestCase {
             for: drawing ?? Drawing(shape: "circle", sets: [], options: options),
             options: options,
             in: CGSize(width: 200, height: 200)
-        ).filter { $0.opacityMaskGroup != nil && $0.clipPath != nil }
+        ).filter { $0.clipPath != nil && $0.opacityMaskGroup == nil }
     }
 
     private func fillBounds(_ drawable: Drawable, options: Options) -> CGRect {

@@ -780,13 +780,13 @@ RoughView()
 
 ### Watercolor
 
-`BrushProfile.watercolor(...)` paints a wet wash on the outline. `.watercolor` is that call with the defaults.
+`BrushProfile.watercolor(...)` paints a crisp wash on the outline. `.watercolor` is that call with the defaults.
 
-Several translucent passes drift off the centreline (`wetness`). Each pass is wider at the rim and lighter in the centre (`edgeDarkening`), using the same mask as variable opacity so the rim is not a stack of dark seams. `variation` sets `ThicknessProfile.variable` and `OpacityProfile.noise`. `bleed` adds one soft outer pass. `layers` is the body pass count, from 1 to 5. The same `seed` repeats the wash. `WatercolorStyle.defaultSeed` (`1`) yields to `Options.seed`, and the width and opacity baked from that default follow it.
+The rim is a darker band and the core is a lighter fill. They do not cover each other, so the dried edge stays darker. The edge wanders (`bleed`) and granules break up the interior. Open strokes taper into a round tip. There is no blur halo. `variation` sets `ThicknessProfile.variable` and `OpacityProfile.noise`. `layers` is how many body glazes are laid down, from 1 to 5. Each glaze is an ordinary translucent fill, so where a stroke crosses itself, or where two watercolor strokes cross, the pigment stacks and the overlap goes darker. The variable-opacity stroke does not do this: it still uses one mask so joins stay even. The same `seed` repeats the wash. `WatercolorStyle.defaultSeed` (`1`) yields to `Options.seed`, and the width and opacity baked from that default follow it.
 
-The two rough outline passes are unioned in each layer, then the layers stack. A stroke thinner than 0.5 points is skipped. Sketch fills such as hachure are not turned into washes.
+The two rough outline passes are not both given a rim. The first pass carries the dried edge. Later passes add a lighter body so the sketch wobble glazes instead of drawing a second tube.
 
-`.fillStyle(.watercolor)` clips a wash to the same region as a solid fill, so `fillPadding` and `fillOffset` apply. When the brush is watercolor, the fill uses that style. Otherwise it uses `WatercolorStyle()` and `Options.seed`.
+`.fillStyle(.watercolor)` clips a wash to the same region as a solid fill, so `fillPadding` and `fillOffset` apply. Layers glaze, the edge is an uneven darker ring, and specks plus a few backruns keep the interior from looking airbrushed. When the brush is watercolor, the fill uses that style. Otherwise it uses `WatercolorStyle()` and `Options.seed`.
 
 | Parameter | Default | Range | Effect |
 |-----------|---------|-------|--------|
@@ -795,7 +795,7 @@ The two rough outline passes are unioned in each layer, then the layers stack. A
 | `edgeDarkening` | 0.75 | 0...1 | Darker rim, lighter centre |
 | `layers` | 3 | 1...5 | Body passes. Bleed is extra |
 | `variation` | 0.45 | 0...1 | Width and opacity wander |
-| `bleed` | 0.5 | 0...1 | Blurred outer bloom |
+| `bleed` | 0.5 | 0...1 | Uneven dried edge and backruns. Not a blur |
 | `seed` | 1 | any `UInt64` | Stable wash. Yields to `Options.seed` only while it is still `1` |
 
 ```swift

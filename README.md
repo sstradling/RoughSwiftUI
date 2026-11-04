@@ -108,17 +108,17 @@ RoughView()
 
 ### Watercolor
 
-`.brushProfile(.watercolor)` is a wet wash: translucent passes, a darker rim, and width and opacity that wander along the stroke. `.fillStyle(.watercolor)` clips that wash to the shape. `fillPadding` insets it.
+`.brushProfile(.watercolor)` paints a wet wash with a crisp uneven edge, darker where the pigment dries, grain in the body, and round tapered ends. Passes stack, so a crossing goes darker. `.fillStyle(.watercolor)` clips that kind of wash to the shape. `fillPadding` insets it. `bleed` wanders the edge. It does not blur.
 
 ![Watercolor stroke](docs/images/brushes/watercolor.png)
 
 ```swift
 RoughView()
     .stroke(Color(red: 0.16, green: 0.40, blue: 0.66))
-    .strokeWidth(30)
-    .roughness(0.55)
-    .bowing(0.35)
-    .brushProfile(.watercolor(pigment: 0.78, wetness: 0.7, edgeDarkening: 0.85, layers: 3, variation: 0.6, bleed: 0.65, seed: 21))
+    .strokeWidth(26)
+    .roughness(0.4)
+    .bowing(0.2)
+    .brushProfile(.watercolor(pigment: 0.82, wetness: 0.35, edgeDarkening: 0.9, layers: 3, variation: 0.5, bleed: 0.55, seed: 21))
     .seed(21)
     .draw(Curve(points: [
         Point(x: 22, y: 128),
