@@ -419,6 +419,18 @@ RoughView()
     .draw(Path(d: arcPath))
 ```
 
+`A` and `a` take `rx ry x-axis-rotation large-arc sweep x y`. A relative `a` adds `x y` to the current point and leaves the radii, rotation, and flags absolute. The arc follows the SVG 1.1 endpoint-to-center conversion (implementation notes F.6.5 and F.6.6) and is drawn as cubic segments of at most 90°. Roughness offsets those cubics the same way it offsets an authored `C`, starting from the unjittered path point.
+
+| Case | Result |
+|---|---|
+| Radii too small to reach the endpoint | Both radii scale by the same factor until the endpoints lie on the ellipse |
+| `rx` or `ry` is 0 | Straight line to the endpoint |
+| Endpoints are the same point | The segment is skipped, even if a radius is also 0 |
+| Negative radii | The absolute values are used |
+| Nonzero flag | Treated as 1 |
+
+After `Z` or `z`, the current point is the subpath start, so a following relative command (including `a`) is measured from there.
+
 ### Text
 
 ```swift
