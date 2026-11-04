@@ -65,10 +65,10 @@ import Sketchy
 | `Point` | 2D coordinate | `Point(x: Float, y: Float)` |
 | `Size` | Dimensions | `Size(width: Float, height: Float)` |
 | `FillStyle` | Fill pattern enumeration | `.hachure`, `.solid`, etc. |
-| `BrushProfile` | Stroke styling configuration | Calligraphic, pen, crayon, and watercolor |
+| `BrushProfile` | Stroke styling configuration | Calligraphic, pen, crayon, and opacity |
 | `CrayonStyle` | Wax-crayon grain, edge, and seed | Used by `BrushProfile.crayon` |
 | `OpacityProfile` | Opacity along a stroke | Uniform, values, stops, or seeded noise |
-| `WatercolorStyle` | Wet-wash pigment, rim, and seed | Used by `BrushProfile.watercolor` |
+| `WatercolorStyle` | Wet-wash pigment, rim, and seed | Used by `.fillStyle(.watercolor)` |
 | `AnimationConfig` | Animation settings | Steps, speed, variance |
 
 ### Point
@@ -778,15 +778,11 @@ RoughView()
     .seed(128)
 ```
 
-### Watercolor
+### Watercolor fill
 
-`BrushProfile.watercolor(...)` paints a wash on the outline. `.watercolor` is that call with the defaults.
+`.fillStyle(.watercolor)` clips a wash to the same region as a solid fill, so `fillPadding` and `fillOffset` apply. The renderer uses `WatercolorStyle()`. `Options.seed` replaces `WatercolorStyle.defaultSeed` (`1`). Any other style seed would win, but the fill style does not take a custom style.
 
-The body is a ribbon. On a tight bend the inside edge is held to the curve so it does not cross and fill the corner. The round tip is drawn from the real edge points, so a peak does not pinch. The rim is a thin broken band: its width and darkness fade along the stroke, and a fainter inner strip blends it into the body. It is not a continuous outline. The edge wanders (`bleed`) and granules break up the interior. Open strokes taper into a round tip. There is no blur halo. `variation` sets `ThicknessProfile.variable` and `OpacityProfile.noise`. `layers` is how many body glazes are laid down, from 1 to 5. Each glaze is an ordinary translucent fill, so where a stroke crosses itself, or where two watercolor strokes cross, the pigment stacks and the overlap goes darker. The variable-opacity stroke does not do this: it still uses one mask so joins stay even. The same `seed` repeats the wash. `WatercolorStyle.defaultSeed` (`1`) yields to `Options.seed`, and the width and opacity baked from that default follow it.
-
-The first rough outline carries the wash. A second rough pass is not given its own rim.
-
-`.fillStyle(.watercolor)` clips a wash to the same region as a solid fill, so `fillPadding` and `fillOffset` apply. Layers glaze, the edge is an uneven darker ring, and specks plus a few backruns keep the interior from looking airbrushed. When the brush is watercolor, the fill uses that style. Otherwise it uses `WatercolorStyle()` and `Options.seed`.
+Layers are ordinary translucent fills, so they glaze. The edge is an uneven darker ring, and specks plus a few irregular blooms keep the interior from looking airbrushed. There is no blur. Sketch fills such as hachure stay as they are. The variable-opacity stroke is separate: it still uses one mask so joins stay even.
 
 | Parameter | Default | Range | Effect |
 |-----------|---------|-------|--------|
@@ -794,16 +790,17 @@ The first rough outline carries the wash. A second rough pass is not given its o
 | `wetness` | 0.6 | 0...1 | How far passes drift |
 | `edgeDarkening` | 0.75 | 0...1 | Darker rim, lighter centre |
 | `layers` | 3 | 1...5 | Body passes. Bleed is extra |
-| `variation` | 0.45 | 0...1 | Width and opacity wander |
+| `variation` | 0.45 | 0...1 | How much the wash wanders |
 | `bleed` | 0.5 | 0...1 | Uneven dried edge and backruns. Not a blur |
 | `seed` | 1 | any `UInt64` | Stable wash. Yields to `Options.seed` only while it is still `1` |
 
 ```swift
 RoughView()
-    .stroke(.blue)
-    .strokeWidth(28)
-    .brushProfile(.watercolor(pigment: 0.78, wetness: 0.7, edgeDarkening: 0.85, seed: 21))
-    .seed(21)
+    .fill(.blue)
+    .fillStyle(.watercolor)
+    .fillPadding(12)
+    .seed(33)
+    .circle()
 ```
 
 ### Brush Examples

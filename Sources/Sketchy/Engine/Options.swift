@@ -272,9 +272,7 @@ public struct Options: Equatable, Hashable {
 
     /// Opacity profile after `Options.seed` replaces `OpacityNoise.defaultSeed`.
     ///
-    /// A noise seed other than `1` is kept. Watercolor stores its noise at
-    /// `style.seed &+ 17`, so this does not retarget a watercolor curve.
-    /// `resolvedWatercolorBrush()` does that.
+    /// A noise seed other than `1` is kept.
     func resolvedOpacityProfile() -> OpacityProfile {
         guard case .noise(var noise) = brushProfile.opacityProfile else {
             return brushProfile.opacityProfile
@@ -286,35 +284,10 @@ public struct Options: Equatable, Hashable {
         return .noise(noise)
     }
 
-    /// Watercolor brush after `Options.seed` replaces a default style seed.
-    ///
-    /// Width and opacity that were baked from `WatercolorStyle.defaultSeed`
-    /// follow the same seed. An explicit watercolor seed, or a profile whose
-    /// seed is not that default, is left alone.
-    func resolvedWatercolorBrush() -> (profile: BrushProfile, style: WatercolorStyle)? {
-        guard var style = brushProfile.watercolor else { return nil }
-        var profile = brushProfile
-        if let seed, style.seed == WatercolorStyle.defaultSeed {
-            if case .variable(var width) = profile.thicknessProfile, width.seed == WatercolorStyle.defaultSeed {
-                profile.thicknessProfile = .variable(width.with(seed: seed))
-            }
-            if case .noise(var noise) = profile.opacityProfile, noise.seed == WatercolorStyle.defaultSeed &+ 17 {
-                profile.opacityProfile = .noise(noise.with(seed: seed &+ 17))
-            }
-            style.seed = seed
-            profile.watercolor = style
-        }
-        return (profile, style)
-    }
-
     /// Style for `.fillStyle(.watercolor)`.
     ///
-    /// A watercolor brush shares its resolved style. Otherwise the fill uses
-    /// `WatercolorStyle()`, and `Options.seed` replaces the default seed.
+    /// The fill uses `WatercolorStyle()`, and `Options.seed` replaces the default seed.
     func resolvedWatercolorFillStyle() -> WatercolorStyle {
-        if let (_, style) = resolvedWatercolorBrush() {
-            return style
-        }
         var style = WatercolorStyle()
         if let seed {
             style.seed = seed

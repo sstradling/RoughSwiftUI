@@ -35,7 +35,7 @@ final class DocExampleCatalogTests: XCTestCase {
             if case .gif = example.kind { return true }
             return false
         }
-        XCTAssertEqual(stills.count, 62)
+        XCTAssertEqual(stills.count, 60)
         XCTAssertEqual(gifs.count, 7)
     }
 
@@ -88,22 +88,17 @@ final class DocExampleCatalogTests: XCTestCase {
         XCTAssertEqual(example("crayon").view().options.brushProfile.crayon?.seed, 4)
     }
 
-    func testWatercolorExamplesUseASeededWash() {
-        let stroke = example("watercolor").view()
-        XCTAssertEqual(stroke.options.brushProfile.watercolor?.seed, 21)
-        XCTAssertEqual(stroke.options.seed, 21)
+    func testWatercolorFillAndOpacityExamplesStaySeeded() {
         let opacity = example("variable-opacity").view()
         guard case .stops(let stops) = opacity.options.opacityProfile else {
             return XCTFail("variable-opacity should use positioned stops")
         }
         XCTAssertEqual(stops.count, 4)
+        XCTAssertEqual(opacity.options.seed, 128)
         let fill = example("watercolor-fill").view()
         XCTAssertEqual(fill.options.fillStyle, .watercolor)
         XCTAssertEqual(fill.options.fillPadding, 12)
-        XCTAssertNil(fill.options.brushProfile.watercolor)
-        let overlap = example("watercolor-overlap").view()
-        XCTAssertEqual(overlap.drawables.count, 2)
-        XCTAssertEqual(overlap.options.brushProfile.watercolor?.seed, 27)
+        XCTAssertEqual(fill.options.seed, 33)
     }
 
     func testVariableMarkerExampleKeepsTheMarkerTipAndSeed() {

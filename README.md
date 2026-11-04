@@ -106,31 +106,49 @@ RoughView()
     .circle()
 ```
 
-### Watercolor
+### Opacity
 
-`.brushProfile(.watercolor)` paints a wash with a thin broken rim that fades along the stroke, grain in the body, and round tapered ends. Tight curves keep a ribbon width. Passes stack, so a crossing goes darker. `.fillStyle(.watercolor)` clips that wash to the shape. Blooms are irregular puddles. `fillPadding` insets the fill. `bleed` wanders the edge. It does not blur.
+`.opacityProfile` multiplies `strokeOpacity` along the outline. `.uniform` changes nothing. `.values` spaces samples evenly, `.stops` places `OpacityStop` values from 0 to 1, and `.noise` wobbles between a minimum and a maximum. The same noise seed repeats. A varying profile is painted into one mask, so overlaps do not turn dark.
 
-![Watercolor stroke](docs/images/brushes/watercolor.png)
+![Variable opacity](docs/images/brushes/variable-opacity.png)
 
 ```swift
 RoughView()
-    .stroke(Color(red: 0.16, green: 0.40, blue: 0.66))
-    .strokeWidth(26)
-    .roughness(0.4)
-    .bowing(0.2)
-    .brushProfile(.watercolor(pigment: 0.82, wetness: 0.35, edgeDarkening: 0.9, layers: 3, variation: 0.5, bleed: 0.55, seed: 21))
-    .seed(21)
+    .stroke(Color(red: 0.18, green: 0.46, blue: 0.67))
+    .strokeWidth(18)
+    .opacityProfile(.stops([
+        OpacityStop(0.15, at: 0),
+        OpacityStop(1, at: 0.38),
+        OpacityStop(0.2, at: 0.72),
+        OpacityStop(0.95, at: 1)
+    ]))
+    .seed(128)
     .draw(Curve(points: [
-        Point(x: 22, y: 128),
-        Point(x: 62, y: 36),
-        Point(x: 112, y: 150),
-        Point(x: 164, y: 58)
+        Point(x: 18, y: 118),
+        Point(x: 70, y: 42),
+        Point(x: 118, y: 142),
+        Point(x: 168, y: 64)
     ]))
 ```
 
-`.opacityProfile` multiplies `strokeOpacity` along the outline. `.uniform` changes nothing. `.values` spaces samples evenly, `.stops` places `OpacityStop` values from 0 to 1, and `.noise` wobbles between a minimum and a maximum. The same noise seed repeats.
+### Watercolor fill
 
-Presets that are not crayon or watercolor: `.calligraphic`, `.marker`, `.pen`, and `.default`.
+`.fillStyle(.watercolor)` clips an uneven wash to the shape. Layers glaze, the dried edge is darker, and blooms are irregular puddles. `fillPadding` insets the fill. The same seed repeats the wash.
+
+![Watercolor fill](docs/images/brushes/watercolor-fill.png)
+
+```swift
+RoughView()
+    .fill(Color(red: 0.16, green: 0.40, blue: 0.66))
+    .fillStyle(.watercolor)
+    .fillPadding(12)
+    .stroke(Color(red: 0.12, green: 0.14, blue: 0.18))
+    .strokeWidth(1.6)
+    .seed(33)
+    .circle()
+```
+
+Presets: `.calligraphic`, `.marker`, `.pen`, `.crayon`, and `.default`.
 
 ### Text
 
@@ -241,7 +259,6 @@ Crayon grain uses `CrayonStyle.seed`. When that seed is still `CrayonStyle.defau
 | `.marker` | Flat tip, butt caps. Even width |
 | `.pen` | Pressure swell through the middle |
 | `.crayon` | Continuous wax with grit on top |
-| `.watercolor` | Wet wash with a darker rim |
 
 `.marker(variation:minimum:maximum:taperStart:taperEnd:pressure:seed:)` is that same marker with width that changes along an open stroke. `variation` of `0.35` keeps the body in `[0.65, 1.35]` times `strokeWidth`. `minimum` and `maximum` replace that range. They are multipliers, not points. `seed` repeats the wobble. `pressure` uses the same curve as `ThicknessProfile.pressure`. Taper may thin the ends to a point. The default `marker()` call is the even marker above.
 

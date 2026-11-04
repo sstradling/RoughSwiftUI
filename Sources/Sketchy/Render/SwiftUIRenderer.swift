@@ -159,23 +159,10 @@ public struct SwiftUIRenderer {
             
             var nextGroup = 1
             let opacityProfile = options.resolvedOpacityProfile()
-            let watercolor = options.resolvedWatercolorBrush()
             let outlineWidth = CGFloat(isSVGPath ? options.effectiveSVGStrokeWidth : options.strokeWidth)
-            let skipOutline = watercolor != nil || (opacityProfile.variesAlongStroke && options.brushProfile.crayon == nil)
+            let skipOutline = opacityProfile.variesAlongStroke && options.brushProfile.crayon == nil
             let outlineTransform = svgTransform ?? .identity
-            if let (profile, style) = watercolor {
-                let sets = drawing.sets.filter { $0.type == .path }.map(\.operations)
-                result.append(contentsOf: WatercolorStroke.commands(
-                    sets: sets,
-                    transform: outlineTransform,
-                    width: outlineWidth,
-                    brush: profile,
-                    style: style,
-                    strokeOpacity: CGFloat(options.strokeOpacity),
-                    color: Color(options.stroke),
-                    nextGroup: &nextGroup
-                ))
-            } else if opacityProfile.variesAlongStroke && options.brushProfile.crayon == nil {
+            if skipOutline {
                 let sets = drawing.sets.filter { $0.type == .path }.map(\.operations)
                 result.append(contentsOf: OpacityRibbon.commands(
                     sets: sets,
@@ -190,7 +177,7 @@ public struct SwiftUIRenderer {
             }
 
             // Process standard operation sets. Outline sets are skipped when a
-            // wash or a variable-opacity ribbon already painted them.
+            // variable-opacity ribbon already painted them.
             for set in drawing.sets {
                 result.append(contentsOf: commands(
                     for: set,
