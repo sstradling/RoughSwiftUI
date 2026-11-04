@@ -147,5 +147,75 @@ final class SVGParsingTests: XCTestCase {
         // Relative: (-30, -40) + (10, -20) = (-20, -60)
         XCTAssertEqual(path.commands[2].point, CGPoint(x: -20, y: -60))
     }
+
+    func testSVGPathParsesAbsoluteEllipticalArc() {
+        let path = SVGPath("M10 20 A30 40 45 1 0 100 120")
+
+        XCTAssertEqual(path.commands.count, 2)
+        XCTAssertEqual(path.commands[0].type, .move)
+        XCTAssertEqual(path.commands[1].type, .arc)
+        XCTAssertEqual(path.commands[1].rx, 30)
+        XCTAssertEqual(path.commands[1].ry, 40)
+        XCTAssertEqual(path.commands[1].xAxisRotation, 45)
+        XCTAssertTrue(path.commands[1].largeArc)
+        XCTAssertFalse(path.commands[1].sweep)
+        XCTAssertEqual(path.commands[1].point, CGPoint(x: 100, y: 120))
+    }
+
+    func testSVGPathParsesRelativeEllipticalArcEndpointOnly() {
+        let path = SVGPath("M10 20 a30 40 45 0 1 100 120")
+
+        XCTAssertEqual(path.commands.count, 2)
+        XCTAssertEqual(path.commands[1].type, .arc)
+        XCTAssertEqual(path.commands[1].rx, 30)
+        XCTAssertEqual(path.commands[1].ry, 40)
+        XCTAssertEqual(path.commands[1].xAxisRotation, 45)
+        XCTAssertFalse(path.commands[1].largeArc)
+        XCTAssertTrue(path.commands[1].sweep)
+        // Only the endpoint is relative; radii/rotation/flags are unchanged.
+        XCTAssertEqual(path.commands[1].point, CGPoint(x: 110, y: 140))
+    }
+
+    func testSVGPathChainsRelativeEllipticalArcs() {
+        let path = SVGPath("M0 0 a50 50 0 0 1 50 50 a50 50 0 0 1 50 -50")
+
+        XCTAssertEqual(path.commands.count, 3)
+        XCTAssertEqual(path.commands[1].point, CGPoint(x: 50, y: 50))
+        XCTAssertEqual(path.commands[1].rx, 50)
+        XCTAssertEqual(path.commands[2].type, .arc)
+        XCTAssertEqual(path.commands[2].point, CGPoint(x: 100, y: 0))
+        XCTAssertEqual(path.commands[2].rx, 50)
+        XCTAssertFalse(path.commands[2].largeArc)
+        XCTAssertTrue(path.commands[2].sweep)
+    }
+
+    func testRelativeArcAfterCloseUsesTheSubpathStart() {
+        let path = SVGPath("M10 10 L40 10 Z a20 20 0 0 1 0 20")
+
+        XCTAssertEqual(path.commands[2].type, .close)
+        XCTAssertEqual(path.commands[2].point, CGPoint(x: 10, y: 10))
+        XCTAssertEqual(path.commands[3].type, .arc)
+        XCTAssertEqual(path.commands[3].rx, 20)
+        XCTAssertEqual(path.commands[3].ry, 20)
+        XCTAssertEqual(path.commands[3].point, CGPoint(x: 10, y: 30))
+    }
+
+    func testRepeatedArcCommandParsesEachSevenArguments() {
+        let path = SVGPath("M0 0 A10 20 30 0 1 10 10 40 50 60 1 0 80 90")
+
+        XCTAssertEqual(path.commands.count, 3)
+        XCTAssertEqual(path.commands[1].rx, 10)
+        XCTAssertEqual(path.commands[1].ry, 20)
+        XCTAssertEqual(path.commands[1].xAxisRotation, 30)
+        XCTAssertFalse(path.commands[1].largeArc)
+        XCTAssertTrue(path.commands[1].sweep)
+        XCTAssertEqual(path.commands[1].point, CGPoint(x: 10, y: 10))
+        XCTAssertEqual(path.commands[2].rx, 40)
+        XCTAssertEqual(path.commands[2].ry, 50)
+        XCTAssertEqual(path.commands[2].xAxisRotation, 60)
+        XCTAssertTrue(path.commands[2].largeArc)
+        XCTAssertFalse(path.commands[2].sweep)
+        XCTAssertEqual(path.commands[2].point, CGPoint(x: 80, y: 90))
+    }
     
 }

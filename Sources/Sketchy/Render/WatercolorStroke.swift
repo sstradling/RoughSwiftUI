@@ -47,8 +47,8 @@ enum WatercolorStroke {
                     style: style,
                     strokeOpacity: strokeOpacity,
                     layer: layer,
-                    edged: true,
-                    strength: 1 - 0.1 * CGFloat(layer)
+                    edged: layer == 0,
+                    strength: 1 - 0.12 * CGFloat(layer)
                 ))
             }
             pieces.append(contentsOf: granules(
@@ -78,7 +78,7 @@ enum WatercolorStroke {
         let darkening = CGFloat(style.edgeDarkening)
         let pigment = CGFloat(style.pigment) * strength
         let along = alongOpacity(0.5, closed: line.isClosed, brush: brush, strokeOpacity: strokeOpacity)
-        let core = min(1, pigment * (0.22 + 0.16 * (1 - darkening)) * along)
+        let core = min(1, pigment * (0.11 + 0.1 * (1 - darkening)) * along)
         var pieces = [
             RibbonPiece(path: ribbon(stations, closed: line.isClosed), opacity: core, t: 0.5)
         ]
@@ -110,11 +110,11 @@ enum WatercolorStroke {
             let next = (index + 1) % count
             let start = stations[index]
             let end = stations[next]
-            let gate = SeededNoise.unit(at: Float(start.t * 4.2 + CGFloat(index) * 0.01), seed: seed &+ 71)
-            let flicker = SeededNoise.unit(at: Float(start.t * 11), seed: seed &+ 93)
-            let presence = max(0, (CGFloat(gate) - 0.34) / 0.66) * (0.25 + 0.75 * CGFloat(flicker))
-            if presence < 0.12 { continue }
-            let opacity = min(1, pigment * (0.08 + 0.22 * darkening) * presence)
+            let gate = SeededNoise.unit(at: Float(start.t * 3.4), seed: seed &+ 71)
+            let flicker = SeededNoise.unit(at: Float(start.t * 9.5), seed: seed &+ 93)
+            let presence = max(0, (CGFloat(gate) - 0.28) / 0.72) * (0.35 + 0.65 * CGFloat(flicker))
+            if presence < 0.22 { continue }
+            let opacity = min(1, pigment * (0.16 + 0.55 * darkening) * presence)
             pieces.append(contentsOf: sideRim(start, end, side: 1, presence: presence, opacity: opacity))
             pieces.append(contentsOf: sideRim(start, end, side: -1, presence: presence, opacity: opacity * 0.9))
         }
@@ -133,15 +133,15 @@ enum WatercolorStroke {
         let endOuter = side > 0 ? end.outerLeft : end.outerRight
         let startHalf = max(0.5, hypot(startOuter.x - start.center.x, startOuter.y - start.center.y))
         let endHalf = max(0.5, hypot(endOuter.x - end.center.x, endOuter.y - end.center.y))
-        let startDepth = min(startHalf * 0.55, startHalf * (0.07 + 0.2 * presence))
-        let endDepth = min(endHalf * 0.55, endHalf * (0.07 + 0.2 * presence))
+        let startDepth = min(startHalf * 0.62, startHalf * (0.1 + 0.28 * presence))
+        let endDepth = min(endHalf * 0.62, endHalf * (0.1 + 0.28 * presence))
         let startMid = mix(startOuter, start.center, startDepth / startHalf)
         let endMid = mix(endOuter, end.center, endDepth / endHalf)
         let startDeep = mix(startOuter, start.center, min(0.7, startDepth * 2.4 / startHalf))
         let endDeep = mix(endOuter, end.center, min(0.7, endDepth * 2.4 / endHalf))
         return [
             RibbonPiece(path: quad(startOuter, endOuter, endMid, startMid), opacity: opacity, t: start.t),
-            RibbonPiece(path: quad(startMid, endMid, endDeep, startDeep), opacity: opacity * 0.4, t: start.t)
+            RibbonPiece(path: quad(startMid, endMid, endDeep, startDeep), opacity: opacity * 0.55, t: start.t)
         ]
     }
 
@@ -205,7 +205,7 @@ enum WatercolorStroke {
         let center = smoothedCenterline(line.samples, closed: line.isClosed)
         guard center.count >= 2 else { return [] }
         var pieces: [RibbonPiece] = []
-        let step = max(1, center.count / 22)
+        let step = max(1, center.count / 28)
         var index = step
         let last = max(step, center.count - step)
         while index < last {
@@ -215,7 +215,7 @@ enum WatercolorStroke {
             let seed = style.seed &+ UInt64(index) &* 0x9E37_79B9_7F4A_7C15
             let across = SeededNoise.signed(at: CGFloat(index) * 0.17, seed: seed)
             let unit = SeededNoise.unit(at: Float(index) * 0.13, seed: seed &+ 11)
-            let radius = half * (0.035 + 0.04 * CGFloat(unit))
+            let radius = half * (0.045 + 0.055 * CGFloat(unit))
             if radius < 0.35 {
                 index += step
                 continue
@@ -227,7 +227,7 @@ enum WatercolorStroke {
             )
             let fade = line.isClosed ? 1 : tipScale(sample.t)
             let profile = alongOpacity(sample.t, closed: line.isClosed, brush: brush, strokeOpacity: strokeOpacity)
-            let opacity = CGFloat(style.pigment) * profile * fade * 0.08 * (0.45 + CGFloat(unit))
+            let opacity = CGFloat(style.pigment) * profile * fade * 0.18 * (0.4 + 0.6 * CGFloat(unit))
             pieces.append(RibbonPiece(path: ellipse(center: dot, radius: radius), opacity: min(1, opacity), t: sample.t))
             index += step
         }

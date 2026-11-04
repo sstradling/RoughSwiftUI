@@ -915,6 +915,52 @@ RoughView()
     ]))
 ```
 
+### Width stops
+
+widthStops sets point widths on an open curve: 4pt, 8pt from 10% to 90%, then 4pt. strokeWidth stays 2 and does not scale them.
+
+![Width stops](images/brushes/width-stops.png)
+
+```swift
+RoughView()
+    .stroke(Color(red: 0.18, green: 0.46, blue: 0.67))
+    .strokeWidth(2)
+    .roughness(0.25)
+    .widthStops([(0, 4), (0.1, 8), (0.9, 8), (1, 4)])
+    .seed(149)
+    .draw(Curve(points: [
+        Point(x: 10, y: 120),
+        Point(x: 58, y: 28),
+        Point(x: 112, y: 156),
+        Point(x: 174, y: 52)
+    ]))
+```
+
+### Variable opacity
+
+Opacity stops run from faint to solid and back. The profile multiplies strokeOpacity, and one mask keeps the overlaps from turning dark.
+
+![Variable opacity](images/brushes/variable-opacity.png)
+
+```swift
+RoughView()
+    .stroke(Color(red: 0.18, green: 0.46, blue: 0.67))
+    .strokeWidth(18)
+    .opacityProfile(.stops([
+        OpacityStop(0.15, at: 0),
+        OpacityStop(1, at: 0.38),
+        OpacityStop(0.2, at: 0.72),
+        OpacityStop(0.95, at: 1)
+    ]))
+    .seed(128)
+    .draw(Curve(points: [
+        Point(x: 18, y: 118),
+        Point(x: 70, y: 42),
+        Point(x: 118, y: 142),
+        Point(x: 168, y: 64)
+    ]))
+```
+
 ### Watercolor stroke
 
 A broken rim that fades in and out, darker where the pigment dries, with grain inside and round tapered ends. The same seed repeats the wash.
@@ -942,31 +988,6 @@ RoughView()
         Point(x: 62, y: 36),
         Point(x: 112, y: 150),
         Point(x: 164, y: 58)
-    ]))
-```
-
-### Variable opacity
-
-Opacity stops run from faint to solid and back. The profile multiplies strokeOpacity, and one mask keeps the overlaps from turning dark.
-
-![Variable opacity](images/brushes/variable-opacity.png)
-
-```swift
-RoughView()
-    .stroke(Color(red: 0.18, green: 0.46, blue: 0.67))
-    .strokeWidth(18)
-    .opacityProfile(.stops([
-        OpacityStop(0.15, at: 0),
-        OpacityStop(1, at: 0.38),
-        OpacityStop(0.2, at: 0.72),
-        OpacityStop(0.95, at: 1)
-    ]))
-    .seed(128)
-    .draw(Curve(points: [
-        Point(x: 18, y: 118),
-        Point(x: 70, y: 42),
-        Point(x: 118, y: 142),
-        Point(x: 168, y: 64)
     ]))
 ```
 
@@ -1112,6 +1133,24 @@ RoughView()
     .svgFillStrokeAlignment(.outside)
     .seed(144)
     .draw(Path(d: "M50,28 C50,28 38,8 22,8 C8,8 0,20 0,34 C0,55 22,72 50,96 C78,72 100,55 100,34 C100,20 92,8 78,8 C62,8 50,28 50,28 Z"))
+```
+
+### SVG arcs
+
+A pie slice and a rounded speech bubble. The wedge and the four corners are elliptical arc commands.
+
+![SVG arcs](images/svg/svg-arcs.png)
+
+```swift
+RoughView()
+    .fill(Color(red: 0.45, green: 0.28, blue: 0.55))
+    .fillStyle(.hachure)
+    .fillAngle(45)
+    .fillSpacing(4)
+    .stroke(Color(red: 0.12, green: 0.14, blue: 0.18))
+    .strokeWidth(2)
+    .seed(146)
+    .draw(Path(d: "M52 110 L52 66 A44 44 0 0 1 96 110 Z M126 48 H166 A18 18 0 0 1 184 66 V112 A18 18 0 0 1 166 130 H150 L138 152 L128 130 H126 A18 18 0 0 1 108 112 V66 A18 18 0 0 1 126 48 Z"))
 ```
 
 ## Text

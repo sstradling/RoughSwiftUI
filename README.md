@@ -11,7 +11,7 @@ For AI coding agents: [AGENTS.md](AGENTS.md) is how to work in this repo, and [l
 Add the package to your `Package.swift` dependencies and to the target that uses it. The package requires iOS 17 or later.
 
 ```swift
-.package(url: "https://github.com/sstradling/Sketchy", from: "1.2.0"),
+.package(url: "https://github.com/sstradling/Sketchy", from: "1.3.0"),
 ```
 
 ```swift
@@ -106,9 +106,34 @@ RoughView()
     .circle()
 ```
 
+### Opacity
+
+`.opacityProfile` multiplies `strokeOpacity` along the outline. `.uniform` changes nothing. `.values` spaces samples evenly, `.stops` places `OpacityStop` values from 0 to 1, and `.noise` wobbles between a minimum and a maximum. The same noise seed repeats. A varying profile is painted into one mask, so overlaps do not turn dark.
+
+![Variable opacity](docs/images/brushes/variable-opacity.png)
+
+```swift
+RoughView()
+    .stroke(Color(red: 0.18, green: 0.46, blue: 0.67))
+    .strokeWidth(18)
+    .opacityProfile(.stops([
+        OpacityStop(0.15, at: 0),
+        OpacityStop(1, at: 0.38),
+        OpacityStop(0.2, at: 0.72),
+        OpacityStop(0.95, at: 1)
+    ]))
+    .seed(128)
+    .draw(Curve(points: [
+        Point(x: 18, y: 118),
+        Point(x: 70, y: 42),
+        Point(x: 118, y: 142),
+        Point(x: 168, y: 64)
+    ]))
+```
+
 ### Watercolor
 
-`.brushProfile(.watercolor)` paints a wash with a thin broken rim that fades along the stroke, grain in the body, and round tapered ends. Tight curves keep a ribbon width. Passes stack, so a crossing goes darker. `.fillStyle(.watercolor)` clips that wash to the shape. Blooms are irregular puddles. `fillPadding` insets the fill. `bleed` wanders the edge. It does not blur.
+`.brushProfile(.watercolor)` paints a lighter wash with a broken darker rim, a little grain, and round tapered ends. The ribbon stays an even width on a tight bend. Passes stack, so a crossing goes darker. `.fillStyle(.watercolor)` clips a wash to the shape. When the brush is watercolor, the fill uses that style.
 
 ![Watercolor stroke](docs/images/brushes/watercolor.png)
 
@@ -128,9 +153,24 @@ RoughView()
     ]))
 ```
 
-`.opacityProfile` multiplies `strokeOpacity` along the outline. `.uniform` changes nothing. `.values` spaces samples evenly, `.stops` places `OpacityStop` values from 0 to 1, and `.noise` wobbles between a minimum and a maximum. The same noise seed repeats.
+### Watercolor fill
 
-Presets that are not crayon or watercolor: `.calligraphic`, `.marker`, `.pen`, and `.default`.
+`.fillStyle(.watercolor)` clips an uneven wash to the shape. Layers glaze, the dried edge is darker, and blooms are irregular puddles. `fillPadding` insets the fill. The same seed repeats the wash.
+
+![Watercolor fill](docs/images/brushes/watercolor-fill.png)
+
+```swift
+RoughView()
+    .fill(Color(red: 0.16, green: 0.40, blue: 0.66))
+    .fillStyle(.watercolor)
+    .fillPadding(12)
+    .stroke(Color(red: 0.12, green: 0.14, blue: 0.18))
+    .strokeWidth(1.6)
+    .seed(33)
+    .circle()
+```
+
+Presets: `.calligraphic`, `.marker`, `.pen`, `.crayon`, and `.default`.
 
 ### Text
 
@@ -232,6 +272,8 @@ Crayon grain uses `CrayonStyle.seed`. When that seed is still `CrayonStyle.defau
 
 `.draw(Path(d:))` scales the path to the view and keeps its aspect ratio. `.svgStrokeWidth`, `.svgFillWeight`, and `.svgFillStrokeAlignment` (`.center`, `.inside`, `.outside`) apply to that path. Text is also stored as a path, but it is placed in the view and is not scaled to fit.
 
+`A` and `a` draw elliptical arcs. A zero radius becomes a line, identical endpoints are skipped, and radii that cannot reach the endpoint scale up. The arc is split into cubic segments of at most 90° and roughened like the other path commands.
+
 ### Brushes
 
 | Profile | Look |
@@ -241,7 +283,7 @@ Crayon grain uses `CrayonStyle.seed`. When that seed is still `CrayonStyle.defau
 | `.marker` | Flat tip, butt caps. Even width |
 | `.pen` | Pressure swell through the middle |
 | `.crayon` | Continuous wax with grit on top |
-| `.watercolor` | Wet wash with a darker rim |
+| `.watercolor` | Lighter wash with a broken darker rim |
 
 `.marker(variation:minimum:maximum:taperStart:taperEnd:pressure:seed:)` is that same marker with width that changes along an open stroke. `variation` of `0.35` keeps the body in `[0.65, 1.35]` times `strokeWidth`. `minimum` and `maximum` replace that range. They are multipliers, not points. `seed` repeats the wobble. `pressure` uses the same curve as `ThicknessProfile.pressure`. Taper may thin the ends to a point. The default `marker()` call is the even marker above.
 
@@ -255,6 +297,25 @@ RoughView()
 ```
 
 `.thicknessProfile(.naturalPen)` tapers an open stroke. Closed shapes keep an even width so the join does not seam. A variable marker does the same on a closed contour.
+
+`.widthStops([(0, 4), (0.1, 8), (0.9, 8), (1, 4)])` sets those widths in points: 4pt at the start, 8pt from 10% to 90% of the length, then 4pt. `strokeWidth` does not scale a non-empty list. `.custom([0.5, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.5])` with `strokeWidth` 8 is the same curve, as evenly spaced multipliers. Stops replace a `.variable` wobble. The marker's flat tip still changes width with direction. Closed contours ignore the stops.
+
+![Width stops](docs/images/brushes/width-stops.png)
+
+```swift
+RoughView()
+    .stroke(Color(red: 0.18, green: 0.46, blue: 0.67))
+    .strokeWidth(2)
+    .roughness(0.25)
+    .widthStops([(0, 4), (0.1, 8), (0.9, 8), (1, 4)])
+    .seed(149)
+    .draw(Curve(points: [
+        Point(x: 10, y: 120),
+        Point(x: 58, y: 28),
+        Point(x: 112, y: 156),
+        Point(x: 174, y: 52)
+    ]))
+```
 
 ## Shapes
 

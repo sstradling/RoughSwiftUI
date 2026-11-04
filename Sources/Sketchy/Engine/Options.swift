@@ -272,9 +272,7 @@ public struct Options: Equatable, Hashable {
 
     /// Opacity profile after `Options.seed` replaces `OpacityNoise.defaultSeed`.
     ///
-    /// A noise seed other than `1` is kept. Watercolor stores its noise at
-    /// `style.seed &+ 17`, so this does not retarget a watercolor curve.
-    /// `resolvedWatercolorBrush()` does that.
+    /// A noise seed other than `1` is kept.
     func resolvedOpacityProfile() -> OpacityProfile {
         guard case .noise(var noise) = brushProfile.opacityProfile else {
             return brushProfile.opacityProfile

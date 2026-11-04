@@ -113,6 +113,12 @@ rm -rf "$RAW" "$RESULT"
 mkdir -p "$RAW"
 
 # iPhone 16 Pro on the iOS 18.6 runtime. Name match avoids the Pro Max.
+# SKETCHY_SIMULATOR_UDID overrides that pick so a shared machine can render
+# on a simulator clone without booting the shared iPhone 16 Pro.
+if [[ -n "${SKETCHY_SIMULATOR_UDID:-}" ]]; then
+  UDID="$SKETCHY_SIMULATOR_UDID"
+  DESTINATION="platform=iOS Simulator,id=${UDID}"
+else
 UDID="$(
   xcrun simctl list devices available -j | python3 -c '
 import json, sys
@@ -128,6 +134,7 @@ sys.stderr.write("No available iPhone 16 Pro simulator on iOS 18.6\n")
 sys.exit(1)
 '
 )"
+fi
 
 clear_render_env() {
   xcrun simctl spawn "$UDID" launchctl unsetenv TEST_RUNNER_RENDER_DOCS >/dev/null 2>&1 || true

@@ -65,10 +65,11 @@ import Sketchy
 | `Point` | 2D coordinate | `Point(x: Float, y: Float)` |
 | `Size` | Dimensions | `Size(width: Float, height: Float)` |
 | `FillStyle` | Fill pattern enumeration | `.hachure`, `.solid`, etc. |
-| `BrushProfile` | Stroke styling configuration | Calligraphic, pen, crayon, and watercolor |
+| `BrushProfile` | Stroke styling configuration | Calligraphic, pen, crayon, opacity, and watercolor |
+| `WidthStop` | Absolute stroke width at one position | `position` 0...1, `width` in points |
 | `CrayonStyle` | Wax-crayon grain, edge, and seed | Used by `BrushProfile.crayon` |
 | `OpacityProfile` | Opacity along a stroke | Uniform, values, stops, or seeded noise |
-| `WatercolorStyle` | Wet-wash pigment, rim, and seed | Used by `BrushProfile.watercolor` |
+| `WatercolorStyle` | Wet-wash pigment, rim, and seed | Used by `BrushProfile.watercolor` and `.fillStyle(.watercolor)` |
 | `AnimationConfig` | Animation settings | Steps, speed, variance |
 
 ### Point
@@ -248,7 +249,11 @@ func brushTip(
 func brushTip(_ tip: BrushTip) -> Self
 func thicknessProfile(_ profile: ThicknessProfile) -> Self
 func opacityProfile(_ profile: OpacityProfile) -> Self
+func widthStops(_ stops: [(CGFloat, CGFloat)]) -> Self
+func widthStops(_ stops: [WidthStop]) -> Self
 ```
+
+`RoughText` has the same `.widthStops` methods. Most glyph outlines are closed, so they keep an even `strokeWidth`.
 
 ### Animation Modifier
 
@@ -394,6 +399,17 @@ public struct Path: Drawable {
 }
 ```
 
+Supported SVG path commands include:
+
+| Command | Description |
+|---|---|
+| `M` / `m` | Move to |
+| `L` / `l`, `H` / `h`, `V` / `v` | Line to, horizontal line, vertical line |
+| `Q` / `q`, `T` / `t` | Quadratic Bezier and smooth quadratic Bezier |
+| `C` / `c`, `S` / `s` | Cubic Bezier and smooth cubic Bezier |
+| `A` / `a` | Elliptical arc (converted to cubic Bezier segments) |
+| `Z` / `z` | Close path |
+
 **Example:**
 ```swift
 let svgPath = "M10 10 L100 10 L100 100 L10 100 Z"
@@ -401,6 +417,27 @@ RoughView()
     .fill(.red)
     .draw(Path(d: svgPath))
 ```
+
+**Elliptical arc example:**
+```swift
+let arcPath = "M20 80 A60 40 0 0 1 140 80"
+RoughView()
+    .stroke(.black)
+    .strokeWidth(2)
+    .draw(Path(d: arcPath))
+```
+
+`A` and `a` take `rx ry x-axis-rotation large-arc sweep x y`. A relative `a` adds `x y` to the current point and leaves the radii, rotation, and flags absolute. The arc follows the SVG 1.1 endpoint-to-center conversion (implementation notes F.6.5 and F.6.6) and is drawn as cubic segments of at most 90°. Roughness offsets those cubics the same way it offsets an authored `C`, starting from the unjittered path point.
+
+| Case | Result |
+|---|---|
+| Radii too small to reach the endpoint | Both radii scale by the same factor until the endpoints lie on the ellipse |
+| `rx` or `ry` is 0 | Straight line to the endpoint |
+| Endpoints are the same point | The segment is skipped, even if a radius is also 0 |
+| Negative radii | The absolute values are used |
+| Nonzero flag | Treated as 1 |
+
+After `Z` or `z`, the current point is the subpath start, so a following relative command (including `a`) is measured from there.
 
 ### Text
 
@@ -603,7 +640,8 @@ public enum ThicknessProfile: Equatable, Hashable, Sendable {
     case taperOut(end: CGFloat)
     case taperBoth(start: CGFloat, end: CGFloat)
     case pressure([CGFloat])
-    case custom([CGFloat])
+    case custom([CGFloat])          // Evenly spaced multipliers of strokeWidth
+    case stops([WidthStop])        // Absolute point widths at positions 0...1
     case variable(VariableStrokeWidth)
     
     // Presets
@@ -611,8 +649,50 @@ public enum ThicknessProfile: Equatable, Hashable, Sendable {
     public static let brushStart    // taperIn(start: 0.25)
     public static let brushEnd      // taperOut(end: 0.25)
     public static let penPressure   // Simulated pressure curve
+
+    public func multiplier(at t: CGFloat) -> CGFloat
+    public func width(at t: CGFloat, strokeWidth: CGFloat) -> CGFloat
+    public func multiplier(at t: CGFloat, strokeWidth: CGFloat) -> CGFloat
 }
 ```
+
+`.custom` spaces its multipliers evenly from the start of the stroke to the end. With `strokeWidth` 8, `.custom([0.5, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.5])` is 4pt at the start, 8pt at 10% of the length, 8pt through 90%, and 4pt at the end. `multiplier(at:)` is that fraction. It is unchanged by width stops.
+
+### WidthStop
+
+```swift
+public struct WidthStop: Equatable, Hashable, Sendable {
+    public var position: CGFloat  // 0...1 along the stroke, clamped
+    public var width: CGFloat     // points, clamped to at least 0
+
+    public init(position: CGFloat, width: CGFloat)
+}
+```
+
+`.stops` sorts by `position`. Linear interpolation connects the stops. Before the first stop and after the last, the end widths hold. Two stops at the same position use the later one. An empty list is an even `strokeWidth`.
+
+A non-empty list is already in points. `width(at:strokeWidth:)` returns that width and ignores `strokeWidth`. `multiplier(at:strokeWidth:)` is `width / strokeWidth` (or `0` when `strokeWidth` is `0`). `multiplier(at:)` returns `1` for `.stops`, so a point width is not fed back through the multiplier path. The renderer calls `width(at:strokeWidth:)`.
+
+The brush tip still scales that point width by stroke direction. A circular tip draws the stop width. A flat marker draws `BrushTip.effectiveWidth(baseWidth: stopWidth, strokeAngle:)`.
+
+`.stops` and `.variable` share one `thicknessProfile`. `.widthStops` replaces the variable profile, including its noise, pressure, and taper. They are not multiplied. `.brushProfile` replaces the whole profile, so call `.widthStops` after it. Closed contours drop both and draw an even `strokeWidth`, then the tip. A crayon brush does not consult the thickness profile. Its width stays `strokeWidth` plus `CrayonStyle.widthVariation`.
+
+An open stroke with stops fills with the winding rule, same as an open `.variable` marker, so the two rough passes union into one solid mark and the point width stays visible. Closed contours stay even-odd. `.custom` and the tapers stay even-odd.
+
+```swift
+RoughView()
+    .stroke(.blue)
+    .strokeWidth(2)
+    .widthStops([(0, 4), (0.1, 8), (0.9, 8), (1, 4)])
+    .draw(Curve(points: [
+        Point(x: 10, y: 120),
+        Point(x: 58, y: 28),
+        Point(x: 112, y: 156),
+        Point(x: 174, y: 52)
+    ]))
+```
+
+`strokeWidth` 2 is unused for that ribbon. The same shape as multipliers is `.strokeWidth(8).thicknessProfile(.custom([0.5, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.5]))`.
 
 ### BrushCap
 
@@ -721,6 +801,8 @@ public enum CrayonStroke {
 
 The width is `ThicknessProfile.variable(_:)`, which calls `VariableStrokeWidth.multiplier(at:)`. That reuses the existing taper ramps and the existing pressure interpolation, then multiplies them by a seeded noise value. An open stroke fills with the winding rule so the two rough passes union into one mark. `.marker` stays even-odd. Closed contours still drop the profile and draw an even width so the join does not seam.
 
+Width stops do not layer on that noise. `.widthStops` replaces `.variable` and the flat tip scales the point widths. A later `.brushProfile(.marker(variation:))` replaces the stops.
+
 | Parameter | Default | Range | Effect |
 |-----------|---------|-------|--------|
 | `variation` | 0 | 0...1 | With no bounds, `0.35` keeps the noisy body in `[0.65, 1.35]` times `strokeWidth`. `0` is an even stroke |
@@ -782,11 +864,13 @@ RoughView()
 
 `BrushProfile.watercolor(...)` paints a wash on the outline. `.watercolor` is that call with the defaults.
 
-The body is a ribbon. On a tight bend the inside edge is held to the curve so it does not cross and fill the corner. The round tip is drawn from the real edge points, so a peak does not pinch. The rim is a thin broken band: its width and darkness fade along the stroke, and a fainter inner strip blends it into the body. It is not a continuous outline. The edge wanders (`bleed`) and granules break up the interior. Open strokes taper into a round tip. There is no blur halo. `variation` sets `ThicknessProfile.variable` and `OpacityProfile.noise`. `layers` is how many body glazes are laid down, from 1 to 5. Each glaze is an ordinary translucent fill, so where a stroke crosses itself, or where two watercolor strokes cross, the pigment stacks and the overlap goes darker. The variable-opacity stroke does not do this: it still uses one mask so joins stay even. The same `seed` repeats the wash. `WatercolorStyle.defaultSeed` (`1`) yields to `Options.seed`, and the width and opacity baked from that default follow it.
+The body is one ribbon around a smoothed centreline, so a tight bend stays an even width instead of flaring or toothing. The centre is lighter. One broken rim is darker and fades along the stroke, with a fainter strip blending it into the body. It is not a continuous outline. Open strokes taper into a round tip. There is no blur. `variation` sets `ThicknessProfile.variable` and `OpacityProfile.noise`. `layers` is how many body glazes are laid down, from 1 to 5. Only the first glaze carries the rim. Each glaze is a translucent fill, so a crossing goes darker. The variable-opacity stroke still uses one mask. The same `seed` repeats the wash. `WatercolorStyle.defaultSeed` (`1`) yields to `Options.seed`.
 
-The first rough outline carries the wash. A second rough pass is not given its own rim.
+### Watercolor fill
 
-`.fillStyle(.watercolor)` clips a wash to the same region as a solid fill, so `fillPadding` and `fillOffset` apply. Layers glaze, the edge is an uneven darker ring, and specks plus a few backruns keep the interior from looking airbrushed. When the brush is watercolor, the fill uses that style. Otherwise it uses `WatercolorStyle()` and `Options.seed`.
+`.fillStyle(.watercolor)` clips a wash to the same region as a solid fill, so `fillPadding` and `fillOffset` apply. When the brush is watercolor, the fill uses that style. Otherwise the renderer uses `WatercolorStyle()`. `Options.seed` replaces `WatercolorStyle.defaultSeed` (`1`).
+
+Layers are ordinary translucent fills, so they glaze. The edge is an uneven darker ring, and specks plus a few irregular blooms keep the interior from looking airbrushed. There is no blur. Sketch fills such as hachure stay as they are. The variable-opacity stroke is separate: it still uses one mask so joins stay even.
 
 | Parameter | Default | Range | Effect |
 |-----------|---------|-------|--------|
@@ -794,16 +878,17 @@ The first rough outline carries the wash. A second rough pass is not given its o
 | `wetness` | 0.6 | 0...1 | How far passes drift |
 | `edgeDarkening` | 0.75 | 0...1 | Darker rim, lighter centre |
 | `layers` | 3 | 1...5 | Body passes. Bleed is extra |
-| `variation` | 0.45 | 0...1 | Width and opacity wander |
+| `variation` | 0.45 | 0...1 | How much the wash wanders |
 | `bleed` | 0.5 | 0...1 | Uneven dried edge and backruns. Not a blur |
 | `seed` | 1 | any `UInt64` | Stable wash. Yields to `Options.seed` only while it is still `1` |
 
 ```swift
 RoughView()
-    .stroke(.blue)
-    .strokeWidth(28)
-    .brushProfile(.watercolor(pigment: 0.78, wetness: 0.7, edgeDarkening: 0.85, seed: 21))
-    .seed(21)
+    .fill(.blue)
+    .fillStyle(.watercolor)
+    .fillPadding(12)
+    .seed(33)
+    .circle()
 ```
 
 ### Brush Examples
@@ -1157,6 +1242,14 @@ RoughView().draw(Text("Hello", font: .systemFont(ofSize: 32)))
 Engine.shared.clearCaches()
 ```
 
+### Issue: Width stops do not change the stroke
+
+**Causes & Solutions:**
+1. The shape is closed, or the text glyphs are closed outlines. Closed contours keep an even `strokeWidth` so the join does not seam.
+2. `.brushProfile(...)` was called after `.widthStops` and replaced the stops. Set the brush first.
+3. `.brushProfile(.crayon)` does not use thickness profiles. Crayon width is `strokeWidth` plus `widthVariation`.
+4. The numbers in `.widthStops` are points. A non-empty list ignores `strokeWidth`.
+
 ### Issue: Drawing Changes Every Redraw
 
 **Solution:** Set `.seed(_)` (or `Options.seed`) so roughness and fill wobble repeat. Crayon grain repeats from `CrayonStyle.seed`. Animation frames repeat when `AnimationConfig.seed` is set.
@@ -1180,7 +1273,7 @@ Engine.shared.clearCaches()
 ## Version Information
 
 - **Package:** Sketchy
-- **Version:** 1.2.0
+- **Version:** 1.3.0
 - **Minimum iOS:** 17.0
 - **Swift:** 5.9+
 - **Rendering:** Native Swift (no JavaScript bridge)

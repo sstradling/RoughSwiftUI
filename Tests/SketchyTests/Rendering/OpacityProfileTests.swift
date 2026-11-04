@@ -2,7 +2,7 @@ import CoreGraphics
 import XCTest
 @testable import Sketchy
 
-/// Opacity profiles, the watercolor brush, and the promise that older brushes stay put.
+/// Opacity profiles, the watercolor brush and fill, and the promise that older brushes stay put.
 @MainActor
 final class OpacityProfileTests: XCTestCase {
     func testUniformOpacityIsOne() {
@@ -140,7 +140,7 @@ final class OpacityProfileTests: XCTestCase {
         XCTAssertFalse(commands.isEmpty)
     }
 
-    func testExistingBrushesDoNotGainAnOpacityMaskOrWatercolor() {
+    func testExistingBrushesDoNotGainAnOpacityMask() {
         for profile in [BrushProfile.default, .calligraphic, .marker, .pen, .crayon, .marker(variation: 0.4, seed: 3)] {
             XCTAssertNil(profile.watercolor)
             XCTAssertEqual(profile.opacityProfile, .uniform)
@@ -251,7 +251,6 @@ final class OpacityProfileTests: XCTestCase {
         options.fillOpacity = 0.8
         options.strokeWidth = 0
         options.seed = 6
-        options.brushProfile = .watercolor(variation: 0.4, bleed: 0.4, seed: 6)
         let unpadded = fillBounds(Circle(x: 80, y: 80, diameter: 100), options: options)
 
         var padded = options
@@ -270,7 +269,9 @@ final class OpacityProfileTests: XCTestCase {
         options.fillOpacity = 0.5
         options.seed = 3
         let commands = fillCommands(Circle(x: 40, y: 40, diameter: 60), options: options)
+        let again = fillCommands(Circle(x: 40, y: 40, diameter: 60), options: options)
         XCTAssertFalse(commands.isEmpty)
+        XCTAssertEqual(commands.map(\.path.boundingRect), again.map(\.path.boundingRect))
         XCTAssertTrue(commands.allSatisfy { $0.clipPath != nil })
         XCTAssertTrue(commands.allSatisfy { $0.opacityMaskGroup == nil })
         XCTAssertGreaterThan(commands.count, 8)

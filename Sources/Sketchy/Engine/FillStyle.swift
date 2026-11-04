@@ -26,8 +26,8 @@ public enum FillStyle: String, Equatable, Hashable, Sendable {
     /// A translucent wash clipped to the shape, with a darker rim and a lighter centre.
     ///
     /// The generator builds the same region as a solid fill, including `fillPadding`
-    /// and `fillOffset`. The renderer paints the wash. When the brush is
-    /// `BrushProfile.watercolor`, the fill uses that style. Otherwise it uses
-    /// `WatercolorStyle()`.
+    /// and `fillOffset`. The renderer paints layered glazes, an uneven edge, and a
+    /// few blooms. A watercolor brush shares its style. Otherwise the fill uses
+    /// `WatercolorStyle()`, and `Options.seed` replaces the default seed.
     case watercolor
 }
