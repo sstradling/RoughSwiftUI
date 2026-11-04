@@ -915,6 +915,27 @@ RoughView()
     ]))
 ```
 
+### Width stops
+
+widthStops sets point widths on an open curve: 4pt, 8pt from 10% to 90%, then 4pt. strokeWidth stays 2 and does not scale them.
+
+![Width stops](images/brushes/width-stops.png)
+
+```swift
+RoughView()
+    .stroke(Color(red: 0.18, green: 0.46, blue: 0.67))
+    .strokeWidth(2)
+    .roughness(0.25)
+    .widthStops([(0, 4), (0.1, 8), (0.9, 8), (1, 4)])
+    .seed(149)
+    .draw(Curve(points: [
+        Point(x: 10, y: 120),
+        Point(x: 58, y: 28),
+        Point(x: 112, y: 156),
+        Point(x: 174, y: 52)
+    ]))
+```
+
 ## Seeding
 
 The same seed redraws the same strokes. A different seed is a different drawing of the same shape.
