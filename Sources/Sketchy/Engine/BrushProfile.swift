@@ -422,6 +422,12 @@ public struct BrushProfile: Equatable, Hashable, Sendable {
     ///
     /// `nil` keeps the existing stroke behavior. Default profiles leave this `nil`.
     public var crayon: CrayonStyle?
+
+    /// Opacity along the stroke. `.uniform` leaves existing strokes unchanged.
+    ///
+    /// The value multiplies `Options.strokeOpacity`. A profile that changes
+    /// along the stroke is painted into one mask so segment overlaps do not darken.
+    public var opacityProfile: OpacityProfile
     
     /// Creates a brush profile with the specified components.
     public init(
@@ -429,13 +435,15 @@ public struct BrushProfile: Equatable, Hashable, Sendable {
         thicknessProfile: ThicknessProfile = .uniform,
         cap: BrushCap = .round,
         join: BrushJoin = .round,
-        crayon: CrayonStyle? = nil
+        crayon: CrayonStyle? = nil,
+        opacityProfile: OpacityProfile = .uniform
     ) {
         self.tip = tip
         self.thicknessProfile = thicknessProfile
         self.cap = cap
         self.join = join
         self.crayon = crayon
+        self.opacityProfile = opacityProfile
     }
     
     /// Default brush profile - circular tip with uniform thickness.
@@ -569,7 +577,7 @@ public struct BrushProfile: Equatable, Hashable, Sendable {
     /// Whether this profile requires custom stroke-to-fill conversion.
     /// Returns false for simple profiles that can use standard stroke rendering.
     public var requiresCustomRendering: Bool {
-        if crayon != nil {
+        if crayon != nil || opacityProfile.variesAlongStroke {
             return true
         }
         // Need custom rendering if:
@@ -590,7 +598,8 @@ public struct BrushProfile: Equatable, Hashable, Sendable {
             thicknessProfile: .uniform,
             cap: cap,
             join: join,
-            crayon: crayon
+            crayon: crayon,
+            opacityProfile: opacityProfile
         )
     }
 }

@@ -110,6 +110,16 @@ public struct VariableStrokeWidth: Equatable, Hashable, Sendable {
         self.frequency = max(0.5, frequency)
     }
 
+    /// Same wobble with a different seed.
+    ///
+    /// Watercolor uses this when `Options.seed` replaces a default style seed.
+    /// The marker factory does not call it, so an existing marker seed stays put.
+    func with(seed: UInt64) -> VariableStrokeWidth {
+        var copy = self
+        copy.seed = seed
+        return copy
+    }
+
     /// True when the multiplier is not identically 1.
     var changesWidth: Bool {
         if taperStart > 0 || taperEnd > 0 || !pressure.isEmpty {

@@ -435,7 +435,7 @@ public final class NativeGenerator {
                 return nil
             }
             let clipped = FillGeometry.svgPath(from: contours)
-            if options.fillStyle == .solid {
+            if options.fillStyle == .solid || options.fillStyle == .watercolor {
                 return OperationSet(type: .path2DFill, operations: [], path: clipped, size: nil)
             }
             let filler = FillPatternFactory.filler(for: options.fillStyle)
@@ -449,8 +449,8 @@ public final class NativeGenerator {
             )
         }
 
-        if options.fillStyle == .solid {
-            // Solid fill uses the path directly
+        if options.fillStyle == .solid || options.fillStyle == .watercolor {
+            // Solid and watercolor fills use the path directly. The wash is painted later.
             return OperationSet(type: .path2DFill, operations: [], path: pathString, size: nil)
         } else {
             // Pattern fill

@@ -65,9 +65,11 @@ import Sketchy
 | `Point` | 2D coordinate | `Point(x: Float, y: Float)` |
 | `Size` | Dimensions | `Size(width: Float, height: Float)` |
 | `FillStyle` | Fill pattern enumeration | `.hachure`, `.solid`, etc. |
-| `BrushProfile` | Stroke styling configuration | Calligraphic, pen, and crayon effects |
+| `BrushProfile` | Stroke styling configuration | Calligraphic, pen, crayon, and opacity |
 | `WidthStop` | Absolute stroke width at one position | `position` 0...1, `width` in points |
 | `CrayonStyle` | Wax-crayon grain, edge, and seed | Used by `BrushProfile.crayon` |
+| `OpacityProfile` | Opacity along a stroke | Uniform, values, stops, or seeded noise |
+| `WatercolorStyle` | Wet-wash pigment, rim, and seed | Used by `.fillStyle(.watercolor)` |
 | `AnimationConfig` | Animation settings | Steps, speed, variance |
 
 ### Point
@@ -246,6 +248,7 @@ func brushTip(
 
 func brushTip(_ tip: BrushTip) -> Self
 func thicknessProfile(_ profile: ThicknessProfile) -> Self
+func opacityProfile(_ profile: OpacityProfile) -> Self
 func widthStops(_ stops: [(CGFloat, CGFloat)]) -> Self
 func widthStops(_ stops: [WidthStop]) -> Self
 ```
@@ -528,6 +531,7 @@ public enum FillStyle: String {
     case dashed         // Dashed lines
     case zigzagLine     // Single zigzag line
     case scribble       // Continuous zig-zag traversal
+    case watercolor     // Clipped wash with a darker rim
 }
 ```
 
@@ -549,6 +553,9 @@ RoughView().fill(.purple).fillStyle(.dots).circle()
 // Scribble (continuous zig-zag). scribbleOrigin is the stroke bearing:
 // 0 runs to the right, 90 runs straight down, positive angles rotate clockwise.
 RoughView().fill(.orange).fillStyle(.scribble).scribbleOrigin(85).scribbleTightness(15).circle()
+
+// Watercolor wash, inset from the outline
+RoughView().fill(.blue).fillStyle(.watercolor).fillPadding(12).circle()
 ```
 
 ---
@@ -823,6 +830,59 @@ RoughView()
     ))
     .seed(127)
     .draw(Line(from: Point(x: 24, y: 100), to: Point(x: 168, y: 92)))
+```
+
+### Opacity along a stroke
+
+`BrushProfile.opacityProfile` multiplies `strokeOpacity`. `.uniform` is 1, so existing strokes are unchanged. Set it with `.opacityProfile(_:)`.
+
+| Case | Meaning |
+|------|---------|
+| `.uniform` | Multiplier 1 |
+| `.values([CGFloat])` | Evenly spaced samples, interpolated like `ThicknessProfile.custom`. Empty is 1 |
+| `.stops([OpacityStop])` | `OpacityStop(_:at:)` positions in 0...1. The value holds outside the first and last stop |
+| `.noise(minimum:maximum:variation:seed:frequency:)` | Seeded wobble. `variation` 1 uses the whole span. `0` is the midpoint |
+
+Samples are clamped to 0...1. `OpacityNoise.defaultSeed` is 1 and yields to `Options.seed`. Any other noise seed wins.
+
+A profile that changes along the stroke is drawn as quads in one mask. Each quad is opaque gray at that opacity, `luminanceToAlpha` makes the gray into coverage, and the stroke colour tints the result. Overlapping quads replace instead of adding, so joins and the two rough passes do not turn into dark blobs. A constant profile, including `.uniform`, keeps the existing stroke or variable-width fill and only scales the colour. Closed contours blend the opacity at the join. The profile applies to the outline. Hachure lines keep `strokeOpacity` only. A crayon outline keeps its own wax opacity.
+
+```swift
+RoughView()
+    .stroke(.blue)
+    .strokeWidth(18)
+    .opacityProfile(.stops([
+        OpacityStop(0.15, at: 0),
+        OpacityStop(1, at: 0.38),
+        OpacityStop(0.2, at: 0.72),
+        OpacityStop(0.95, at: 1)
+    ]))
+    .seed(128)
+```
+
+### Watercolor fill
+
+`.fillStyle(.watercolor)` clips a wash to the same region as a solid fill, so `fillPadding` and `fillOffset` apply. The renderer uses `WatercolorStyle()`. `Options.seed` replaces `WatercolorStyle.defaultSeed` (`1`). Any other style seed would win, but the fill style does not take a custom style.
+
+Layers are ordinary translucent fills, so they glaze. The edge is an uneven darker ring, and specks plus a few irregular blooms keep the interior from looking airbrushed. There is no blur. Sketch fills such as hachure stay as they are. The variable-opacity stroke is separate: it still uses one mask so joins stay even.
+
+| Parameter | Default | Range | Effect |
+|-----------|---------|-------|--------|
+| `pigment` | 0.72 | 0...1 | Wash strength |
+| `wetness` | 0.6 | 0...1 | How far passes drift |
+| `edgeDarkening` | 0.75 | 0...1 | Darker rim, lighter centre |
+| `layers` | 3 | 1...5 | Body passes. Bleed is extra |
+| `variation` | 0.45 | 0...1 | How much the wash wanders |
+| `bleed` | 0.5 | 0...1 | Uneven dried edge and backruns. Not a blur |
+| `seed` | 1 | any `UInt64` | Stable wash. Yields to `Options.seed` only while it is still `1` |
+
+```swift
+RoughView()
+    .fill(.blue)
+    .fillStyle(.watercolor)
+    .fillPadding(12)
+    .seed(33)
+    .circle()
 ```
 
 ### Brush Examples

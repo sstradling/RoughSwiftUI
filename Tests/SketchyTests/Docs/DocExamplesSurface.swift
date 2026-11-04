@@ -460,6 +460,72 @@ extension DocExampleCatalog {
                     Point(x: 112, y: 156),
                     Point(x: 174, y: 52)
                 ]))
+        },
+        still(
+            "variable-opacity",
+            section: "Brushes",
+            title: "Variable opacity",
+            description: "Opacity stops run from faint to solid and back. The profile multiplies strokeOpacity, and one mask keeps the overlaps from turning dark.",
+            snippet: """
+            RoughView()
+                .stroke(\(inkBlue.snippet))
+                .strokeWidth(18)
+                .opacityProfile(.stops([
+                    OpacityStop(0.15, at: 0),
+                    OpacityStop(1, at: 0.38),
+                    OpacityStop(0.2, at: 0.72),
+                    OpacityStop(0.95, at: 1)
+                ]))
+                .seed(128)
+                .draw(Curve(points: [
+                    Point(x: 18, y: 118),
+                    Point(x: 70, y: 42),
+                    Point(x: 118, y: 142),
+                    Point(x: 168, y: 64)
+                ]))
+            """
+        ) {
+            RoughView()
+                .stroke(inkBlue.color)
+                .strokeWidth(18)
+                .opacityProfile(.stops([
+                    OpacityStop(0.15, at: 0),
+                    OpacityStop(1, at: 0.38),
+                    OpacityStop(0.2, at: 0.72),
+                    OpacityStop(0.95, at: 1)
+                ]))
+                .seed(128)
+                .draw(Curve(points: [
+                    Point(x: 18, y: 118),
+                    Point(x: 70, y: 42),
+                    Point(x: 118, y: 142),
+                    Point(x: 168, y: 64)
+                ]))
+        },
+        still(
+            "watercolor-fill",
+            section: "Brushes",
+            title: "Watercolor fill",
+            description: "fillStyle(.watercolor) is an uneven clipped wash: layered glazes, a darker dried edge, and a little grain. fillPadding insets it. The fill seed follows Options.seed.",
+            snippet: """
+            RoughView()
+                .fill(\(wash.snippet))
+                .fillStyle(.watercolor)
+                .fillPadding(12)
+                .stroke(\(charcoal.snippet))
+                .strokeWidth(1.6)
+                .seed(33)
+                .circle()
+            """
+        ) {
+            RoughView()
+                .fill(wash.color)
+                .fillStyle(.watercolor)
+                .fillPadding(12)
+                .stroke(charcoal.color)
+                .strokeWidth(1.6)
+                .seed(33)
+                .circle()
         }
     ]
 }

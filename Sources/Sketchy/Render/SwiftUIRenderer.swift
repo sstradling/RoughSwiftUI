@@ -40,6 +40,20 @@ public struct RoughRenderCommand {
     /// Crayon passes use winding so overlapping wax marks union instead of punching holes.
     public let fillRule: RoughFillRule
 
+    /// Groups commands that share one opacity mask.
+    ///
+    /// `nil` is a normal stroke or fill. A run of the same id is painted into
+    /// one transparency mask so overlapping segment alphas do not darken.
+    public let opacityMaskGroup: Int?
+
+    /// Opacity written into the mask, already multiplied by `strokeOpacity` or `fillOpacity`.
+    ///
+    /// Ignored when `opacityMaskGroup` is nil. The color in `style` stays at full strength.
+    public let maskOpacity: CGFloat
+
+    /// Blur radius, in points, applied to this mask before it is tinted. `0` is sharp.
+    public let opacityMaskBlur: CGFloat
+
     /// Description of stroke or fill styling.
     public enum Style {
         /// Stroke path with a color and line width.
@@ -55,7 +69,10 @@ public struct RoughRenderCommand {
         inverseClip: Bool = false,
         cap: BrushCap = .round,
         join: BrushJoin = .round,
-        fillRule: RoughFillRule = .evenOdd
+        fillRule: RoughFillRule = .evenOdd,
+        opacityMaskGroup: Int? = nil,
+        maskOpacity: CGFloat = 1,
+        opacityMaskBlur: CGFloat = 0
     ) {
         self.path = path
         self.style = style
@@ -64,6 +81,9 @@ public struct RoughRenderCommand {
         self.cap = cap
         self.join = join
         self.fillRule = fillRule
+        self.opacityMaskGroup = opacityMaskGroup
+        self.maskOpacity = maskOpacity
+        self.opacityMaskBlur = opacityMaskBlur
     }
 }
 
@@ -144,10 +164,39 @@ public struct SwiftUIRenderer {
                 result.append(contentsOf: scribbleCommands)
             }
             
-            // Process standard operation sets
-            result.append(contentsOf: drawing.sets.flatMap { set in
-                commands(for: set, options: options, in: size, svgTransform: svgTransform, isSVGPath: isSVGPath, svgClipPath: scaledSVGClipPath)
-            })
+            var nextGroup = 1
+            let opacityProfile = options.resolvedOpacityProfile()
+            let outlineWidth = CGFloat(isSVGPath ? options.effectiveSVGStrokeWidth : options.strokeWidth)
+            let skipOutline = opacityProfile.variesAlongStroke && options.brushProfile.crayon == nil
+            let outlineTransform = svgTransform ?? .identity
+            if skipOutline {
+                let sets = drawing.sets.filter { $0.type == .path }.map(\.operations)
+                result.append(contentsOf: OpacityRibbon.commands(
+                    sets: sets,
+                    transform: outlineTransform,
+                    baseWidth: outlineWidth,
+                    brush: options.brushProfile,
+                    opacityProfile: opacityProfile,
+                    strokeOpacity: CGFloat(options.strokeOpacity),
+                    color: Color(options.stroke),
+                    nextGroup: &nextGroup
+                ))
+            }
+
+            // Process standard operation sets. Outline sets are skipped when a
+            // variable-opacity ribbon already painted them.
+            for set in drawing.sets {
+                result.append(contentsOf: commands(
+                    for: set,
+                    options: options,
+                    in: size,
+                    svgTransform: svgTransform,
+                    isSVGPath: isSVGPath,
+                    svgClipPath: scaledSVGClipPath,
+                    skipOutline: skipOutline,
+                    nextGroup: &nextGroup
+                ))
+            }
             
             return result
         }
@@ -167,7 +216,18 @@ public struct SwiftUIRenderer {
         size: CGSize
     ) {
         let commands = commands(for: drawing, options: options, in: size)
-        for command in commands {
+        var index = 0
+        while index < commands.count {
+            let command = commands[index]
+            if command.opacityMaskGroup != nil {
+                var end = index + 1
+                while end < commands.count && commands[end].opacityMaskGroup == command.opacityMaskGroup {
+                    end += 1
+                }
+                renderOpacityMask(commands[index..<end], in: &context)
+                index = end
+                continue
+            }
             // Handle clipping for inside/outside stroke alignment
             if let clipPath = command.clipPath {
                 var clippedContext = context
@@ -182,7 +242,89 @@ public struct SwiftUIRenderer {
             } else {
                 renderCommand(command, in: &context)
             }
+            index += 1
         }
+    }
+
+    /// Paints one opacity-mask group.
+    ///
+    /// Each piece is filled with opaque gray whose luminance is the piece opacity.
+    /// Opaque source-over replaces, so shared edges and caps do not add alpha.
+    /// Antialiasing blends the two grays. `luminanceToAlpha` turns that gray into
+    /// coverage, and `sourceAtop` tints it with the stroke or fill color.
+    /// Separate groups stack with normal blending, which is how wet layers build up.
+    private func renderOpacityMask(_ commands: ArraySlice<RoughRenderCommand>, in context: inout GraphicsContext) {
+        guard let first = commands.first else { return }
+        let tint = maskTint(of: first)
+        let blur = max(0, first.opacityMaskBlur)
+        context.drawLayer { layer in
+            if let clipPath = first.clipPath {
+                if first.inverseClip {
+                    layer.clip(to: clipPath, style: SwiftUI.FillStyle(eoFill: true), options: .inverse)
+                } else {
+                    layer.clip(to: clipPath, style: SwiftUI.FillStyle(eoFill: true))
+                }
+            }
+            // Opaque gray is composited first, so a later piece replaces an earlier
+            // one instead of adding alpha. The filter runs on that finished layer.
+            // Applying it per draw would source-over the transparent results and
+            // darken every overlap.
+            layer.drawLayer { filtered in
+                if blur > 0 {
+                    filtered.addFilter(.blur(radius: blur))
+                }
+                filtered.addFilter(.luminanceToAlpha)
+                filtered.drawLayer { mask in
+                    for command in commands {
+                        let gray = Color(white: Double(min(1, max(0, command.maskOpacity))))
+                        switch command.style {
+                        case .stroke(_, let lineWidth):
+                            mask.stroke(
+                                command.path,
+                                with: .color(gray),
+                                style: StrokeStyle(
+                                    lineWidth: lineWidth,
+                                    lineCap: command.cap.cgLineCap,
+                                    lineJoin: command.join.cgLineJoin
+                                )
+                            )
+                        case .fill:
+                            mask.fill(
+                                command.path,
+                                with: .color(gray),
+                                style: SwiftUI.FillStyle(eoFill: command.fillRule == .evenOdd)
+                            )
+                        }
+                    }
+                }
+            }
+            layer.blendMode = .sourceAtop
+            layer.fill(SwiftPath(maskBounds(commands, blur: blur)), with: .color(tint))
+        }
+    }
+
+    private func maskTint(of command: RoughRenderCommand) -> Color {
+        switch command.style {
+        case .stroke(let color, _), .fill(let color):
+            return color
+        }
+    }
+
+    /// Bounds of the mask pieces, expanded so a blur is not clipped.
+    private func maskBounds(_ commands: ArraySlice<RoughRenderCommand>, blur: CGFloat) -> CGRect {
+        var bounds = CGRect.null
+        for command in commands {
+            var rect = command.path.boundingRect
+            if case .stroke(_, let lineWidth) = command.style {
+                rect = rect.insetBy(dx: -lineWidth, dy: -lineWidth)
+            }
+            bounds = bounds.union(rect)
+        }
+        let pad = blur * 3 + 2
+        if bounds.isNull || bounds.isInfinite {
+            return commands.first?.path.boundingRect ?? .zero
+        }
+        return bounds.insetBy(dx: -pad, dy: -pad)
     }
     
     private func renderCommand(_ command: RoughRenderCommand, in context: inout GraphicsContext) {
@@ -218,7 +360,9 @@ private extension SwiftUIRenderer {
         in size: CGSize,
         svgTransform: CGAffineTransform? = nil,
         isSVGPath: Bool = false,
-        svgClipPath: SwiftPath? = nil
+        svgClipPath: SwiftPath? = nil,
+        skipOutline: Bool = false,
+        nextGroup: inout Int
     ) -> [RoughRenderCommand] {
         // Use SVG-specific widths when rendering SVG paths
         let strokeWidth = isSVGPath ? options.effectiveSVGStrokeWidth : options.strokeWidth
@@ -237,6 +381,9 @@ private extension SwiftUIRenderer {
         
         switch set.type {
         case .path:
+            if skipOutline {
+                return []
+            }
             let basePath = SwiftPath.from(operationSet: set)
             let path: SwiftPath
             if let transform = svgTransform {
@@ -244,7 +391,8 @@ private extension SwiftUIRenderer {
             } else {
                 path = basePath
             }
-            let strokeColor = Color(options.stroke).opacity(Double(options.strokeOpacity))
+            let strokeScale = options.resolvedOpacityProfile().value(at: 0)
+            let strokeColor = Color(options.stroke).opacity(Double(options.strokeOpacity) * Double(strokeScale))
 
             if let crayon = options.resolvedCrayonStyle {
                 let crayonCommands = crayonPasses(
@@ -347,6 +495,9 @@ private extension SwiftUIRenderer {
             } else {
                 path = basePath
             }
+            if options.fillStyle == .watercolor {
+                return watercolorFill(shape: path, options: options, nextGroup: &nextGroup)
+            }
             let color = Color(options.fill).opacity(Double(options.fillOpacity))
             return [
                 RoughRenderCommand(
@@ -363,6 +514,9 @@ private extension SwiftUIRenderer {
                 path = basePath.applying(transform)
             } else {
                 path = basePath
+            }
+            if options.fillStyle == .watercolor {
+                return watercolorFill(shape: path, options: options, nextGroup: &nextGroup)
             }
             let color = Color(options.fill).opacity(Double(options.fillOpacity))
             return [
@@ -584,6 +738,21 @@ private extension SwiftUIRenderer {
         return nil
     }
     
+    /// Clipped watercolor wash for a fill path the generator already padded.
+    func watercolorFill(
+        shape: SwiftPath,
+        options: Options,
+        nextGroup: inout Int
+    ) -> [RoughRenderCommand] {
+        WatercolorFill.commands(
+            shape: shape,
+            color: Color(options.fill),
+            style: options.resolvedWatercolorFillStyle(),
+            fillOpacity: CGFloat(options.fillOpacity),
+            nextGroup: &nextGroup
+        )
+    }
+
     /// Wax passes for a stroke or for fill lines (hachure, zigzag, scribble).
     ///
     /// `width` is the wax width in destination points. `transform` moves the

@@ -936,6 +936,48 @@ RoughView()
     ]))
 ```
 
+### Variable opacity
+
+Opacity stops run from faint to solid and back. The profile multiplies strokeOpacity, and one mask keeps the overlaps from turning dark.
+
+![Variable opacity](images/brushes/variable-opacity.png)
+
+```swift
+RoughView()
+    .stroke(Color(red: 0.18, green: 0.46, blue: 0.67))
+    .strokeWidth(18)
+    .opacityProfile(.stops([
+        OpacityStop(0.15, at: 0),
+        OpacityStop(1, at: 0.38),
+        OpacityStop(0.2, at: 0.72),
+        OpacityStop(0.95, at: 1)
+    ]))
+    .seed(128)
+    .draw(Curve(points: [
+        Point(x: 18, y: 118),
+        Point(x: 70, y: 42),
+        Point(x: 118, y: 142),
+        Point(x: 168, y: 64)
+    ]))
+```
+
+### Watercolor fill
+
+fillStyle(.watercolor) is an uneven clipped wash: layered glazes, a darker dried edge, and a little grain. fillPadding insets it. The fill seed follows Options.seed.
+
+![Watercolor fill](images/brushes/watercolor-fill.png)
+
+```swift
+RoughView()
+    .fill(Color(red: 0.16, green: 0.40, blue: 0.66))
+    .fillStyle(.watercolor)
+    .fillPadding(12)
+    .stroke(Color(red: 0.12, green: 0.14, blue: 0.18))
+    .strokeWidth(1.6)
+    .seed(33)
+    .circle()
+```
+
 ## Seeding
 
 The same seed redraws the same strokes. A different seed is a different drawing of the same shape.

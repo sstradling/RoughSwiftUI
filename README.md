@@ -106,7 +106,49 @@ RoughView()
     .circle()
 ```
 
-Presets that are not crayon: `.calligraphic`, `.marker`, `.pen`, and `.default`.
+### Opacity
+
+`.opacityProfile` multiplies `strokeOpacity` along the outline. `.uniform` changes nothing. `.values` spaces samples evenly, `.stops` places `OpacityStop` values from 0 to 1, and `.noise` wobbles between a minimum and a maximum. The same noise seed repeats. A varying profile is painted into one mask, so overlaps do not turn dark.
+
+![Variable opacity](docs/images/brushes/variable-opacity.png)
+
+```swift
+RoughView()
+    .stroke(Color(red: 0.18, green: 0.46, blue: 0.67))
+    .strokeWidth(18)
+    .opacityProfile(.stops([
+        OpacityStop(0.15, at: 0),
+        OpacityStop(1, at: 0.38),
+        OpacityStop(0.2, at: 0.72),
+        OpacityStop(0.95, at: 1)
+    ]))
+    .seed(128)
+    .draw(Curve(points: [
+        Point(x: 18, y: 118),
+        Point(x: 70, y: 42),
+        Point(x: 118, y: 142),
+        Point(x: 168, y: 64)
+    ]))
+```
+
+### Watercolor fill
+
+`.fillStyle(.watercolor)` clips an uneven wash to the shape. Layers glaze, the dried edge is darker, and blooms are irregular puddles. `fillPadding` insets the fill. The same seed repeats the wash.
+
+![Watercolor fill](docs/images/brushes/watercolor-fill.png)
+
+```swift
+RoughView()
+    .fill(Color(red: 0.16, green: 0.40, blue: 0.66))
+    .fillStyle(.watercolor)
+    .fillPadding(12)
+    .stroke(Color(red: 0.12, green: 0.14, blue: 0.18))
+    .strokeWidth(1.6)
+    .seed(33)
+    .circle()
+```
+
+Presets: `.calligraphic`, `.marker`, `.pen`, `.crayon`, and `.default`.
 
 ### Text
 

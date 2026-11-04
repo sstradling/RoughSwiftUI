@@ -35,7 +35,7 @@ final class DocExampleCatalogTests: XCTestCase {
             if case .gif = example.kind { return true }
             return false
         }
-        XCTAssertEqual(stills.count, 60)
+        XCTAssertEqual(stills.count, 62)
         XCTAssertEqual(gifs.count, 7)
     }
 
@@ -86,6 +86,19 @@ final class DocExampleCatalogTests: XCTestCase {
         XCTAssertNotNil(example("crayon").view().options.brushProfile.crayon)
         XCTAssertNotNil(example("crayon-fill").view().options.brushProfile.crayon)
         XCTAssertEqual(example("crayon").view().options.brushProfile.crayon?.seed, 4)
+    }
+
+    func testWatercolorFillAndOpacityExamplesStaySeeded() {
+        let opacity = example("variable-opacity").view()
+        guard case .stops(let stops) = opacity.options.opacityProfile else {
+            return XCTFail("variable-opacity should use positioned stops")
+        }
+        XCTAssertEqual(stops.count, 4)
+        XCTAssertEqual(opacity.options.seed, 128)
+        let fill = example("watercolor-fill").view()
+        XCTAssertEqual(fill.options.fillStyle, .watercolor)
+        XCTAssertEqual(fill.options.fillPadding, 12)
+        XCTAssertEqual(fill.options.seed, 33)
     }
 
     func testWidthStopsExampleUsesPointWidths() {

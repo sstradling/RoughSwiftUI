@@ -627,6 +627,20 @@ public extension RoughView {
         return v
     }
 
+    /// Set how opacity changes along the outline.
+    ///
+    /// The profile is a multiplier on `strokeOpacity`. `.uniform` leaves the
+    /// stroke as it is. A curve that changes along the stroke is drawn into
+    /// one mask so overlapping segments do not darken.
+    ///
+    /// - Parameter profile: Uniform, evenly spaced values, positioned stops, or seeded noise.
+    /// - Returns: The view with the updated opacity profile.
+    func opacityProfile(_ profile: OpacityProfile) -> Self {
+        var v = self
+        v.options.opacityProfile = profile
+        return v
+    }
+
     /// Set absolute stroke widths at positions along an open stroke.
     ///
     /// Positions run from 0 at the start to 1 at the end and are clamped.

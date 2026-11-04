@@ -182,6 +182,12 @@ public struct Options: Equatable, Hashable {
         set { brushProfile.join = newValue }
     }
 
+    /// Opacity multiplier along the outline. `.uniform` is 1.
+    public var opacityProfile: OpacityProfile {
+        get { brushProfile.opacityProfile }
+        set { brushProfile.opacityProfile = newValue }
+    }
+
     /// Public-facing stroke color as `UIColor` for backward compatibility.
     public var stroke: UIColor {
         get { strokeColor.asUIColor }
@@ -262,6 +268,31 @@ public struct Options: Equatable, Hashable {
             crayon.seed = seed
         }
         return crayon
+    }
+
+    /// Opacity profile after `Options.seed` replaces `OpacityNoise.defaultSeed`.
+    ///
+    /// A noise seed other than `1` is kept.
+    func resolvedOpacityProfile() -> OpacityProfile {
+        guard case .noise(var noise) = brushProfile.opacityProfile else {
+            return brushProfile.opacityProfile
+        }
+        if let seed, noise.seed == OpacityNoise.defaultSeed {
+            noise = noise.with(seed: seed)
+            return .noise(noise)
+        }
+        return .noise(noise)
+    }
+
+    /// Style for `.fillStyle(.watercolor)`.
+    ///
+    /// The fill uses `WatercolorStyle()`, and `Options.seed` replaces the default seed.
+    func resolvedWatercolorFillStyle() -> WatercolorStyle {
+        var style = WatercolorStyle()
+        if let seed {
+            style.seed = seed
+        }
+        return style
     }
     
     func toRoughDictionary() -> JSONDictionary {
