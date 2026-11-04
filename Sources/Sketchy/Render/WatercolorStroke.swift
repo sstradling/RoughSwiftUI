@@ -4,11 +4,12 @@
 //
 //  Crisp watercolor glazes. There is no blur halo.
 //
-//  Each pass is a ribbon with a darker rim and a lighter core. The rim and the
-//  core do not overlap, so the edge stays darker. Passes, granules, and a
-//  stroke that crosses itself are ordinary translucent fills, so pigment stacks
-//  the way overlapping washes do. The plain variable-opacity stroke still uses
-//  the opacity mask and does not build up.
+//  Each pass is one ribbon around a single smoothed centreline, with a darker
+//  rim and a lighter core. The rim and the core do not overlap, so the edge
+//  stays darker. Passes, granules, and a stroke that crosses itself are
+//  ordinary translucent fills, so pigment stacks the way overlapping washes do.
+//  The plain variable-opacity stroke still uses the opacity mask and does not
+//  build up.
 //
 
 import CoreGraphics
@@ -193,7 +194,7 @@ enum WatercolorStroke {
         }
     }
 
-    /// Grain and a few larger pigment blotches inside the ribbon.
+    /// Fine grain inside the ribbon. Specks stay small so none of them reads as a blot.
     private static func granules(
         line: (samples: [StrokeCenterSample], isClosed: Bool),
         width: CGFloat,
@@ -201,37 +202,43 @@ enum WatercolorStroke {
         style: WatercolorStyle,
         strokeOpacity: CGFloat
     ) -> [RibbonPiece] {
-        let samples = line.samples
-        guard samples.count >= 2 else { return [] }
+        let center = smoothedCenterline(line.samples, closed: line.isClosed)
+        guard center.count >= 2 else { return [] }
         var pieces: [RibbonPiece] = []
-        let step = max(1, samples.count / 18)
-        var index = 0
-        while index < samples.count {
-            let sample = samples[index]
-            let half = halfWidth(at: sample, forward: sample.tangent, width: width, brush: brush, style: style, layer: 2, line: line)
+        let step = max(1, center.count / 22)
+        var index = step
+        let last = max(step, center.count - step)
+        while index < last {
+            let sample = center[index]
+            let located = StrokeCenterSample(point: sample.point, tangent: sample.forward, t: sample.t)
+            let half = halfWidth(at: located, forward: sample.forward, width: width, brush: brush, style: style, layer: 2, line: line)
             let seed = style.seed &+ UInt64(index) &* 0x9E37_79B9_7F4A_7C15
             let across = SeededNoise.signed(at: CGFloat(index) * 0.17, seed: seed)
             let unit = SeededNoise.unit(at: Float(index) * 0.13, seed: seed &+ 11)
-            let big = unit > 0.86
-            let radius = half * (big ? 0.28 + 0.16 * CGFloat(unit) : 0.05 + 0.07 * CGFloat(unit))
-            guard radius >= 0.4 else {
+            let radius = half * (0.035 + 0.04 * CGFloat(unit))
+            if radius < 0.35 {
                 index += step
                 continue
             }
-            let normal = sample.tangent + .pi / 2
-            let center = CGPoint(
-                x: sample.point.x + cos(normal) * across * half * 0.5,
-                y: sample.point.y + sin(normal) * across * half * 0.5
+            let normal = sample.forward + .pi / 2
+            let dot = CGPoint(
+                x: sample.point.x + cos(normal) * across * half * 0.35,
+                y: sample.point.y + sin(normal) * across * half * 0.35
             )
             let fade = line.isClosed ? 1 : tipScale(sample.t)
             let profile = alongOpacity(sample.t, closed: line.isClosed, brush: brush, strokeOpacity: strokeOpacity)
-            let opacity = CGFloat(style.pigment) * profile * fade * (big ? 0.2 : 0.1) * (0.45 + CGFloat(unit))
-            pieces.append(RibbonPiece(path: ellipse(center: center, radius: radius), opacity: min(1, opacity), t: sample.t))
-            index += big ? step * 2 : step
+            let opacity = CGFloat(style.pigment) * profile * fade * 0.08 * (0.45 + CGFloat(unit))
+            pieces.append(RibbonPiece(path: ellipse(center: dot, radius: radius), opacity: min(1, opacity), t: sample.t))
+            index += step
         }
         return pieces
     }
 
+    /// One smoothed centreline, then a parallel ribbon.
+    ///
+    /// Rough jitter is averaged out before the normals are taken, so a tight
+    /// bend does not throw the edge into a saw tooth. Only the inside of a
+    /// real bend is shortened, and that limit follows the smoothed curvature.
     private static func stations(
         line: (samples: [StrokeCenterSample], isClosed: Bool),
         width: CGFloat,
@@ -239,89 +246,120 @@ enum WatercolorStroke {
         style: WatercolorStyle,
         layer: Int
     ) -> [Station] {
-        let points = smoothedPoints(line.samples, closed: line.isClosed)
-        let dense = densify(points: points, times: line.samples.map(\.t), maxStep: 1.6, closed: line.isClosed)
-        let tangents = smoothedTangents(dense.map(\.point), closed: line.isClosed)
-        let built = dense.enumerated().map { index, sample in
-            let forward = tangents[index]
-            let located = StrokeCenterSample(point: sample.point, tangent: forward, t: sample.t)
-            let half = halfWidth(at: located, forward: forward, width: width, brush: brush, style: style, layer: layer, line: line)
+        let center = smoothedCenterline(line.samples, closed: line.isClosed)
+        guard center.count >= 2 else { return [] }
+        let halves = smoothScalars(
+            center.map { sample in
+                let located = StrokeCenterSample(point: sample.point, tangent: sample.forward, t: sample.t)
+                return halfWidth(
+                    at: located,
+                    forward: sample.forward,
+                    width: width,
+                    brush: brush,
+                    style: style,
+                    layer: layer,
+                    line: line
+                )
+            },
+            reach: 6,
+            closed: line.isClosed
+        )
+        let built = center.enumerated().map { index, sample -> Station in
+            let half = halves[index]
+            let cap = max(0.9, sample.radius * 0.82)
+            var left = half
+            var right = half
+            if sample.curvature > 0.002 {
+                left = min(half, cap)
+            } else if sample.curvature < -0.002 {
+                right = min(half, cap)
+            }
             let shift = shiftAmount(at: sample.t, closed: line.isClosed, style: style, width: width, layer: layer)
-            let limit = curvatureLimit(index: index, points: dense.map(\.point))
-            let left = min(max(0.4, half), limit.left)
-            let right = min(max(0.4, half), limit.right)
-            let normalAngle = forward + .pi / 2
+            let normalAngle = sample.forward + .pi / 2
             let nx = cos(normalAngle)
             let ny = sin(normalAngle)
-            let center = CGPoint(
-                x: located.point.x + nx * shift,
-                y: located.point.y + ny * shift
+            let point = CGPoint(
+                x: sample.point.x + nx * shift,
+                y: sample.point.y + ny * shift
             )
             let innerScale = 1 - 0.22 * CGFloat(style.edgeDarkening)
             return Station(
-                center: center,
-                forward: forward,
-                outerLeft: CGPoint(x: center.x + nx * left, y: center.y + ny * left),
-                outerRight: CGPoint(x: center.x - nx * right, y: center.y - ny * right),
-                innerLeft: CGPoint(x: center.x + nx * left * innerScale, y: center.y + ny * left * innerScale),
-                innerRight: CGPoint(x: center.x - nx * right * innerScale, y: center.y - ny * right * innerScale),
+                center: point,
+                forward: sample.forward,
+                outerLeft: CGPoint(x: point.x + nx * left, y: point.y + ny * left),
+                outerRight: CGPoint(x: point.x - nx * right, y: point.y - ny * right),
+                innerLeft: CGPoint(x: point.x + nx * left * innerScale, y: point.y + ny * left * innerScale),
+                innerRight: CGPoint(x: point.x - nx * right * innerScale, y: point.y - ny * right * innerScale),
                 outerRadius: max(left, right),
                 innerRadius: max(left, right) * innerScale,
                 t: sample.t
             )
         }
-        return clipSpikes(built, closed: line.isClosed)
+        return smoothEdges(built, closed: line.isClosed)
     }
 
-    /// Pulls offset points that shoot past their neighbours back onto the ribbon.
-    private static func clipSpikes(_ stations: [Station], closed: Bool) -> [Station] {
+    /// Averages the centreline in point space, then takes one stable tangent.
+    private static func smoothedCenterline(
+        _ samples: [StrokeCenterSample],
+        closed: Bool
+    ) -> [SmoothSample] {
+        guard samples.count >= 2 else { return [] }
+        let spacing: CGFloat = 2
+        var curve = resample(
+            points: samples.map(\.point),
+            times: samples.map(\.t),
+            spacing: spacing,
+            closed: closed
+        )
+        guard curve.count >= 2 else { return [] }
+        for _ in 0..<3 {
+            curve = averageCurve(curve, reach: 5, closed: closed)
+        }
+        curve = resample(points: curve.map(\.point), times: curve.map(\.t), spacing: spacing, closed: closed)
+        curve = averageCurve(curve, reach: 3, closed: closed)
+        guard curve.count >= 2 else { return [] }
+        let forwards = stableForwards(curve.map(\.point), closed: closed)
+        let curvatures = smoothScalars(
+            signedCurvatures(points: curve.map(\.point), forwards: forwards, closed: closed),
+            reach: 4,
+            closed: closed
+        )
+        return curve.indices.map { index in
+            let curvature = curvatures[index]
+            return SmoothSample(
+                point: curve[index].point,
+                t: curve[index].t,
+                forward: forwards[index],
+                curvature: curvature,
+                radius: 1 / max(0.0004, abs(curvature))
+            )
+        }
+    }
+
+    /// Pulls each edge toward its neighbours so a leftover kink cannot tooth the rim.
+    private static func smoothEdges(_ stations: [Station], closed: Bool) -> [Station] {
         guard stations.count >= 3 else { return stations }
         var copy = stations
-        let limit: CGFloat = 1.4
-        for index in copy.indices {
-            let previous = neighbor(index - 1, count: copy.count, closed: closed)
-            let next = neighbor(index + 1, count: copy.count, closed: closed)
-            if !closed, index == 0 || index == copy.count - 1 { continue }
-            copy[index].outerLeft = pulled(
-                copy[index].outerLeft,
-                previous: copy[previous].outerLeft,
-                next: copy[next].outerLeft,
-                toward: copy[index].center,
-                limit: limit
-            )
-            copy[index].outerRight = pulled(
-                copy[index].outerRight,
-                previous: copy[previous].outerRight,
-                next: copy[next].outerRight,
-                toward: copy[index].center,
-                limit: limit
-            )
+        for _ in 0..<2 {
+            var next = copy
+            for index in copy.indices {
+                if !closed, index == 0 || index == copy.count - 1 { continue }
+                let previous = neighbor(index - 1, count: copy.count, closed: closed)
+                let following = neighbor(index + 1, count: copy.count, closed: closed)
+                next[index].outerLeft = mix(
+                    copy[index].outerLeft,
+                    midpoint(copy[previous].outerLeft, copy[following].outerLeft),
+                    0.5
+                )
+                next[index].outerRight = mix(
+                    copy[index].outerRight,
+                    midpoint(copy[previous].outerRight, copy[following].outerRight),
+                    0.5
+                )
+            }
+            copy = next
         }
         return copy
-    }
-
-    private static func pulled(
-        _ point: CGPoint,
-        previous: CGPoint,
-        next: CGPoint,
-        toward: CGPoint,
-        limit: CGFloat
-    ) -> CGPoint {
-        let dx = next.x - previous.x
-        let dy = next.y - previous.y
-        let lengthSquared = dx * dx + dy * dy
-        let closest: CGPoint
-        if lengthSquared < 0.01 {
-            closest = previous
-        } else {
-            let u = min(1, max(0, ((point.x - previous.x) * dx + (point.y - previous.y) * dy) / lengthSquared))
-            closest = CGPoint(x: previous.x + dx * u, y: previous.y + dy * u)
-        }
-        let offsetX = point.x - closest.x
-        let offsetY = point.y - closest.y
-        let distance = hypot(offsetX, offsetY)
-        guard distance > limit else { return point }
-        return CGPoint(x: closest.x + offsetX / distance * limit, y: closest.y + offsetY / distance * limit)
     }
 
     private static func halfWidth(
@@ -341,41 +379,6 @@ enum WatercolorStroke {
         return max(0.2, tip * 0.5 * crisp * end)
     }
 
-    /// A moving average of the centreline. Rough jitter would otherwise tooth the rim.
-    private static func smoothedPoints(_ samples: [StrokeCenterSample], closed: Bool) -> [CGPoint] {
-        let reach = 4
-        return samples.indices.map { index in
-            var x: CGFloat = 0
-            var y: CGFloat = 0
-            var weight: CGFloat = 0
-            for offset in -reach...reach {
-                let neighbor = neighbor(index + offset, count: samples.count, closed: closed)
-                let influence = 1 - abs(CGFloat(offset)) / CGFloat(reach + 1)
-                x += samples[neighbor].point.x * influence
-                y += samples[neighbor].point.y * influence
-                weight += influence
-            }
-            return CGPoint(x: x / weight, y: y / weight)
-        }
-    }
-
-    /// Direction from a short chord of the smoothed centreline.
-    private static func smoothedTangents(_ points: [CGPoint], closed: Bool) -> [CGFloat] {
-        guard points.count >= 2 else { return [0] }
-        let reach = 14
-        return points.indices.map { index in
-            let before = neighbor(index - reach, count: points.count, closed: closed)
-            let after = neighbor(index + reach, count: points.count, closed: closed)
-            let dx = points[after].x - points[before].x
-            let dy = points[after].y - points[before].y
-            if dx * dx + dy * dy < 0.01 {
-                let step = neighbor(index + 1, count: points.count, closed: closed)
-                return atan2(points[step].y - points[index].y, points[step].x - points[index].x)
-            }
-            return atan2(dy, dx)
-        }
-    }
-
     private static func neighbor(_ index: Int, count: Int, closed: Bool) -> Int {
         if closed {
             return (index % count + count) % count
@@ -383,58 +386,189 @@ enum WatercolorStroke {
         return min(count - 1, max(0, index))
     }
 
-    /// Splits long steps so a tight peak is offset along the bend instead of across it.
-    private static func densify(
+    /// Even steps along the polyline so the smooth window is a distance, not a sample count.
+    private static func resample(
         points: [CGPoint],
         times: [CGFloat],
-        maxStep: CGFloat,
+        spacing: CGFloat,
         closed: Bool
-    ) -> [(point: CGPoint, t: CGFloat)] {
-        guard points.count >= 2, points.count == times.count else {
-            return zip(points, times).map { (point: $0.0, t: $0.1) }
-        }
-        var result: [(point: CGPoint, t: CGFloat)] = []
-        let last = closed ? points.count : points.count - 1
-        for index in 0..<last {
+    ) -> [CurvePoint] {
+        guard points.count >= 2, points.count == times.count else { return [] }
+        let segments = closed ? points.count : points.count - 1
+        var lengths: [CGFloat] = [0]
+        for index in 0..<segments {
             let next = (index + 1) % points.count
-            let from = points[index]
-            let to = points[next]
-            let distance = hypot(to.x - from.x, to.y - from.y)
-            let steps = max(1, Int(ceil(distance / maxStep)))
-            let startStep = result.isEmpty ? 0 : 1
-            for step in startStep...steps {
-                let u = CGFloat(step) / CGFloat(steps)
-                result.append((
-                    point: CGPoint(x: from.x + (to.x - from.x) * u, y: from.y + (to.y - from.y) * u),
-                    t: times[index] + (times[next] - times[index]) * u
-                ))
-            }
+            lengths.append(lengths[lengths.count - 1] + hypot(points[next].x - points[index].x, points[next].y - points[index].y))
         }
-        if result.isEmpty {
-            return zip(points, times).map { (point: $0.0, t: $0.1) }
+        let total = lengths[lengths.count - 1]
+        guard total > spacing else {
+            return zip(points, times).map { CurvePoint(point: $0.0, t: $0.1) }
+        }
+        var result: [CurvePoint] = []
+        var cursor: CGFloat = 0
+        var segment = 0
+        let limit = closed ? total - spacing * 0.5 : total
+        while cursor <= limit + 0.001 {
+            while segment < segments - 1, lengths[segment + 1] < cursor {
+                segment += 1
+            }
+            let span = max(0.0001, lengths[segment + 1] - lengths[segment])
+            let u = min(1, max(0, (cursor - lengths[segment]) / span))
+            let next = (segment + 1) % points.count
+            result.append(CurvePoint(
+                point: CGPoint(
+                    x: points[segment].x + (points[next].x - points[segment].x) * u,
+                    y: points[segment].y + (points[next].y - points[segment].y) * u
+                ),
+                t: times[segment] + (times[next] - times[segment]) * u
+            ))
+            cursor += spacing
+        }
+        if !closed, let last = result.last {
+            let end = points[points.count - 1]
+            if hypot(last.point.x - end.x, last.point.y - end.y) > spacing * 0.35 {
+                result.append(CurvePoint(point: end, t: times[times.count - 1]))
+            } else {
+                result[result.count - 1] = CurvePoint(point: end, t: times[times.count - 1])
+            }
         }
         return result
     }
 
-    /// Keeps the inside of a tight bend from crossing the centreline and filling the corner.
-    private static func curvatureLimit(index: Int, points: [CGPoint]) -> (left: CGFloat, right: CGFloat) {
-        let open: CGFloat = 10_000
-        guard index > 0, index < points.count - 1 else { return (open, open) }
-        let previous = points[index - 1]
-        let here = points[index]
-        let next = points[index + 1]
-        let incoming = CGPoint(x: here.x - previous.x, y: here.y - previous.y)
-        let outgoing = CGPoint(x: next.x - here.x, y: next.y - here.y)
-        let incomingLength = hypot(incoming.x, incoming.y)
-        let outgoingLength = hypot(outgoing.x, outgoing.y)
-        guard incomingLength > 0.4, outgoingLength > 0.4 else { return (open, open) }
-        let cross = incoming.x * outgoing.y - incoming.y * outgoing.x
-        let dot = incoming.x * outgoing.x + incoming.y * outgoing.y
-        let angle = atan2(cross, dot)
-        guard abs(angle) > 0.04 else { return (open, open) }
-        let radius = min(incomingLength, outgoingLength) / abs(angle)
-        let limit = max(0.8, radius * 0.82)
-        return (limit, limit)
+    /// Moving average. Open curves keep their endpoints and mirror the padding so the tip does not hook.
+    private static func averageCurve(_ curve: [CurvePoint], reach: Int, closed: Bool) -> [CurvePoint] {
+        guard curve.count >= 3, reach > 0 else { return curve }
+        return curve.indices.map { index in
+            if !closed, index == 0 || index == curve.count - 1 {
+                return curve[index]
+            }
+            var x: CGFloat = 0
+            var y: CGFloat = 0
+            var t: CGFloat = 0
+            var weight: CGFloat = 0
+            for offset in -reach...reach {
+                let sample = reflected(curve, index: index + offset, closed: closed)
+                let influence = 1 - abs(CGFloat(offset)) / CGFloat(reach + 1)
+                x += sample.point.x * influence
+                y += sample.point.y * influence
+                t += sample.t * influence
+                weight += influence
+            }
+            return CurvePoint(point: CGPoint(x: x / weight, y: y / weight), t: t / weight)
+        }
+    }
+
+    private static func reflected(_ curve: [CurvePoint], index: Int, closed: Bool) -> CurvePoint {
+        let count = curve.count
+        if closed {
+            return curve[(index % count + count) % count]
+        }
+        if index >= 0, index < count {
+            return curve[index]
+        }
+        if index < 0 {
+            let source = min(count - 1, -index)
+            let end = curve[0]
+            let other = curve[source]
+            return CurvePoint(
+                point: CGPoint(x: end.point.x * 2 - other.point.x, y: end.point.y * 2 - other.point.y),
+                t: end.t
+            )
+        }
+        let source = max(0, 2 * (count - 1) - index)
+        let end = curve[count - 1]
+        let other = curve[source]
+        return CurvePoint(
+            point: CGPoint(x: end.point.x * 2 - other.point.x, y: end.point.y * 2 - other.point.y),
+            t: end.t
+        )
+    }
+
+    /// Chord direction, averaged as a vector so the angle does not flip at ±π.
+    private static func stableForwards(_ points: [CGPoint], closed: Bool) -> [CGFloat] {
+        let count = points.count
+        guard count >= 2 else { return [0] }
+        let reach = min(6, max(1, count / 8))
+        let raw = (0..<count).map { index -> CGFloat in
+            let before = reflectedPoint(points, index: index - reach, closed: closed)
+            let after = reflectedPoint(points, index: index + reach, closed: closed)
+            return atan2(after.y - before.y, after.x - before.x)
+        }
+        let window = 3
+        return (0..<count).map { index in
+            var sx: CGFloat = 0
+            var sy: CGFloat = 0
+            for offset in -window...window {
+                let sample = closed
+                    ? ((index + offset) % count + count) % count
+                    : min(count - 1, max(0, index + offset))
+                let influence = 1 - abs(CGFloat(offset)) / CGFloat(window + 1)
+                sx += cos(raw[sample]) * influence
+                sy += sin(raw[sample]) * influence
+            }
+            if sx * sx + sy * sy < 0.0001 {
+                return raw[index]
+            }
+            return atan2(sy, sx)
+        }
+    }
+
+    private static func reflectedPoint(_ points: [CGPoint], index: Int, closed: Bool) -> CGPoint {
+        let count = points.count
+        if closed {
+            return points[(index % count + count) % count]
+        }
+        if index >= 0, index < count {
+            return points[index]
+        }
+        if index < 0 {
+            let source = min(count - 1, -index)
+            return CGPoint(x: points[0].x * 2 - points[source].x, y: points[0].y * 2 - points[source].y)
+        }
+        let source = max(0, 2 * (count - 1) - index)
+        let end = points[count - 1]
+        return CGPoint(x: end.x * 2 - points[source].x, y: end.y * 2 - points[source].y)
+    }
+
+    /// Signed turn, radians per point. Positive turns left.
+    private static func signedCurvatures(
+        points: [CGPoint],
+        forwards: [CGFloat],
+        closed: Bool
+    ) -> [CGFloat] {
+        let count = points.count
+        let reach = min(5, max(1, count / 10))
+        return (0..<count).map { index in
+            let before = closed ? (index - reach + count) % count : max(0, index - reach)
+            let after = closed ? (index + reach) % count : min(count - 1, index + reach)
+            var delta = forwards[after] - forwards[before]
+            while delta > .pi { delta -= 2 * .pi }
+            while delta < -.pi { delta += 2 * .pi }
+            let distance = max(1, hypot(points[after].x - points[before].x, points[after].y - points[before].y))
+            return delta / distance
+        }
+    }
+
+    private static func smoothScalars(_ values: [CGFloat], reach: Int, closed: Bool) -> [CGFloat] {
+        guard values.count >= 3, reach > 0 else { return values }
+        return values.indices.map { index in
+            if !closed, index == 0 || index == values.count - 1 {
+                return values[index]
+            }
+            var sum: CGFloat = 0
+            var weight: CGFloat = 0
+            for offset in -reach...reach {
+                let sample = neighbor(index + offset, count: values.count, closed: closed)
+                let influence = 1 - abs(CGFloat(offset)) / CGFloat(reach + 1)
+                sum += values[sample] * influence
+                weight += influence
+            }
+            return sum / weight
+        }
+    }
+
+    private static func midpoint(_ a: CGPoint, _ b: CGPoint) -> CGPoint {
+        CGPoint(x: (a.x + b.x) * 0.5, y: (a.y + b.y) * 0.5)
     }
 
     private static func mix(_ from: CGPoint, _ to: CGPoint, _ amount: CGFloat) -> CGPoint {
@@ -514,6 +648,21 @@ enum WatercolorStroke {
         }
         return SeededNoise.signed(at: t * cycles, seed: seed)
     }
+}
+
+/// One point on the smoothed centreline.
+private struct CurvePoint {
+    var point: CGPoint
+    var t: CGFloat
+}
+
+/// Centreline sample after smoothing, with a stable tangent and turn.
+private struct SmoothSample {
+    var point: CGPoint
+    var t: CGFloat
+    var forward: CGFloat
+    var curvature: CGFloat
+    var radius: CGFloat
 }
 
 /// One sample of a watercolor ribbon, split into a light core and a dark rim.
