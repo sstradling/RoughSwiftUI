@@ -864,7 +864,7 @@ RoughView()
 
 `BrushProfile.watercolor(...)` paints a wash on the outline. `.watercolor` is that call with the defaults.
 
-The body is one ribbon around a smoothed centreline, so a tight bend stays an even width instead of flaring or toothing. The centre is lighter. One broken rim is darker and fades along the stroke, with a fainter strip blending it into the body. It is not a continuous outline. Open strokes taper into a round tip. There is no blur. `variation` sets `ThicknessProfile.variable` and `OpacityProfile.noise`. `layers` is how many body glazes are laid down, from 1 to 5. Only the first glaze carries the rim. Each glaze is a translucent fill, so a crossing goes darker. The variable-opacity stroke still uses one mask. The same `seed` repeats the wash. `WatercolorStyle.defaultSeed` (`1`) yields to `Options.seed`.
+The body is one ribbon around a smoothed centreline, so a tight bend stays an even width instead of flaring or toothing. The centre is lighter. One broken rim is darker and fades along the stroke, with a fainter strip blending it into the body. It is not a continuous outline. Open strokes taper into a round tip. There is no blur. `variation` stores `ThicknessProfile.variable` and sets `OpacityProfile.noise`. The painted ribbon does not follow that thickness swell, so the width stays even and both tips taper the same way. `layers` is how many body glazes are laid down, from 1 to 5. Only the first glaze carries the rim. Each glaze is a translucent fill, so a crossing goes darker. The variable-opacity stroke still uses one mask. The same `seed` repeats the wash. `WatercolorStyle.defaultSeed` (`1`) yields to `Options.seed`.
 
 ### Watercolor fill
 

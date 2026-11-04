@@ -581,9 +581,11 @@ public struct BrushProfile: Equatable, Hashable, Sendable {
 
     /// Watercolor wash along the outline. Several translucent passes and a broken darker rim.
     ///
-    /// `watercolor()` with the defaults equals `.watercolor`. `variation` feeds
-    /// `ThicknessProfile.variable` and an `OpacityProfile.noise` curve. `seed`
-    /// repeats the wash. `WatercolorStyle.defaultSeed` (`1`) yields to `Options.seed`.
+    /// `watercolor()` with the defaults equals `.watercolor`. `variation` stores
+    /// `ThicknessProfile.variable` and an `OpacityProfile.noise` curve. The wash
+    /// does not follow that thickness swell: a slow peak was fattening one end.
+    /// The painted ribbon stays an even width, and both tips taper the same way.
+    /// `seed` repeats the wash. `WatercolorStyle.defaultSeed` (`1`) yields to `Options.seed`.
     ///
     /// The outline is the wash. `.fillStyle(.watercolor)` uses this style for a
     /// clipped interior when the brush carries one, and `WatercolorStyle()` when

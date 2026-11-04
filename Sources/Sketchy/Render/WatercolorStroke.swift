@@ -194,7 +194,11 @@ enum WatercolorStroke {
         }
     }
 
-    /// Fine grain inside the ribbon. Specks stay small so none of them reads as a blot.
+    /// Fine grain inside the ribbon.
+    ///
+    /// Each speck takes its position from a hashed index, not from a regular
+    /// step along the centreline, so the dots do not line up like stitches.
+    /// A few of them bring one or two neighbours. All of them stay small.
     private static func granules(
         line: (samples: [StrokeCenterSample], isClosed: Bool),
         width: CGFloat,
@@ -205,33 +209,115 @@ enum WatercolorStroke {
         let center = smoothedCenterline(line.samples, closed: line.isClosed)
         guard center.count >= 2 else { return [] }
         var pieces: [RibbonPiece] = []
-        let step = max(1, center.count / 28)
-        var index = step
-        let last = max(step, center.count - step)
-        while index < last {
-            let sample = center[index]
-            let located = StrokeCenterSample(point: sample.point, tangent: sample.forward, t: sample.t)
-            let half = halfWidth(at: located, forward: sample.forward, width: width, brush: brush, style: style, layer: 2, line: line)
+        let speckCount = 11 + Int((CGFloat(style.variation) * 6).rounded())
+        for index in 0..<speckCount {
             let seed = style.seed &+ UInt64(index) &* 0x9E37_79B9_7F4A_7C15
-            let across = SeededNoise.signed(at: CGFloat(index) * 0.17, seed: seed)
-            let unit = SeededNoise.unit(at: Float(index) * 0.13, seed: seed &+ 11)
-            let radius = half * (0.045 + 0.055 * CGFloat(unit))
-            if radius < 0.35 {
-                index += step
-                continue
-            }
-            let normal = sample.forward + .pi / 2
-            let dot = CGPoint(
-                x: sample.point.x + cos(normal) * across * half * 0.35,
-                y: sample.point.y + sin(normal) * across * half * 0.35
+            let along = CGFloat(SeededNoise.unit(at: Float(index), seed: seed &+ 41))
+            let across = CGFloat(SeededNoise.signed(at: CGFloat(index), seed: seed &+ 87))
+            let size = CGFloat(SeededNoise.unit(at: Float(index), seed: seed &+ 13))
+            let tone = CGFloat(SeededNoise.unit(at: Float(index), seed: seed &+ 59))
+            let t = line.isClosed ? along : 0.07 + along * 0.86
+            placeSpeck(
+                t: t,
+                across: across,
+                size: size,
+                tone: tone,
+                radiusScale: 1,
+                center: center,
+                width: width,
+                brush: brush,
+                style: style,
+                strokeOpacity: strokeOpacity,
+                line: line,
+                into: &pieces
             )
-            let fade = line.isClosed ? 1 : tipScale(sample.t)
-            let profile = alongOpacity(sample.t, closed: line.isClosed, brush: brush, strokeOpacity: strokeOpacity)
-            let opacity = CGFloat(style.pigment) * profile * fade * 0.18 * (0.4 + 0.6 * CGFloat(unit))
-            pieces.append(RibbonPiece(path: ellipse(center: dot, radius: radius), opacity: min(1, opacity), t: sample.t))
-            index += step
+            let cluster = SeededNoise.unit(at: Float(index), seed: seed &+ 101)
+            guard cluster > 0.78 else { continue }
+            for mate in 0..<2 {
+                let mateSeed = seed &+ UInt64(mate + 1) &* 0xBF58_476D_1CE4_E5B9
+                let alongJitter = CGFloat(SeededNoise.signed(at: CGFloat(mate + 1), seed: mateSeed)) * 0.03
+                let acrossJitter = CGFloat(SeededNoise.signed(at: CGFloat(mate + 5), seed: mateSeed &+ 7))
+                let mateSize = CGFloat(SeededNoise.unit(at: Float(mate + 2), seed: mateSeed &+ 3))
+                placeSpeck(
+                    t: min(0.94, max(0.06, t + alongJitter)),
+                    across: min(1, max(-1, across * 0.55 + acrossJitter * 0.45)),
+                    size: mateSize,
+                    tone: tone * 0.85,
+                    radiusScale: 0.65,
+                    center: center,
+                    width: width,
+                    brush: brush,
+                    style: style,
+                    strokeOpacity: strokeOpacity,
+                    line: line,
+                    into: &pieces
+                )
+            }
         }
         return pieces
+    }
+
+    /// One speck. `across` is -1...1 of the local half-width.
+    private static func placeSpeck(
+        t: CGFloat,
+        across: CGFloat,
+        size: CGFloat,
+        tone: CGFloat,
+        radiusScale: CGFloat,
+        center: [SmoothSample],
+        width: CGFloat,
+        brush: BrushProfile,
+        style: WatercolorStyle,
+        strokeOpacity: CGFloat,
+        line: (samples: [StrokeCenterSample], isClosed: Bool),
+        into pieces: inout [RibbonPiece]
+    ) {
+        let sample = sampleCenter(center, at: t)
+        let located = StrokeCenterSample(point: sample.point, tangent: sample.forward, t: sample.t)
+        let half = halfWidth(at: located, forward: sample.forward, width: width, brush: brush, style: style, layer: 2, line: line)
+        let radius = half * (0.025 + 0.055 * size) * radiusScale
+        guard radius >= 0.3 else { return }
+        let normal = sample.forward + .pi / 2
+        let reach = across * half * 0.62
+        let dot = CGPoint(
+            x: sample.point.x + cos(normal) * reach,
+            y: sample.point.y + sin(normal) * reach
+        )
+        let fade = line.isClosed ? 1 : tipScale(sample.t)
+        let profile = alongOpacity(sample.t, closed: line.isClosed, brush: brush, strokeOpacity: strokeOpacity)
+        let opacity = CGFloat(style.pigment) * profile * fade * (0.05 + 0.09 * tone) * radiusScale
+        pieces.append(RibbonPiece(path: ellipse(center: dot, radius: radius), opacity: min(1, opacity), t: sample.t))
+    }
+
+    /// Centreline sample at `t`, interpolated so a speck is not stuck to a station.
+    private static func sampleCenter(_ center: [SmoothSample], at t: CGFloat) -> SmoothSample {
+        guard center.count >= 2 else { return center[0] }
+        if t <= center[0].t { return center[0] }
+        if t >= center[center.count - 1].t { return center[center.count - 1] }
+        var low = 0
+        var high = center.count - 1
+        while high - low > 1 {
+            let mid = (low + high) / 2
+            if center[mid].t < t { low = mid } else { high = mid }
+        }
+        let start = center[low]
+        let end = center[high]
+        let span = max(0.0001, end.t - start.t)
+        let u = min(1, max(0, (t - start.t) / span))
+        let forward = atan2(
+            sin(start.forward) * (1 - u) + sin(end.forward) * u,
+            cos(start.forward) * (1 - u) + cos(end.forward) * u
+        )
+        return SmoothSample(
+            point: CGPoint(
+                x: start.point.x + (end.point.x - start.point.x) * u,
+                y: start.point.y + (end.point.y - start.point.y) * u
+            ),
+            t: t,
+            forward: forward,
+            curvature: start.curvature * (1 - u) + end.curvature * u,
+            radius: start.radius * (1 - u) + end.radius * u
+        )
     }
 
     /// One smoothed centreline, then a parallel ribbon.
@@ -278,10 +364,18 @@ enum WatercolorStroke {
             let normalAngle = sample.forward + .pi / 2
             let nx = cos(normalAngle)
             let ny = sin(normalAngle)
-            let point = CGPoint(
+            var point = CGPoint(
                 x: sample.point.x + nx * shift,
                 y: sample.point.y + ny * shift
             )
+            // Slide the open tips out along the stroke so the semicircle sits
+            // past the shoulder. Both ends use the same fraction of the width.
+            if !line.isClosed, index == 0 || index == center.count - 1 {
+                let outward = index == 0 ? sample.forward + .pi : sample.forward
+                let reach = max(left, right) * 0.9
+                point.x += cos(outward) * reach
+                point.y += sin(outward) * reach
+            }
             let innerScale = 1 - 0.22 * CGFloat(style.edgeDarkening)
             return Station(
                 center: point,
@@ -324,16 +418,37 @@ enum WatercolorStroke {
             reach: 4,
             closed: closed
         )
+        // Parameter `t` from the rough curve is not distance. The start of this
+        // stroke packed that parameter, so the tip taper finished in a few
+        // points and the cap read as a flat nub. Arc length makes both tips
+        // the same length.
+        let times = arcLengthParameters(curve.map(\.point), closed: closed)
         return curve.indices.map { index in
             let curvature = curvatures[index]
             return SmoothSample(
                 point: curve[index].point,
-                t: curve[index].t,
+                t: times[index],
                 forward: forwards[index],
                 curvature: curvature,
                 radius: 1 / max(0.0004, abs(curvature))
             )
         }
+    }
+
+    /// `0` at the start and `1` at the end, measured along the polyline.
+    private static func arcLengthParameters(_ points: [CGPoint], closed: Bool) -> [CGFloat] {
+        guard points.count >= 2 else { return points.map { _ in 0 } }
+        var lengths: [CGFloat] = [0]
+        let segments = closed ? points.count : points.count - 1
+        for index in 0..<segments {
+            let next = (index + 1) % points.count
+            lengths.append(lengths[lengths.count - 1] + hypot(points[next].x - points[index].x, points[next].y - points[index].y))
+        }
+        let total = max(lengths[lengths.count - 1], 0.0001)
+        if closed {
+            return (0..<points.count).map { lengths[$0] / total }
+        }
+        return lengths.map { $0 / total }
     }
 
     /// Pulls each edge toward its neighbours so a leftover kink cannot tooth the rim.
@@ -371,12 +486,16 @@ enum WatercolorStroke {
         layer: Int,
         line: (samples: [StrokeCenterSample], isClosed: Bool)
     ) -> CGFloat {
-        let thickness = thicknessCurve(closed: line.isClosed, brush: brush)(sample.t)
-        let tip = brush.tip.effectiveWidth(baseWidth: width * thickness, strokeAngle: forward)
-        let wander = signed(sample.t, cycles: 1.7, seed: style.seed &+ UInt64(layer) &+ 19, closed: line.isClosed)
-        let crisp = 1 + wander * (0.03 + CGFloat(style.bleed) * 0.1)
+        _ = style
+        _ = layer
+        // The brush records a thickness wobble, but that noise is one slow
+        // swell. On the catalog seed it peaks at the start and shrinks toward
+        // the middle, which paints a teardrop. The wash stays an even ribbon.
+        // `tipScale` is the only along-stroke width change, and it matches at
+        // both ends.
+        let tip = brush.tip.effectiveWidth(baseWidth: width, strokeAngle: forward)
         let end = line.isClosed ? 1 : tipScale(sample.t)
-        return max(0.2, tip * 0.5 * crisp * end)
+        return max(0.2, tip * 0.5 * end)
     }
 
     private static func neighbor(_ index: Int, count: Int, closed: Bool) -> Int {
@@ -435,13 +554,11 @@ enum WatercolorStroke {
         return result
     }
 
-    /// Moving average. Open curves keep their endpoints and mirror the padding so the tip does not hook.
+    /// Moving average. Mirror padding keeps a straight end from hooking, and the
+    /// raw endpoint is included so a jittered start is pulled onto the stroke.
     private static func averageCurve(_ curve: [CurvePoint], reach: Int, closed: Bool) -> [CurvePoint] {
         guard curve.count >= 3, reach > 0 else { return curve }
         return curve.indices.map { index in
-            if !closed, index == 0 || index == curve.count - 1 {
-                return curve[index]
-            }
             var x: CGFloat = 0
             var y: CGFloat = 0
             var t: CGFloat = 0
@@ -495,7 +612,7 @@ enum WatercolorStroke {
             return atan2(after.y - before.y, after.x - before.x)
         }
         let window = 3
-        return (0..<count).map { index in
+        var angles = (0..<count).map { index -> CGFloat in
             var sx: CGFloat = 0
             var sy: CGFloat = 0
             for offset in -window...window {
@@ -511,6 +628,33 @@ enum WatercolorStroke {
             }
             return atan2(sy, sx)
         }
+        guard !closed, count > 2 else { return angles }
+        // The tip direction is the chord leaving the end, not a reflected
+        // neighbour. A flipped start tangent offsets the width along the
+        // stroke and flattens the cap.
+        let look = min(8, count - 1)
+        let startAngle = atan2(points[look].y - points[0].y, points[look].x - points[0].x)
+        let endIndex = count - 1
+        let endAngle = atan2(
+            points[endIndex].y - points[endIndex - look].y,
+            points[endIndex].x - points[endIndex - look].x
+        )
+        for index in 0..<count {
+            let startWeight = max(0, 1 - CGFloat(index) / CGFloat(look))
+            let endWeight = max(0, 1 - CGFloat(endIndex - index) / CGFloat(look))
+            if startWeight > 0 {
+                angles[index] = blendAngle(angles[index], toward: startAngle, amount: startWeight)
+            }
+            if endWeight > 0 {
+                angles[index] = blendAngle(angles[index], toward: endAngle, amount: endWeight)
+            }
+        }
+        return angles
+    }
+
+    private static func blendAngle(_ angle: CGFloat, toward target: CGFloat, amount: CGFloat) -> CGFloat {
+        let keep = 1 - amount
+        return atan2(sin(angle) * keep + sin(target) * amount, cos(angle) * keep + cos(target) * amount)
     }
 
     private static func reflectedPoint(_ points: [CGPoint], index: Int, closed: Bool) -> CGPoint {
@@ -610,21 +754,12 @@ enum WatercolorStroke {
 
     /// Open strokes narrow into a round tip instead of a square cut.
     private static func tipScale(_ t: CGFloat) -> CGFloat {
-        let window: CGFloat = 0.14
+        let window: CGFloat = 0.18
         let edge = min(max(0, t), max(0, 1 - t))
         if edge >= window { return 1 }
         let mix = edge / window
         let smooth = mix * mix * (3 - 2 * mix)
-        return 0.36 + 0.64 * smooth
-    }
-
-    private static func thicknessCurve(closed: Bool, brush: BrushProfile) -> (CGFloat) -> CGFloat {
-        let join = brush.thicknessProfile.multiplier(at: 0)
-        return { t in
-            let raw = brush.thicknessProfile.multiplier(at: t)
-            guard closed else { return raw }
-            return seamBlend(value: raw, toward: join, t: t, window: 0.1)
-        }
+        return 0.42 + 0.58 * smooth
     }
 
     private static func alongOpacity(
