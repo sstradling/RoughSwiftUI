@@ -1,60 +1,65 @@
 //
 //  ContentView.swift
-//  RoughSwiftApp
+//  SketchyDemoApp
 //
-//  Created by khoa on 26/03/2022.
+//  Demo app for Sketchy.
 //
 
 import SwiftUI
 import Sketchy
 
 struct ContentView: View {
-    @State private var flag = false
     var body: some View {
         TabView {
-            StylesView()
-                .tabItem {
-                    Label("Styles", systemImage: "paintpalette.fill")
-                }
-            Chartview()
-                .tabItem {
-                    Label("Chart", systemImage: "chart.bar")
+            Tab("Styles", systemImage: "paintpalette.fill") {
+                StylesView()
+            }
+
+            Tab("Primitives", systemImage: "square.on.circle") {
+                PrimitivesView()
+            }
+
+            Tab("Options", systemImage: "slider.horizontal.3") {
+                OptionsView()
+            }
+
+            Tab("New", systemImage: "wand.and.stars") {
+                WhatsNewView()
+            }
+
+            Tab("Text", systemImage: "textformat") {
+                TextView()
+            }
+
+            Tab("Customize", systemImage: "paintbrush.pointed.fill") {
+                CustomizeView()
+            }
+
+            Tab("Animated", systemImage: "sparkles") {
+                AnimatedView()
+            }
+
+            Tab("Brushes", systemImage: "pencil.tip") {
+                BrushStrokeView()
+            }
+
+            TabSection("Gallery") {
+                Tab("Chart", systemImage: "chart.bar") {
+                    Chartview()
                 }
 
-            SVGView()
-                .tabItem {
-                    Label("SVG", systemImage: "swift")
-                }
-            
-            TextView()
-                .tabItem {
-                    Label("Text", systemImage: "textformat")
+                Tab("SVG", systemImage: "swift") {
+                    SVGView()
                 }
 
-            CustomizeView()
-                .tabItem {
-                    Label("Customize", systemImage: "paintbrush.pointed.fill")
+                Tab("Scribble", systemImage: "scribble.variable") {
+                    ScribbleFillView()
                 }
-            
-            AnimatedView()
-                .tabItem {
-                    Label("Animated", systemImage: "sparkles")
+
+                Tab("Shapes", systemImage: "oval") {
+                    ShapesView()
                 }
-            
-            BrushStrokeView()
-                .tabItem {
-                    Label("Brushes", systemImage: "pencil.tip")
-                }
-            
-            ScribbleFillView()
-                .tabItem {
-                    Label("Scribble", systemImage: "scribble.variable")
-                }
-            
-            ShapesView()
-                .tabItem {
-                    Label("Shapes", systemImage: "oval")
-                }
+            }
         }
     }
 }
@@ -64,14 +69,13 @@ struct CustomizeView: View {
 
     var body: some View {
         VStack {
-            Button(action: {
+            Button("Click") {
                 flag.toggle()
-            }) {
-                SwiftUI.Text("Click")
             }
+            .buttonStyle(.borderedProminent)
 
             RoughView()
-                .fill(flag ? UIColor.green : UIColor.yellow)
+                .fill(flag ? Color.green : Color.yellow)
                 .fillStyle(flag ? .hachure : .dots)
                 .circle()
                 .frame(width: flag ? 200 : 100, height: flag ? 200 : 100)
@@ -189,8 +193,10 @@ struct StylesView: View {
                 .circle()
                 .frame(width: 100, height: 100)
 
-            // Yellow circle - tap to toggle animation
-            Group {
+            // Yellow circle - tap to toggle animation.
+            Button {
+                isYellowAnimating.toggle()
+            } label: {
                 if isYellowAnimating {
                     RoughView()
                         .fill(Color.yellow)
@@ -206,9 +212,7 @@ struct StylesView: View {
                         .frame(width: 100, height: 100)
                 }
             }
-            .onTapGesture {
-                isYellowAnimating.toggle()
-            }
+            .buttonStyle(.plain)
 
             RoughView()
                 .fill(Color(.systemTeal))
@@ -274,7 +278,7 @@ struct TextView: View {
                 VStack(spacing: 8) {
                     SwiftUI.Text("Rough Text")
                         .font(.title2)
-                        .fontWeight(.semibold)
+                        .bold()
                     
                     SwiftUI.Text("Text rendered with hand-drawn styling")
                         .font(.subheadline)
@@ -380,7 +384,97 @@ struct TextView: View {
                 
                 Divider()
                     .padding(.horizontal)
-                
+
+                VStack(spacing: 16) {
+                    SwiftUI.Text("Alignment & Offsets")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    LazyVGrid(columns: [.init(), .init()], spacing: 16) {
+                        VStack(spacing: 8) {
+                            RoughView()
+                                .fill(Color.orange)
+                                .stroke(Color.black)
+                                .fillStyle(.hachure)
+                                .seed(41)
+                                .text("Center", font: .systemFont(ofSize: 26, weight: .bold))
+                                .frame(width: 150, height: 80)
+                                .border(Color.secondary.opacity(0.3))
+
+                            SwiftUI.Text("center")
+                                .font(.caption2)
+                                .foregroundStyle(.tertiary)
+                        }
+
+                        VStack(spacing: 8) {
+                            RoughView()
+                                .fill(Color.blue)
+                                .stroke(Color.black)
+                                .fillStyle(.dots)
+                                .seed(42)
+                                .text(
+                                    "Top",
+                                    font: .systemFont(ofSize: 26, weight: .bold),
+                                    horizontalAlignment: .leading,
+                                    verticalAlignment: .top,
+                                    offsetX: 8,
+                                    offsetY: 8
+                                )
+                                .frame(width: 150, height: 80)
+                                .border(Color.secondary.opacity(0.3))
+
+                            SwiftUI.Text("leading/top + offset")
+                                .font(.caption2)
+                                .foregroundStyle(.tertiary)
+                        }
+
+                        VStack(spacing: 8) {
+                            RoughView()
+                                .fill(Color.green)
+                                .stroke(Color.black)
+                                .fillStyle(.zigzag)
+                                .seed(43)
+                                .text(
+                                    "End",
+                                    font: .systemFont(ofSize: 26, weight: .bold),
+                                    horizontalAlignment: .trailing,
+                                    verticalAlignment: .bottom,
+                                    offsetX: -8,
+                                    offsetY: -8
+                                )
+                                .frame(width: 150, height: 80)
+                                .border(Color.secondary.opacity(0.3))
+
+                            SwiftUI.Text("trailing/bottom + offset")
+                                .font(.caption2)
+                                .foregroundStyle(.tertiary)
+                        }
+
+                        VStack(spacing: 8) {
+                            RoughView()
+                                .fill(Color.purple)
+                                .stroke(Color.black)
+                                .fillStyle(.crossHatch)
+                                .seed(44)
+                                .text(
+                                    "Nudge",
+                                    font: .systemFont(ofSize: 24, weight: .bold),
+                                    offsetX: 18,
+                                    offsetY: -10
+                                )
+                                .frame(width: 150, height: 80)
+                                .border(Color.secondary.opacity(0.3))
+
+                            SwiftUI.Text("center + offset")
+                                .font(.caption2)
+                                .foregroundStyle(.tertiary)
+                        }
+                    }
+                }
+
+                Divider()
+                    .padding(.horizontal)
+
                 // Fill style showcase
                 VStack(spacing: 16) {
                     SwiftUI.Text("Fill Styles")
@@ -436,13 +530,15 @@ struct TextView: View {
 
 struct AnimatedView: View {
     var body: some View {
+        let sharedConfig = AnimationConfig(steps: 8, speed: .medium, variance: .medium, seed: 51)
+
         ScrollView {
             VStack(spacing: 24) {
                 // MARK: - Shapes Section
                 VStack(spacing: 16) {
                     SwiftUI.Text("Animated Shapes")
                         .font(.title2)
-                        .fontWeight(.semibold)
+                        .bold()
                     
                     SwiftUI.Text("Watch the strokes subtly shift and wobble")
                         .font(.subheadline)
@@ -531,6 +627,65 @@ struct AnimatedView: View {
                                 .foregroundStyle(.secondary)
                         }
                     }
+
+                    VStack(spacing: 16) {
+                        SwiftUI.Text("Reusable AnimationConfig")
+                            .font(.headline)
+
+                        SwiftUI.Text("One config can drive the modifier and AnimatedRoughView")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+
+                        HStack(spacing: 20) {
+                            VStack(spacing: 8) {
+                                RoughView()
+                                    .fill(Color.mint)
+                                    .fillStyle(.hachure)
+                                    .seed(52)
+                                    .circle()
+                                    .animated(config: sharedConfig)
+                                    .frame(width: 90, height: 90)
+
+                                SwiftUI.Text("Modifier")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+
+                            VStack(spacing: 8) {
+                                AnimatedRoughView(config: sharedConfig) {
+                                    RoughView()
+                                        .fill(Color.indigo)
+                                        .fillStyle(.dots)
+                                        .seed(52)
+                                        .rectangle()
+                                }
+                                .frame(width: 90, height: 90)
+
+                                SwiftUI.Text("AnimatedRoughView")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+
+                            VStack(spacing: 8) {
+                                AnimatedRoughView(
+                                    config: AnimationConfig(steps: 5, speed: .slow, variance: .low, seed: 53)
+                                ) {
+                                    RoughView()
+                                        .fill(Color.yellow)
+                                        .fillStyle(.scribble)
+                                        .scribbleTightness(12)
+                                        .seed(53)
+                                        .roundedRectangle(cornerRadius: 16)
+                                }
+                                .frame(width: 90, height: 90)
+
+                                SwiftUI.Text("Direct config")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
                 }
                 
                 Divider()
@@ -540,7 +695,7 @@ struct AnimatedView: View {
                 VStack(spacing: 20) {
                     SwiftUI.Text("Animated Text")
                         .font(.title2)
-                        .fontWeight(.semibold)
+                        .bold()
                     
                     SwiftUI.Text("Text with hand-drawn wobble effects")
                         .font(.subheadline)
@@ -681,7 +836,7 @@ struct BrushStrokeView: View {
                 VStack(spacing: 8) {
                     SwiftUI.Text("Custom Brush Profiles")
                         .font(.title2)
-                        .fontWeight(.semibold)
+                        .bold()
                     
                     SwiftUI.Text("Variable-width strokes with calligraphic effects")
                         .font(.subheadline)
@@ -1192,7 +1347,7 @@ struct ScribbleFillView: View {
                 VStack(spacing: 8) {
                     SwiftUI.Text("Scribble Fill")
                         .font(.title2)
-                        .fontWeight(.semibold)
+                        .bold()
                     
                     SwiftUI.Text("A single continuous zig-zag traversing the shape")
                         .font(.subheadline)
@@ -1819,7 +1974,7 @@ struct ShapesView: View {
                 VStack(spacing: 8) {
                     SwiftUI.Text("Shape Gallery")
                         .font(.title2)
-                        .fontWeight(.semibold)
+                        .bold()
                     
                     SwiftUI.Text("Rounded rectangles, eggs, and more")
                         .font(.subheadline)

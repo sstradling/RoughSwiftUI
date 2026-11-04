@@ -2,6 +2,8 @@
 
 > **Optimized for coding agents and LLMs.** This document provides structured, comprehensive API reference for the Sketchy package.
 
+The sample app is `Example/SketchyDemo`. Open `SketchyDemoApp.xcodeproj` and run the `SketchyDemoApp` scheme. It links the local package product `Sketchy`.
+
 ## Table of Contents
 
 1. [Quick Start](#quick-start)

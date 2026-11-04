@@ -8,6 +8,7 @@
 - [Examples](docs/Examples.md): every seeded tile, with the snippet that drew it. Generated. Do not hand-edit.
 - [Performance](docs/Performance.md): generator and drawing caches, and `os_signpost` instrumentation.
 - [AGENTS.md](AGENTS.md): how to build, test, and regenerate docs in this repository.
+- Demo app: `Example/SketchyDemo`. Scheme `SketchyDemoApp`, bundle id `com.sstradling.SketchyDemo`, local package product `Sketchy`.
 
 ## Install
 
