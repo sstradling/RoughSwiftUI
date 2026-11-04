@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## [1.3.0] - 2026-11-03
+
 - Strokes can change opacity along their length. `OpacityProfile` is `.uniform` (the default, multiplier 1), `.values` (evenly spaced samples), `.stops` (`OpacityStop` positions in 0...1), or `.noise` (a seeded wobble between a minimum and a maximum). The profile multiplies `strokeOpacity`. A curve that changes along the stroke is painted into one mask: each piece is opaque gray at that opacity, `luminanceToAlpha` turns the gray into coverage, and the stroke colour tints the mask. Overlaps replace instead of adding, so segment joins do not go dark. `.uniform` keeps the existing stroke path. A watercolor fill does not use this mask.
 - `.fillStyle(.watercolor)` clips a wash to the same region as a solid fill, so `fillPadding` and `fillOffset` apply. Layers are translucent glazes, the dried edge is an uneven darker band, and blooms are irregular puddles. `WatercolorStyle.defaultSeed` (`1`) yields to `Options.seed`. Sketch fills such as hachure stay as they are.
 - SVG paths draw elliptical arcs (`A` / `a`). Each arc uses the SVG endpoint-to-center conversion and becomes cubic segments of at most 90°, then picks up the same roughness as an authored curve. Radii that cannot reach the endpoint scale up together. A zero radius is a straight line. Identical endpoints are skipped. A relative `a` moves only the endpoint. After `Z`, the next relative command starts at the subpath point.
