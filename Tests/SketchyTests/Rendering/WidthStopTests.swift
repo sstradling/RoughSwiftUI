@@ -18,6 +18,87 @@ final class WidthStopTests: XCTestCase {
     private let sethWidths: [CGFloat] = [4, 6, 8, 8, 8, 6, 4]
     private let sethMultipliers: [CGFloat] = [0.5, 0.75, 1, 1, 1, 0.75, 0.5]
 
+    func testWidthStopCurveEndCapDoesNotFoldBack() throws {
+        var options = Options()
+        options.strokeWidth = 2
+        options.roughness = 0.25
+        options.seed = 149
+        options.thicknessProfile = .stops(sethStops)
+        let curve = Curve(points: [
+            Point(x: 10, y: 120),
+            Point(x: 58, y: 28),
+            Point(x: 112, y: 156),
+            Point(x: 174, y: 52)
+        ])
+        let drawing = try XCTUnwrap(
+            NativeGenerator(size: CGSize(width: 184, height: 184)).generate(drawable: curve, options: options)
+        )
+        let passes = subpaths(of: drawing.sets[0].operations)
+        XCTAssertEqual(passes.count, 2)
+        let ends = passes.map { ($0.last as! BezierCurveTo).point }
+        let starts = passes.map { ($0.first as! Move).point }
+        XCTAssertLessThan(
+            hypot(ends[0].x - ends[1].x, ends[0].y - ends[1].y),
+            1,
+            "the two rough passes already share an endpoint; the notch is not a gap between them"
+        )
+        XCTAssertLessThan(hypot(starts[0].x - starts[1].x, starts[0].y - starts[1].y), 1)
+
+        let outline = StrokeToFillConverter.convert(
+            operations: drawing.sets[0].operations,
+            baseWidth: 2,
+            profile: options.brushProfile
+        )
+        let endControl = (passes[0].last as! BezierCurveTo).controlPoint2
+        let endTangent = atan2(
+            CGFloat(ends[0].y - endControl.y),
+            CGFloat(ends[0].x - endControl.x)
+        )
+        let startCurve = passes[0][1] as! BezierCurveTo
+        let startTangent = atan2(
+            CGFloat(startCurve.controlPoint1.y - starts[0].y),
+            CGFloat(startCurve.controlPoint1.x - starts[0].x)
+        )
+        assertCapNose(
+            of: outline,
+            at: CGPoint(x: CGFloat(ends[0].x), y: CGFloat(ends[0].y)),
+            direction: endTangent,
+            radius: 2
+        )
+        assertCapNose(
+            of: outline,
+            at: CGPoint(x: CGFloat(starts[0].x), y: CGFloat(starts[0].y)),
+            direction: startTangent + .pi,
+            radius: 2
+        )
+    }
+
+    func testRoundCapOnAStraightStopBulgesOutAtBothEnds() {
+        let operations: [Sketchy.Operation] = [
+            Move(data: [20, 60]),
+            LineTo(data: [160, 60])
+        ]
+        let profile = BrushProfile(
+            thicknessProfile: .stops([
+                WidthStop(position: 0, width: 8),
+                WidthStop(position: 1, width: 8)
+            ]),
+            cap: .round
+        )
+        let outline = StrokeToFillConverter.convert(operations: operations, baseWidth: 2, profile: profile)
+        assertCapNose(of: outline, at: CGPoint(x: 160, y: 60), direction: 0, radius: 4)
+        assertCapNose(of: outline, at: CGPoint(x: 20, y: 60), direction: .pi, radius: 4)
+
+        let butt = BrushProfile(tip: .flat, thicknessProfile: .uniform, cap: .butt, join: .bevel)
+        let marker = StrokeToFillConverter.convert(
+            operations: operations,
+            baseWidth: 8,
+            profile: butt
+        )
+        XCTAssertLessThanOrEqual(marker.boundingRect.maxX, 160.5)
+        XCTAssertGreaterThanOrEqual(marker.boundingRect.minX, 19.5)
+    }
+
     func testSethStopsMatchPointWidthsAndStrokeWidthMultipliers() {
         let stops = ThicknessProfile.stops(sethStops)
         for (index, t) in samplePositions.enumerated() {
@@ -265,6 +346,122 @@ final class WidthStopTests: XCTestCase {
         moved.thicknessProfile = .stops([WidthStop(position: 0, width: 5), WidthStop(position: 1, width: 5)])
         XCTAssertNotEqual(uniform.cacheHash, stopped.cacheHash)
         XCTAssertNotEqual(stopped.cacheHash, moved.cacheHash)
+    }
+
+    /// The round cap's nose is the sample furthest along `direction`. It should
+    /// sit about `radius` ahead of `origin` and on the centerline. A cap that
+    /// folds back leaves the two corners as the foremost points, off to the sides.
+    private func assertCapNose(
+        of path: SwiftUI.Path,
+        at origin: CGPoint,
+        direction: CGFloat,
+        radius: CGFloat,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        let forward = CGVector(dx: cos(direction), dy: sin(direction))
+        let side = CGVector(dx: -forward.dy, dy: forward.dx)
+        let scored = flattened(path).map { point -> (forward: CGFloat, side: CGFloat) in
+            let dx = point.x - origin.x
+            let dy = point.y - origin.y
+            return (
+                dx * forward.dx + dy * forward.dy,
+                dx * side.dx + dy * side.dy
+            )
+        }
+        guard let nose = scored.max(by: { $0.forward < $1.forward }) else {
+            return XCTFail("outline has no points", file: file, line: line)
+        }
+        XCTAssertGreaterThan(nose.forward, radius * 0.65, "cap does not bulge outward", file: file, line: line)
+        XCTAssertLessThan(abs(nose.side), radius * 0.5, "foremost point is a side prong, not the nose", file: file, line: line)
+    }
+
+    private func subpaths(of operations: [Sketchy.Operation]) -> [[Sketchy.Operation]] {
+        var paths: [[Sketchy.Operation]] = []
+        var current: [Sketchy.Operation] = []
+        for operation in operations {
+            if operation is Move, !current.isEmpty {
+                paths.append(current)
+                current = [operation]
+            } else {
+                current.append(operation)
+            }
+        }
+        if !current.isEmpty {
+            paths.append(current)
+        }
+        return paths
+    }
+
+    private func flattened(_ path: SwiftUI.Path) -> [CGPoint] {
+        var samples: [CGPoint] = []
+        var current = CGPoint.zero
+        path.forEach { element in
+            current = appendFlattened(element, from: current, into: &samples)
+        }
+        return samples
+    }
+
+    private func appendFlattened(
+        _ element: SwiftUI.Path.Element,
+        from current: CGPoint,
+        into samples: inout [CGPoint]
+    ) -> CGPoint {
+        switch element {
+        case .move(let point):
+            samples.append(point)
+            return point
+        case .line(let point):
+            samples.append(point)
+            return point
+        case .quadCurve(let point, let control):
+            samples.append(contentsOf: quadSamples(from: current, control: control, to: point))
+            return point
+        case .curve(let point, let control1, let control2):
+            samples.append(contentsOf: cubicSamples(from: current, control1: control1, control2: control2, to: point))
+            return point
+        case .closeSubpath:
+            return current
+        }
+    }
+
+    private func quadSamples(from: CGPoint, control: CGPoint, to: CGPoint) -> [CGPoint] {
+        (1...4).map { step in
+            let t = CGFloat(step) / 4
+            let one = 1 - t
+            let x = one * one * from.x + 2 * one * t * control.x + t * t * to.x
+            let y = one * one * from.y + 2 * one * t * control.y + t * t * to.y
+            return CGPoint(x: x, y: y)
+        }
+    }
+
+    private func cubicSamples(
+        from: CGPoint,
+        control1: CGPoint,
+        control2: CGPoint,
+        to: CGPoint
+    ) -> [CGPoint] {
+        (1...4).map { step in
+            cubicPoint(from: from, control1: control1, control2: control2, to: to, t: CGFloat(step) / 4)
+        }
+    }
+
+    private func cubicPoint(
+        from: CGPoint,
+        control1: CGPoint,
+        control2: CGPoint,
+        to: CGPoint,
+        t: CGFloat
+    ) -> CGPoint {
+        let one = 1 - t
+        let one2 = one * one
+        let one3 = one2 * one
+        let t2 = t * t
+        let t3 = t2 * t
+        return CGPoint(
+            x: one3 * from.x + 3 * one2 * t * control1.x + 3 * one * t2 * control2.x + t3 * to.x,
+            y: one3 * from.y + 3 * one2 * t * control1.y + 3 * one * t2 * control2.y + t3 * to.y
+        )
     }
 
     /// The ribbon is 4pt at the ends and 8pt through the middle.
