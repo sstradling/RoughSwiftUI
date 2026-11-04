@@ -60,6 +60,13 @@ enum WatercolorStroke {
             style: style,
             strokeOpacity: strokeOpacity
         ))
+        pieces.append(contentsOf: feathers(
+            line: line,
+            width: width,
+            brush: brush,
+            style: style,
+            strokeOpacity: strokeOpacity
+        ))
         return glazeCommands(pieces, color: color)
     }
 
@@ -78,15 +85,17 @@ enum WatercolorStroke {
         guard stations.count >= 2 else { return [] }
         let darkening = CGFloat(style.edgeDarkening)
         let pigment = CGFloat(style.pigment) * strength
-        let along = alongOpacity(0.5, closed: line.isClosed, brush: brush, strokeOpacity: strokeOpacity)
-        let core = min(1, pigment * (0.11 + 0.1 * (1 - darkening)) * along)
+        // One centreline replaced the second rough pass, and sampling the
+        // opacity noise at a single t was dimming the whole ribbon. The body
+        // keeps the stroke colour. The noise still wobbles the edge.
+        let core = min(1, pigment * (0.34 + 0.08 * (1 - darkening)) * strokeOpacity)
         var pieces = [
             RibbonPiece(path: ribbon(stations, closed: line.isClosed), opacity: core, t: 0.5)
         ]
         if edged {
             pieces.append(contentsOf: brokenRim(
                 stations: stations,
-                pigment: pigment * along,
+                pigment: pigment * strokeOpacity,
                 darkening: darkening,
                 seed: style.seed &+ UInt64(layer) &* 17,
                 closed: line.isClosed
@@ -113,11 +122,18 @@ enum WatercolorStroke {
             let end = stations[next]
             let gate = SeededNoise.unit(at: Float(start.t * 3.4), seed: seed &+ 71)
             let flicker = SeededNoise.unit(at: Float(start.t * 9.5), seed: seed &+ 93)
-            let presence = max(0, (CGFloat(gate) - 0.28) / 0.72) * (0.35 + 0.65 * CGFloat(flicker))
-            if presence < 0.22 { continue }
-            let opacity = min(1, pigment * (0.16 + 0.55 * darkening) * presence)
-            pieces.append(contentsOf: sideRim(start, end, side: 1, presence: presence, opacity: opacity))
-            pieces.append(contentsOf: sideRim(start, end, side: -1, presence: presence, opacity: opacity * 0.9))
+            let presence = max(0, (CGFloat(gate) - 0.22) / 0.78) * (0.25 + 0.75 * CGFloat(flicker))
+            if presence < 0.18 { continue }
+            let pool = CGFloat(SeededNoise.unit(at: Float(start.t * 5.1), seed: seed &+ 5))
+            let opacity = min(1, pigment * (0.12 + 0.7 * darkening) * presence * (0.35 + 1.2 * pool))
+            for side: CGFloat in [1, -1] {
+                let turn = (start.curvature + end.curvature) * 0.5
+                let inside: CGFloat = turn > 0.02 ? 1 : (turn < -0.02 ? -1 : 0)
+                // A dark rim in the crotch of a bend is the crease at the peak.
+                if inside != 0, side == inside, abs(turn) > 0.045 { continue }
+                let sidePool = side > 0 ? opacity : opacity * (0.55 + 0.45 * pool)
+                pieces.append(contentsOf: sideRim(start, end, side: side, presence: presence, opacity: sidePool))
+            }
         }
         return pieces
     }
@@ -193,6 +209,43 @@ enum WatercolorStroke {
             let radius = startRadius * (1 - u) + endRadius * u
             path.addLine(to: CGPoint(x: center.x + cos(angle) * radius, y: center.y + sin(angle) * radius))
         }
+    }
+
+    /// Soft blooms just outside a bulging edge. They stay faint so they feather
+    /// into the paper instead of reading as a dark spot.
+    private static func feathers(
+        line: (samples: [StrokeCenterSample], isClosed: Bool),
+        width: CGFloat,
+        brush: BrushProfile,
+        style: WatercolorStyle,
+        strokeOpacity: CGFloat
+    ) -> [RibbonPiece] {
+        let center = smoothedCenterline(line.samples, closed: line.isClosed)
+        guard center.count >= 2 else { return [] }
+        let amount = CGFloat(style.bleed) * 0.7 + CGFloat(style.variation) * 0.55
+        guard amount > 0.05 else { return [] }
+        var pieces: [RibbonPiece] = []
+        let count = 5
+        for index in 0..<count {
+            let seed = style.seed &+ UInt64(index) &* 0x9E37_79B9_7F4A_7C15 &+ 200
+            let along = CGFloat(SeededNoise.unit(at: Float(index), seed: seed))
+            let t = line.isClosed ? along : 0.14 + along * 0.72
+            let side: CGFloat = SeededNoise.unit(at: Float(index), seed: seed &+ 9) > 0.5 ? 1 : -1
+            let size = CGFloat(SeededNoise.unit(at: Float(index), seed: seed &+ 17))
+            let sample = sampleCenter(center, at: t)
+            let located = StrokeCenterSample(point: sample.point, tangent: sample.forward, t: sample.t)
+            let half = halfWidth(at: located, forward: sample.forward, width: width, brush: brush, style: style, layer: 0, line: line)
+            let normal = sample.forward + .pi / 2
+            let reach = half * (1.15 + 0.45 * size)
+            let dot = CGPoint(
+                x: sample.point.x + cos(normal) * side * reach,
+                y: sample.point.y + sin(normal) * side * reach
+            )
+            let radius = half * (0.28 + 0.22 * size)
+            let opacity = CGFloat(style.pigment) * strokeOpacity * amount * (0.08 + 0.06 * size)
+            pieces.append(RibbonPiece(path: ellipse(center: dot, radius: radius), opacity: min(0.22, opacity), t: sample.t))
+        }
+        return pieces
     }
 
     /// Fine grain inside the ribbon.
@@ -353,13 +406,17 @@ enum WatercolorStroke {
         )
         let built = center.enumerated().map { index, sample -> Station in
             let half = halves[index]
-            let cap = max(0.9, sample.radius * 0.92)
             var left = half
             var right = half
-            if sample.curvature > 0.004 {
-                left = min(half, cap)
-            } else if sample.curvature < -0.004 {
-                right = min(half, cap)
+            // Only a hairpin, where the offset would cross, pulls the inside in.
+            // A normal peak stays a smooth offset, so the crotch does not crease.
+            if sample.radius < half * 0.85 {
+                let limit = max(half * 0.62, sample.radius * 0.95)
+                if sample.curvature > 0 {
+                    left = min(left, limit)
+                } else if sample.curvature < 0 {
+                    right = min(right, limit)
+                }
             }
             // The centreline stays smooth. Only the offset distance wobbles,
             // and each side has its own seed so the edges do not mirror.
@@ -385,6 +442,7 @@ enum WatercolorStroke {
                 innerRight: CGPoint(x: point.x - nx * right * innerScale, y: point.y - ny * right * innerScale),
                 outerRadius: max(left, right),
                 innerRadius: max(left, right) * innerScale,
+                curvature: sample.curvature,
                 t: sample.t
             )
         }
@@ -409,14 +467,17 @@ enum WatercolorStroke {
         let low = signed(t, cycles: 4.2, seed: seed, closed: closed)
         let mid = signed(t, cycles: 8.5, seed: seed &+ 13, closed: closed)
         let high = signed(t, cycles: 15, seed: seed &+ 27, closed: closed)
-        var wobble = (low * 0.5 + mid * 0.34 + high * 0.22) * width * 0.11 * amount
+        var wobble = (low * 0.55 + mid * 0.32 + high * 0.28) * width * 0.42 * amount
         let gate = SeededNoise.unit(at: Float(t * 6.5 + (side > 0 ? 0.4 : 1.7)), seed: seed &+ 47)
-        if gate > 0.72 {
-            let bulge = (CGFloat(gate) - 0.72) / 0.28
-            wobble += bulge * width * 0.09 * amount
+        if gate > 0.66 {
+            let bulge = (CGFloat(gate) - 0.66) / 0.34
+            wobble += bulge * width * 0.28 * amount
         }
-        // Wet paint spreads out. A deep inward bite reads as a pinch before the tip.
-        let inward = -width * 0.035 * amount
+        let dry = SeededNoise.unit(at: Float(t * 8.4 + (side > 0 ? 0.2 : 2.4)), seed: seed &+ 90)
+        if dry < 0.28 {
+            wobble -= width * 0.22 * amount * CGFloat((0.28 - dry) / 0.28)
+        }
+        let inward = -width * 0.2 * amount
         if wobble < inward { wobble = inward }
         let fade = closed ? 1 : tipFade(t)
         return wobble * fade
@@ -817,7 +878,8 @@ private struct Station {
     var outerRight: CGPoint
     var innerLeft: CGPoint
     var innerRight: CGPoint
-    var outerRadius: CGFloat
-    var innerRadius: CGFloat
-    var t: CGFloat
+        var outerRadius: CGFloat
+        var innerRadius: CGFloat
+        var curvature: CGFloat
+        var t: CGFloat
 }
