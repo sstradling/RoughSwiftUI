@@ -1,85 +1,91 @@
+# Tests the Sketchy package. The demo app is Example/SketchyDemo (scheme SketchyDemoApp) and is not part of this job.
 name: Tests
 
 on:
   pull_request:
-    branches: [main, dev]
+    branches: [master, main, dev]
   push:
-    branches: [main, dev]
+    branches: [master, main, dev]
 
 jobs:
   test:
     name: Run Tests
     runs-on: macos-latest
-    # timeout-minutes: 120
+    timeout-minutes: 45
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-    #   - name: Install dependencies
-    #     run: swift package resolve
+      - name: Show Xcode version
+        run: xcodebuild -version
 
-    #   - name: Show available Xcode installs + xcodebuild version
-    #     run: |
-    #       echo "Contents of /Applications (look for Xcode bundles):"
-    #       ls -1 /Applications || true
-    #       echo "--- xcodebuild -version ---"
-    #       xcodebuild -version || true
+      - name: Show available simulators
+        run: xcrun simctl list devices available
 
-    #   - name: Select latest Xcode in /Applications (if present)
-    #     run: |
-    #       set -e
-    #       # Find Xcode* apps in /Applications and pick the last (usually highest)
-    #       XCODE_APPS=$(ls -1 /Applications | grep -E '^Xcode' || true)
-    #       if [ -z "$XCODE_APPS" ]; then
-    #         echo "No Xcode* found in /Applications. Keeping system default."
-    #         xcodebuild -version || true
-    #       else
-    #         LATEST=$(echo "$XCODE_APPS" | tail -n1)
-    #         sudo xcode-select -s "/Applications/${LATEST}/Contents/Developer"
-    #         echo "Selected Xcode: /Applications/${LATEST}"
-    #         xcodebuild -version
-    #       fi
+      - name: Run Tests
+        run: |
+          set -euo pipefail
+          # Runners do not share a simulator UUID. Prefer iPhone 17 Pro, then
+          # iPhone 16 Pro, then any other iPhone. Within a name, use the newest
+          # iOS runtime. "Pro" does not match "Pro Max".
+          DEVICE=$(python3 - << 'PY'
+          import json, re, subprocess, sys
 
-    #   - name: Show Swift Version
-    #     run: swift --version
+          raw = subprocess.check_output(
+              ["xcrun", "simctl", "list", "devices", "available", "-j"],
+              text=True,
+          )
+          data = json.loads(raw)
 
-    #   - name: Show available simulator runtimes
-    #     run: xcrun simctl list runtimes
+          def runtime_version(runtime):
+              match = re.search(r"iOS-(\d+)-(\d+)(?:-(\d+))?", runtime)
+              if not match:
+                  return (0, 0, 0)
+              return tuple(int(part or 0) for part in match.groups())
 
-    #   - name: Detect workspace/project and list schemes (diagnostic)
-    #     run: |
-    #       set -e
-    #       WORKSPACE=$(ls *.xcworkspace 2>/dev/null | head -n1 || true)
-    #       PROJECT=$(ls *.xcodeproj 2>/dev/null | head -n1 || true)
-    #       echo "Detected workspace: $WORKSPACE"
-    #       echo "Detected project: $PROJECT"
-    #       if [ -n "$WORKSPACE" ]; then
-    #         xcodebuild -list -workspace "$WORKSPACE" || true
-    #       elif [ -n "$PROJECT" ]; then
-    #         xcodebuild -list -project "$PROJECT" || true
-    #       else
-    #         echo "No .xcworkspace or .xcodeproj detected in repo root. xcodebuild will try to use a scheme in the current directory."
-    #         xcodebuild -list || true
-    #       fi
+          def name_rank(name):
+              if not name.startswith("iPhone"):
+                  return None
+              if name == "iPhone 17 Pro":
+                  return 0
+              if name == "iPhone 16 Pro":
+                  return 1
+              if "Max" not in name:
+                  return 2
+              return 3
 
-    #   - name: Run Tests (xcodebuild)
-    #     run: |
-    #       set -e
-    #       WORKSPACE=$(ls *.xcworkspace 2>/dev/null | head -n1 || true)
-    #       PROJECT=$(ls *.xcodeproj 2>/dev/null | head -n1 || true)
-    #       SCHEME="RoughSwiftUI"   # update if your scheme name differs
-    #       # avoid hard-coding OS so we don't fail on missing runtime. If you prefer, set OS=<installed version>.
-    #       DEST="platform=iOS Simulator,OS=18.4,name=iPhone 16 Pro,id=3AC78E82-3179-4752-97E9-D370A04E2918"
-    #       DERIVED_DATA="$PWD/DerivedData"
-    #       mkdir -p "$DERIVED_DATA"
+          best = None
+          best_key = None
+          for runtime, devices in data.get("devices", {}).items():
+              version = runtime_version(runtime)
+              for device in devices:
+                  if not device.get("isAvailable"):
+                      continue
+                  name = device.get("name", "")
+                  rank = name_rank(name)
+                  if rank is None:
+                      continue
+                  key = (rank, tuple(-part for part in version))
+                  if best_key is None or key < best_key:
+                      best_key = key
+                      best = (device["udid"], name, runtime, version)
 
-    #       echo "Running tests for scheme '$SCHEME' with destination '$DEST'"
+          if best is None:
+              print("No iPhone simulator runtime is installed.", file=sys.stderr)
+              sys.exit(1)
 
-    #       if [ -n "$WORKSPACE" ]; then
-    #         xcodebuild test -workspace "$WORKSPACE" -scheme "$SCHEME" -destination "$DEST" -derivedDataPath "$DERIVED_DATA" -parallel-testing-enabled YES
-    #       elif [ -n "$PROJECT" ]; then
-    #         xcodebuild test -project "$PROJECT" -scheme "$SCHEME" -destination "$DEST" -derivedDataPath "$DERIVED_DATA" -parallel-testing-enabled YES
-    #       else
-    #         xcodebuild test -scheme "$SCHEME" -destination "$DEST" -derivedDataPath "$DERIVED_DATA" -parallel-testing-enabled YES
-    #       fi
+          udid, name, runtime, version = best
+          major, minor, patch = version
+          ios = f"{major}.{minor}" if patch == 0 else f"{major}.{minor}.{patch}"
+          print(f"Using {name} ({udid}) on iOS {ios}", file=sys.stderr)
+          print(runtime, file=sys.stderr)
+          print(udid)
+          PY
+          )
+          echo "Destination id ${DEVICE}"
+          xcodebuild test \
+            -scheme Sketchy \
+            -destination "platform=iOS Simulator,id=${DEVICE}" \
+            -only-testing:SketchyTests \
+            -parallel-testing-enabled NO
