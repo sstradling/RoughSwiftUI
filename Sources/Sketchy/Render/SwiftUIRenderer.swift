@@ -626,9 +626,11 @@ private extension SwiftUIRenderer {
             return []
         }
         
-        // Only use clip path for SVG paths (which may be concave shapes like stars)
-        // Simple shapes like rectangles and circles don't need clipping
-        let clipPath: SwiftPath? = isSVGPath ? SwiftPath(fillPath) : nil
+        // Clip scribble fills for SVG paths and native polygons. Both can be
+        // concave (stars, arrows, custom silhouettes), and the zig-zag can
+        // bridge notches between ray intersections. The clip is the padded
+        // fill region. Rectangles, circles, and ellipses stay unclipped.
+        let clipPath = scribbleClipPath(fillPath: fillPath, drawing: drawing, isSVGPath: isSVGPath)
         
         // Generate scribble fill operation sets
         let scribbleSets = ScribbleFillGenerator.generate(for: fillPath, options: options)
@@ -697,6 +699,106 @@ private extension SwiftUIRenderer {
                 ]
             }
         }
+    }
+
+    /// Returns whether scribble-fill strokes should be clipped to the shape
+    /// path. Clipping is required for potentially concave outlines where a
+    /// continuous scribble can cross outside the shape between ray-cast
+    /// intersections. Native polygons are the primary non-SVG case; SVG paths
+    /// are always clipped because they can encode arbitrary concave geometry
+    /// and holes.
+    func shouldClipScribbleFill(drawing: Drawing, isSVGPath: Bool) -> Bool {
+        isSVGPath || drawing.shape == "polygon"
+    }
+
+    /// Clip path for a scribble fill, or nil when the shape stays unclipped.
+    ///
+    /// SVG paths are one authored contour (plus holes), so the whole path is
+    /// the clip. A native polygon's rough outline is two closed passes in
+    /// continuous mode. Even-odd clipping both passes cancels the interior
+    /// and leaves only the thin ring between them. One pass is the filled
+    /// polygon. Legacy outlines are separate edge strokes, so the clip is
+    /// rebuilt from one vertex per edge.
+    func scribbleClipPath(fillPath: CGPath, drawing: Drawing, isSVGPath: Bool) -> SwiftPath? {
+        guard shouldClipScribbleFill(drawing: drawing, isSVGPath: isSVGPath) else {
+            return nil
+        }
+        if isSVGPath {
+            return SwiftPath(fillPath)
+        }
+        if let contour = firstClosedSubpath(of: fillPath),
+           contour.boundingBox.width > 1, contour.boundingBox.height > 1 {
+            return SwiftPath(contour)
+        }
+        let rebuilt = polygonClip(fromEdgeMoves: fillPath)
+        if rebuilt.boundingBox.width > 1, rebuilt.boundingBox.height > 1 {
+            return SwiftPath(rebuilt)
+        }
+        return SwiftPath(fillPath)
+    }
+
+    /// Copies elements through the first `closeSubpath`. Nil when the path
+    /// never closes, which is the legacy per-edge outline.
+    func firstClosedSubpath(of path: CGPath) -> CGPath? {
+        let result = CGMutablePath()
+        var closed = false
+        path.applyWithBlock { element in
+            if closed { return }
+            let points = element.pointee.points
+            switch element.pointee.type {
+            case .moveToPoint:
+                result.move(to: points[0])
+            case .addLineToPoint:
+                result.addLine(to: points[0])
+            case .addQuadCurveToPoint:
+                result.addQuadCurve(to: points[1], control: points[0])
+            case .addCurveToPoint:
+                result.addCurve(to: points[2], control1: points[0], control2: points[1])
+            case .closeSubpath:
+                result.closeSubpath()
+                closed = true
+            @unknown default:
+                break
+            }
+        }
+        return closed ? result : nil
+    }
+
+    /// One vertex per edge for a legacy polygon, whose outline is a pair of
+    /// strokes per side rather than a closed contour.
+    func polygonClip(fromEdgeMoves path: CGPath) -> CGPath {
+        var moves: [CGPoint] = []
+        path.applyWithBlock { element in
+            if element.pointee.type == .moveToPoint {
+                moves.append(element.pointee.points[0])
+            }
+        }
+        var vertices: [CGPoint] = []
+        var index = 0
+        while index < moves.count {
+            let point = moves[index]
+            if let first = vertices.first, vertices.count >= 3,
+               hypot(point.x - first.x, point.y - first.y) < 4 {
+                break
+            }
+            vertices.append(point)
+            if index + 1 < moves.count {
+                let next = moves[index + 1]
+                if hypot(next.x - point.x, next.y - point.y) < 12 {
+                    index += 2
+                    continue
+                }
+            }
+            index += 1
+        }
+        let result = CGMutablePath()
+        guard let first = vertices.first, vertices.count >= 3 else { return result }
+        result.move(to: first)
+        for point in vertices.dropFirst() {
+            result.addLine(to: point)
+        }
+        result.closeSubpath()
+        return result
     }
     
     /// Extracts the shape path from a drawing for scribble fill generation.

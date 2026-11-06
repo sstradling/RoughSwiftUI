@@ -243,7 +243,7 @@ RoughView()
 | `.fillPadding` | 0 | Inset of the fill from the outline, in points. Negative grows the fill |
 | `.fillOffset` | `.zero` | Shifts the fill relative to the outline |
 | `.seed` | `nil` | Stable random sequence. `nil` picks a new drawing on a cache miss |
-| `.strokeContinuity` | `.legacy` | `.continuous` draws native outlines as a few cubic Beziers |
+| `.strokeContinuity` | `.continuous` | `.legacy` samples native outlines at `curveStepCount` |
 
 ### Fill angle
 
@@ -259,16 +259,21 @@ Crayon grain uses `CrayonStyle.seed`. When that seed is still `CrayonStyle.defau
 
 ### Stroke continuity
 
-`.strokeContinuity(.legacy)` is the default. Curved outlines are still sampled at `.curveStepCount` and stitched into short cubics. `.strokeContinuity(.continuous)` replaces that for `line`, `rectangle`, `ellipse`, `circle`, `linearPath`, `polygon`, `arc`, `roundedRectangle`, and `egg`: a circle is four cubics per pass, and a polygon is one subpath per pass with shared corners. `curve`, SVG paths, and text stay on the sampled path. `RoughText` has the same modifier for parity.
+`.strokeContinuity(.continuous)` is the default for `line`, `rectangle`, `ellipse`, `circle`, `linearPath`, `polygon`, `arc`, `roundedRectangle`, and `egg`. A circle is four cubics per pass, and a polygon is one subpath per pass with shared corners. `curve`, SVG paths, and text stay on the sampled path. `RoughText` has the same modifier for parity. `.strokeContinuity(.legacy)` samples those outlines at `.curveStepCount` and stitches the samples into short cubics.
 
 ```swift
 RoughView()
     .stroke(Color(red: 0.12, green: 0.14, blue: 0.18))
     .strokeWidth(3)
-    .strokeContinuity(.continuous)
     .seed(42)
     .circle()
     .frame(width: 240, height: 240)
+```
+
+```swift
+RoughView()
+    .strokeContinuity(.legacy)
+    .circle()
 ```
 
 ### Scribble
@@ -282,6 +287,8 @@ RoughView()
 | `.scribbleCurvature` | 0 | 0 to 50 |
 | `.scribbleUseBrushStroke` | false | Draw the zig-zag with the current brush |
 | `.scribbleTightnessPattern` | none | Density bands, such as `[6, 24, 8, 28]` |
+
+SVG paths and native polygons clip the scribble to the padded fill, so a concave outline cannot leak across notches. Rectangles, circles, and ellipses are not clipped.
 
 ### SVG paths
 

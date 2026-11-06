@@ -308,7 +308,7 @@ extension DocExampleCatalog {
             "egg",
             section: "Shapes",
             title: "Egg",
-            description: "tilt 0.4 narrows the top. curveStepCount(16) sets how many samples build the outline.",
+            description: "tilt 0.4 narrows the top. The outline is four continuous cubics per pass. curveStepCount(16) samples the hachure polygon.",
             snippet: """
             RoughView()
                 .fill(\(plum.snippet))

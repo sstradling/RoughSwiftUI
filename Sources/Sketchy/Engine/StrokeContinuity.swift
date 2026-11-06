@@ -33,10 +33,10 @@ import Foundation
 ///
 /// ## Defaults and migration
 ///
-/// Default is `.legacy` so existing snapshots, fixtures, and callers keep
-/// the sampled outline. Opt in per-view with
-/// `RoughView.strokeContinuity(.continuous)`. Flipping the default is a
-/// separate change, after side-by-side visual review.
+/// Default is `.continuous`. Sketchy favors continuous hand-drawn borders
+/// over sampled-point curve approximations. Use `.legacy` only when you
+/// specifically need the original rough.js-style sampled outlines, via
+/// `RoughView.strokeContinuity(.legacy)`.
 public enum StrokeContinuity: Equatable, Hashable, Sendable {
     /// Original behavior: sample `curveStepCount` points around curved
     /// outlines and Catmull-Rom-stitch them with per-sample jitter.

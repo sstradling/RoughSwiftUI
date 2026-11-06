@@ -49,7 +49,7 @@ Modifiers write `Options`. Stored defaults:
 | `fillSpacingPattern` | `nil` |
 | `curveTightness` | `0` |
 | `curveStepCount` | `9` |
-| `strokeContinuity` | `.legacy`. `.continuous` draws native outlines as a few cubic Beziers. `curve`, SVG paths, and text stay sampled |
+| `strokeContinuity` | `.continuous`. Native outlines are a few cubic Beziers. `.legacy` samples at `curveStepCount`. `curve`, SVG paths, and text stay sampled |
 | `seed` | `nil` (`UInt64?`). `nil` is a new drawing on a cache miss |
 | `dashOffset`, `dashGap`, `zigzagOffset` | `-1` (automatic) |
 | `brushProfile` | `.default` |
@@ -154,6 +154,8 @@ When `Options.seed` is set and the crayon seed is still `1`, grain uses `Options
 | `scribbleTightnessPattern` | `nil` | Per-band tightness, such as `[10, 30, 10]` |
 
 `scribble(origin:tightness:curvature:useBrushStroke:)` and `scribble(origin:tightnessPattern:curvature:useBrushStroke:)` set the same fields.
+
+SVG paths and native polygons clip the scribble to the padded fill path, so a concave outline does not leak across notches. Rectangles, circles, and ellipses are not clipped.
 
 ## Animation
 

@@ -54,7 +54,7 @@ struct OptionsView: View {
 
                 Divider()
 
-                section("Stroke continuity", detail: "Same seed. Legacy samples the circle. Continuous uses four cubics per pass.") {
+                section("Stroke continuity", detail: "Same seed. Continuous is the default: four cubics per pass. Legacy samples the circle.") {
                     HStack(spacing: 16) {
                         continuitySample("legacy", continuity: .legacy)
                         continuitySample("continuous", continuity: .continuous)
