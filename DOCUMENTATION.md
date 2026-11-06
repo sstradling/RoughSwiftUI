@@ -1057,6 +1057,7 @@ Color alone, grain on white, or both:
 .stickerBacking(width: 14, color: Color(red: 0.96, green: 0.93, blue: 0.84))
 .stickerBacking(width: 14, texture: .paper())
 .stickerBacking(width: 14, color: UIColor(red: 0.96, green: 0.93, blue: 0.84, alpha: 1), texture: .paper(seed: 42))
+.stickerBacking(width: 22, smoothness: 1, edge: .fullySmooth())
 ```
 
 ### StickerBacking
@@ -1065,7 +1066,7 @@ Color alone, grain on white, or both:
 |-----------|---------|-------------|
 | `width` | none | Margin past the nominal stroke, in points. `0` draws nothing |
 | `smoothness` | `0` | `0` follows the rough outline. `1` follows the input silhouette. Clamped to `0...1` |
-| `edge` | `.smooth` | `.smooth` or `.torn(StickerTear())` |
+| `edge` | `.smooth` | `.smooth` keeps corners. `.fullySmooth()` rounds the whole edge. `.torn(StickerTear())` chops it |
 | `color` | white | `UIColor`, or `Color` on the view modifier. Alpha is honored |
 | `texture` | `nil` | `StickerTexture` fibers inside the sheet. `nil` is flat color |
 
@@ -1101,7 +1102,7 @@ Color alone, grain on white, or both:
 
 `.strokeContinuity(.legacy)` draws rectangles and polygons as open edge strokes, so the backing is a ribbon along each edge. Use `.continuous` (the default) for a die-cut sheet.
 
-A `.smooth` sheet is drawn as curves between real corners, so an egg or circle reads as a continuous edge instead of a faceted polygon. Star points and rectangle corners stay sharp. `.torn` keeps the chopped straight facets. The offset still uses a clamped miter: a miter longer than about 3.2 times the margin is beveled. A notch tighter than the margin, or a torn edge that would cross itself, does not emit a self-intersecting fill. Tear depth is reduced first. If the offset still crosses, that closed contour falls back to a round dilation (filled centerline plus a round stroke). Grain on that fallback clips to the interior; the dilation stroke stays flat.
+`.smooth` draws curves between real corners, so star points and rectangle corners stay sharp. A sampled egg can still show those corners. `.fullySmooth()` or `.fullySmooth(radius:)` is a separate choice: the tangent stays continuous all the way around, including the closed seam, and silhouette corners are rounded. `radius` `0` picks a length from the outline that removes sampled facets. `.torn` keeps the chopped straight facets. `smoothness` still only chooses the rough outline or the input silhouette. The offset still uses a clamped miter: a miter longer than about 3.2 times the margin is beveled. A notch tighter than the margin, or a torn edge that would cross itself, does not emit a self-intersecting fill. Tear depth is reduced first. If the offset still crosses, that closed contour falls back to a round dilation (filled centerline plus a round stroke). Grain on that fallback clips to the interior; the dilation stroke stays flat.
 
 Crayon and watercolor paint after the sheet, so the paper shows past the mark. Wax grit and a wet fringe can extend past the nominal stroke. Give those brushes a larger `width` if the texture should stay on the paper.
 

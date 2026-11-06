@@ -30,6 +30,9 @@ final class StickerBackingPreviewTests: XCTestCase {
         XCTAssertGreaterThan(facetedEdge.boundingRect.width, 40)
         try write(edgeCloseup, name: "sticker-egg-edge-closeup.png", to: directory)
         try write(surfaceCard, name: "sticker-color-texture.png", to: directory)
+        try write(edgeModes, name: "sticker-egg-fully-smooth.png", width: 1040, height: 520, to: directory)
+        try write(fullEgg, name: "sticker-fully-smooth-egg-closeup.png", width: 760, height: 900, to: directory)
+        try write(starModes, name: "sticker-fully-smooth-star.png", width: 860, height: 520, to: directory)
     }
 
     private var starCard: some View {
@@ -281,10 +284,98 @@ final class StickerBackingPreviewTests: XCTestCase {
         }
     }
 
-    private func write<Content: View>(_ content: Content, name: String, to directory: URL) throws {
+    private var edgeModes: some View {
+        sizedCard("Same egg, tilt 0.42, width 22. Corner-preserving, fully smooth, torn.", width: 1040, height: 520) {
+            HStack(alignment: .top, spacing: 18) {
+                labeledEgg("Corner-preserving", edge: .smooth)
+                labeledEgg("Fully smooth", edge: .fullySmooth())
+                labeledEgg("Torn", edge: .torn(StickerTear(depth: 8, length: 16, jaggedness: 0.4)))
+            }
+        }
+    }
+
+    private var fullEgg: some View {
+        sizedCard("Fully smooth egg. Entire cutout, tilt 0.42, width 22.", width: 760, height: 900) {
+            VStack(spacing: 16) {
+                Text("Continuous edge, no cropped shape")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundStyle(Color(white: 0.93))
+                previewEgg(edge: .fullySmooth())
+                    .frame(width: 240, height: 300)
+                    .scaleEffect(2.15)
+                    .frame(width: 640, height: 700)
+            }
+            .frame(maxWidth: .infinity)
+        }
+    }
+
+    private var starModes: some View {
+        sizedCard("Fully smooth rounds star corners. Corner-preserving keeps them.", width: 860, height: 520) {
+            HStack(alignment: .top, spacing: 28) {
+                VStack(spacing: 8) {
+                    star(backing: StickerBacking(width: 14, smoothness: 1, edge: .smooth))
+                        .frame(width: 280, height: 300)
+                    Text("Corner-preserving")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundStyle(Color(white: 0.93))
+                }
+                VStack(spacing: 8) {
+                    star(backing: StickerBacking(width: 14, smoothness: 1, edge: .fullySmooth()))
+                        .frame(width: 280, height: 300)
+                    Text("Fully smooth")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundStyle(Color(white: 0.93))
+                }
+            }
+            .frame(maxWidth: .infinity)
+        }
+    }
+
+    private func labeledEgg(_ label: String, edge: StickerEdge) -> some View {
+        VStack(spacing: 8) {
+            previewEgg(edge: edge)
+                .frame(width: 280, height: 340)
+            Text(label)
+                .font(.system(size: 16, weight: .medium))
+                .foregroundStyle(Color(white: 0.93))
+        }
+    }
+
+    /// The egg from the wide-margin preview: tilt 0.42, backing width 22.
+    private func previewEgg(edge: StickerEdge) -> RoughView {
+        egg(backing: StickerBacking(width: 22, smoothness: 1, edge: edge))
+    }
+
+    private func sizedCard<Content: View>(
+        _ title: String,
+        width: CGFloat,
+        height: CGFloat,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text(title)
+                .font(.system(size: 22, weight: .semibold))
+                .foregroundStyle(Color(white: 0.96))
+            content()
+        }
+        .padding(28)
+        .frame(width: width, height: height, alignment: .top)
+        .background(slate)
+    }
+
+    private func write<Content: View>(
+        _ content: Content,
+        name: String,
+        width: CGFloat? = nil,
+        height: CGFloat? = nil,
+        to directory: URL
+    ) throws {
         let renderer = ImageRenderer(content: content)
         renderer.scale = 2
-        renderer.proposedSize = ProposedViewSize(width: cardWidth, height: cardHeight)
+        renderer.proposedSize = ProposedViewSize(
+            width: width ?? cardWidth,
+            height: height ?? cardHeight
+        )
         renderer.isOpaque = true
         let image = try XCTUnwrap(renderer.uiImage, "No image for \(name)")
         let data = try XCTUnwrap(image.pngData(), "No PNG for \(name)")

@@ -1036,7 +1036,7 @@ RoughView()
 
 ## Stickers
 
-A white sheet behind the ink. Smoothness 0 follows the rough edge and 1 follows the input silhouette. Torn chops the margin. The slate rectangle is gallery chrome so the white paper shows. It is not part of the snippet.
+A sheet behind the ink. Smoothness chooses the rough edge or the input silhouette. .smooth keeps corners, .fullySmooth() rounds the whole cut, and torn chops the margin. The slate rectangle is gallery chrome so the white paper shows. It is not part of the snippet.
 
 ### Sticker star
 
@@ -1146,6 +1146,25 @@ RoughView()
         texture: .paper(amount: 0.55, scale: 10, seed: 18)
     )
     .egg(tilt: 0.4)
+```
+
+### Fully smooth edge
+
+fullySmooth rounds the whole cutout, including corners of the sampled egg. smoothness still only chooses the silhouette. The slate mat is gallery chrome.
+
+![Fully smooth edge](images/stickers/sticker-fully-smooth.png)
+
+```swift
+RoughView()
+    .fill(Color(red: 0.22, green: 0.48, blue: 0.34))
+    .fillStyle(.hachure)
+    .fillAngle(0)
+    .fillSpacing(3)
+    .stroke(Color(red: 0.12, green: 0.14, blue: 0.18))
+    .strokeWidth(2)
+    .seed(17)
+    .stickerBacking(width: 22, smoothness: 1, edge: .fullySmooth())
+    .egg(tilt: 0.42)
 ```
 
 ## Seeding

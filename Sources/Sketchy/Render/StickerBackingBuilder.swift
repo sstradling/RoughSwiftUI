@@ -23,6 +23,8 @@ enum StickerBackingBuilder {
     struct Centerline {
         var points: [CGPoint]
         var closed: Bool
+        /// Outline before smoothness moves it toward the silhouette.
+        var source: [CGPoint] = []
     }
 
     /// Smoothed outline centerlines. Width does not move these points.
@@ -46,7 +48,7 @@ enum StickerBackingBuilder {
                 amplitude: amplitude
             )
             let spaced = resample(aimed, closed: piece.closed, spacing: 2.5)
-            return Centerline(points: spaced, closed: piece.closed)
+            return Centerline(points: spaced, closed: piece.closed, source: piece.points)
         }
     }
 
@@ -72,7 +74,7 @@ enum StickerBackingBuilder {
         guard outward > 0 else { return [] }
 
         let paper = Color(backing.color)
-        let tear = tearSettings(backing, seed: options.seed ?? 0xA11C_E571_C4E0)
+        let finish = paperFinish(backing, seed: options.seed ?? 0xA11C_E571_C4E0)
         var commands: [RoughRenderCommand] = []
 
         let closed = lines.filter(\.closed)
@@ -82,7 +84,7 @@ enum StickerBackingBuilder {
             commands.append(contentsOf: closedCommands(
                 closed,
                 outward: outward,
-                tear: tear,
+                finish: finish,
                 texture: backing.texture,
                 seed: options.seed,
                 color: paper,
@@ -94,7 +96,7 @@ enum StickerBackingBuilder {
         if ribbon > 0 {
             for (index, line) in open.enumerated() where line.points.count >= 2 {
                 var points = line.points
-                if let tear {
+                if case .torn(let tear) = finish {
                     points = chop(
                         points,
                         closed: false,
@@ -103,14 +105,22 @@ enum StickerBackingBuilder {
                         jaggedness: tear.jaggedness,
                         seed: tear.seed &+ UInt64(index) &+ 0x0F1E
                     )
+                } else if case .continuous(let radius) = finish {
+                    points = continuousOutline(points, closed: false, radius: radius)
                 }
-                let curved = tear == nil
-                let center = contourPath(points, closed: false, curved: curved)
+                let torn = if case .torn = finish { true } else { false }
+                let continuous = if case .continuous = finish { true } else { false }
+                let center = contourPath(
+                    points,
+                    closed: false,
+                    curved: !torn,
+                    continuous: continuous
+                )
                 commands.append(RoughRenderCommand(
                     path: center,
                     style: .stroke(paper, lineWidth: ribbon),
                     cap: .round,
-                    join: tear == nil ? .round : .bevel,
+                    join: torn ? .bevel : .round,
                     miterLimit: 4
                 ))
                 if let texture = backing.texture, texture.amount > 0.01 {
@@ -118,7 +128,7 @@ enum StickerBackingBuilder {
                         from: center,
                         width: ribbon,
                         cap: .round,
-                        join: tear == nil ? .round : .bevel,
+                        join: torn ? .bevel : .round,
                         miterLimit: 4
                     )
                     commands.append(contentsOf: textureCommands(
@@ -143,14 +153,27 @@ enum StickerBackingBuilder {
         var seed: UInt64
     }
 
-    private static func tearSettings(_ backing: StickerBacking, seed: UInt64) -> TearSettings? {
-        guard case .torn(let tear) = backing.edge else { return nil }
-        return TearSettings(
-            depth: tear.resolvedDepth(width: backing.width),
-            length: max(4, tear.length),
-            jaggedness: min(1, max(0, tear.jaggedness)),
-            seed: seed ^ 0x571C_4E5E_ED00
-        )
+    /// How the paper edge is finished after the offset.
+    private enum PaperFinish {
+        case corners
+        case continuous(CGFloat)
+        case torn(TearSettings)
+    }
+
+    private static func paperFinish(_ backing: StickerBacking, seed: UInt64) -> PaperFinish {
+        switch backing.edge {
+        case .smooth:
+            return .corners
+        case .fullySmooth(let radius):
+            return .continuous(max(0, radius))
+        case .torn(let tear):
+            return .torn(TearSettings(
+                depth: tear.resolvedDepth(width: backing.width),
+                length: max(4, tear.length),
+                jaggedness: min(1, max(0, tear.jaggedness)),
+                seed: seed ^ 0x571C_4E5E_ED00
+            ))
+        }
     }
 
     /// Fills the offset rings. A ring that cannot be offset without crossing
@@ -159,7 +182,7 @@ enum StickerBackingBuilder {
     private static func closedCommands(
         _ lines: [Centerline],
         outward: CGFloat,
-        tear: TearSettings?,
+        finish: PaperFinish,
         texture: StickerTexture?,
         seed: UInt64?,
         color: Color,
@@ -170,15 +193,24 @@ enum StickerBackingBuilder {
         var offsets: [[CGPoint]] = []
         offsets.reserveCapacity(rings.count)
         var failed = false
+        let continuous = if case .continuous = finish { true } else { false }
+        let torn = if case .torn = finish { true } else { false }
         for (index, line) in rings.enumerated() {
             // Even nesting (outer shape, or an island in a hole) grows.
             // Odd nesting is a hole, so the ring shrinks and the cutout keeps a margin.
             let signed = nestingDepth(index, in: rings).isMultiple(of: 2) ? outward : -outward
-            guard var ring = offsetClosed(line.points, by: signed) else {
+            let coverageBase = line.source.count >= 3 ? line.source : line.points
+            let coverage = offsetClosed(coverageBase, by: signed)
+            var source = line.points
+            if case .continuous(let radius) = finish {
+                source = continuousOutline(source, closed: true, radius: radius)
+            }
+            guard var ring = offsetClosed(source, by: signed) else {
                 failed = true
                 break
             }
-            if let tear {
+            switch finish {
+            case .torn(let tear):
                 ring = choppedOffset(
                     ring,
                     depth: tear.depth,
@@ -186,16 +218,37 @@ enum StickerBackingBuilder {
                     jaggedness: tear.jaggedness,
                     seed: tear.seed &+ UInt64(index)
                 )
+            case .continuous(let radius):
+                // A short pass removes the offset's miter nubs without
+                // pulling the margin back onto the ink.
+                let polish = radius > 0 ? min(10, max(5, radius * 0.3)) : 7
+                ring = continuousOutline(ring, closed: true, radius: polish)
+                if let coverage {
+                    ring = expandToCover(coverage, ring)
+                }
+            case .corners:
+                break
             }
             offsets.append(ring)
         }
 
         if !failed, offsets.count == rings.count, !offsets.isEmpty {
-            let paper = compoundPath(offsets, closed: true, curved: tear == nil)
+            let paper = compoundPath(offsets, closed: true, curved: !torn, continuous: continuous)
             return sheetCommands(paper, color: color, uiColor: uiColor, texture: texture, seed: seed)
         }
 
-        let center = compoundPath(lines.map(\.points), closed: true, curved: tear == nil)
+        let sources = lines.map { line -> [CGPoint] in
+            if case .continuous(let radius) = finish {
+                return continuousOutline(line.points, closed: line.closed, radius: radius)
+            }
+            return line.points
+        }
+        let center = compoundPath(
+            sources,
+            closed: true,
+            curved: !torn,
+            continuous: continuous
+        )
         let dilation = max(outward * 2, 0.5)
         var commands = [
             RoughRenderCommand(path: center, style: .fill(color), fillRule: .evenOdd),
@@ -617,6 +670,100 @@ enum StickerBackingBuilder {
         return points.indices.compactMap { keep[$0] ? points[$0] : nil }
     }
 
+    /// Removes polygon flats by blurring along the outline. The result is
+    /// scaled back to the original average radius so the margin stays put.
+    /// A self-crossing blur is retried with a shorter radius.
+    private static func continuousOutline(
+        _ points: [CGPoint],
+        closed: Bool,
+        radius: CGFloat
+    ) -> [CGPoint] {
+        let spacing: CGFloat = 1.6
+        let sampled = resample(points, closed: closed, spacing: spacing)
+        let ring = clean(sampled, dropClosingDuplicate: closed)
+        guard ring.count >= 8 else { return points }
+        let perimeter = length(of: ring, closed: closed)
+        let automatic = max(16, perimeter * 0.055)
+        var sigma = radius > 0 ? radius : automatic
+        let originalArea = signedArea(ring)
+        var best = ring
+        for _ in 0..<4 {
+            let blurred = gaussian(ring, closed: closed, sigma: max(4, sigma))
+            let restored = restoreMeanRadius(blurred, matching: ring)
+            let area = signedArea(restored)
+            let simple = closed
+                ? !segmentsIntersect(restored) && area * originalArea > 0
+                : true
+            if simple {
+                return restored
+            }
+            best = restored
+            sigma *= 0.55
+            if sigma < 4 { break }
+        }
+        return best
+    }
+
+    /// Scales `shape` about its centroid until it contains `cover`.
+    /// A uniform scale keeps the continuous tangent.
+    private static func expandToCover(_ cover: [CGPoint], _ shape: [CGPoint]) -> [CGPoint] {
+        let origin = centroid(shape)
+        func scaled(_ factor: CGFloat) -> [CGPoint] {
+            shape.map { point in
+                CGPoint(
+                    x: origin.x + (point.x - origin.x) * factor,
+                    y: origin.y + (point.y - origin.y) * factor
+                )
+            }
+        }
+        func covers(_ ring: [CGPoint]) -> Bool {
+            cover.allSatisfy { contains($0, polygon: ring) }
+        }
+        if covers(shape) { return shape }
+        var low: CGFloat = 1
+        var high: CGFloat = 1.06
+        var guardScale: CGFloat = 1
+        while high < 1.8 && !covers(scaled(high)) {
+            low = high
+            high += 0.06
+            guardScale += 0.06
+            if guardScale > 1.8 { break }
+        }
+        if !covers(scaled(high)) { return scaled(high) }
+        for _ in 0..<8 {
+            let mid = (low + high) * 0.5
+            if covers(scaled(mid)) {
+                high = mid
+            } else {
+                low = mid
+            }
+        }
+        return scaled(high * 1.02)
+    }
+
+    /// Puts the blurred ring back at the source ring's average size.
+    private static func restoreMeanRadius(_ points: [CGPoint], matching target: [CGPoint]) -> [CGPoint] {
+        let origin = centroid(points)
+        let before = meanRadius(target, around: centroid(target))
+        let after = meanRadius(points, around: origin)
+        guard after > 0.5, before > 0.5 else { return points }
+        let scale = min(1.25, max(0.8, before / after))
+        return points.map { point in
+            CGPoint(
+                x: origin.x + (point.x - origin.x) * scale,
+                y: origin.y + (point.y - origin.y) * scale
+            )
+        }
+    }
+
+    private static func meanRadius(_ points: [CGPoint], around origin: CGPoint) -> CGFloat {
+        guard !points.isEmpty else { return 0 }
+        let total = points.reduce(CGFloat.zero) { partial, point in
+            partial + hypot(point.x - origin.x, point.y - origin.y)
+        }
+        return total / CGFloat(points.count)
+    }
+
     private static func gaussian(_ points: [CGPoint], closed: Bool, sigma: CGFloat) -> [CGPoint] {
         let radius = sigma * 3
         let count = points.count
@@ -843,17 +990,36 @@ enum StickerBackingBuilder {
     /// corner is 90°, and a star tip is sharper still.
     private static let cornerTurn: CGFloat = 0.90
 
-    private static func compoundPath(_ rings: [[CGPoint]], closed: Bool, curved: Bool) -> SwiftUI.Path {
+    private static func compoundPath(
+        _ rings: [[CGPoint]],
+        closed: Bool,
+        curved: Bool,
+        continuous: Bool = false
+    ) -> SwiftUI.Path {
         var path = SwiftUI.Path()
         for ring in rings where ring.count >= 2 {
-            path.addPath(contourPath(ring, closed: closed && ring.count >= 3, curved: curved))
+            path.addPath(contourPath(
+                ring,
+                closed: closed && ring.count >= 3,
+                curved: curved,
+                continuous: continuous
+            ))
         }
         return path
     }
 
     /// Smooth paper between corners. Torn paper and short runs stay lines.
-    static func contourPath(_ points: [CGPoint], closed: Bool, curved: Bool) -> SwiftUI.Path {
+    /// `continuous` ignores corners so the tangent does not break.
+    static func contourPath(
+        _ points: [CGPoint],
+        closed: Bool,
+        curved: Bool,
+        continuous: Bool = false
+    ) -> SwiftUI.Path {
         let ring = clean(points, dropClosingDuplicate: closed)
+        if continuous, ring.count >= 4 {
+            return closed ? closedSpline(ring) : openSpline(ring)
+        }
         guard curved, ring.count >= 4 else {
             return polyline(ring.isEmpty ? points : ring, closed: closed && ring.count >= 3)
         }

@@ -282,6 +282,43 @@ final class StickerBackingTests: XCTestCase {
         XCTAssertGreaterThan(elementKinds(tornPath).lines, 8)
     }
 
+    func testFullySmoothEggHasNoFacetSpikesAndRoundsAStar() throws {
+        let size = CGSize(width: 240, height: 280)
+        func backedEgg(_ edge: StickerEdge) throws -> SwiftUI.Path {
+            var options = cleanOptions()
+            options.strokeWidth = 2
+            options.stickerBacking = StickerBacking(width: 22, smoothness: 1, edge: edge)
+            return try paperPath(
+                EggShape(x: 120, y: 140, width: 86, height: 124, tilt: 0.42),
+                options: options,
+                size: size
+            )
+        }
+        let preserving = try backedEgg(.smooth)
+        let rounded = try backedEgg(.fullySmooth())
+        let again = try backedEgg(.fullySmooth())
+        XCTAssertEqual(samples(rounded), samples(again))
+        XCTAssertEqual(isolatedFacets(turningSamples(rounded, spacing: 6)), 0)
+        XCTAssertLessThan(
+            turningSamples(rounded, spacing: 6).max() ?? 1,
+            (turningSamples(preserving, spacing: 6).max() ?? 0) * 0.75
+        )
+        XCTAssertGreaterThan(elementKinds(rounded).curves, 12)
+
+        let starSize = CGSize(width: 220, height: 200)
+        let starShape = Polygon(points: star(cx: 110, cy: 100, outer: 70, inner: 28))
+        func backedStar(_ edge: StickerEdge) throws -> SwiftUI.Path {
+            var options = cleanOptions()
+            options.stickerBacking = StickerBacking(width: 12, smoothness: 1, edge: edge)
+            return try paperPath(starShape, options: options, size: starSize)
+        }
+        let sharp = turningSamples(try backedStar(.smooth), spacing: 6).max() ?? 0
+        let soft = turningSamples(try backedStar(.fullySmooth()), spacing: 6).max() ?? 0
+        XCTAssertGreaterThan(sharp, 0.85)
+        XCTAssertLessThan(soft, sharp - 0.25)
+        XCTAssertEqual(isolatedFacets(turningSamples(try backedStar(.fullySmooth()), spacing: 6)), 0)
+    }
+
     func testTextureIsSeededClippedAndOptional() throws {
         let size = CGSize(width: 180, height: 160)
         var options = cleanOptions()

@@ -35,6 +35,7 @@ struct WhatsNewView: View {
                             stickerSample("none", backing: nil)
                             stickerSample("close", backing: StickerBacking(width: 10, smoothness: 0.05))
                             stickerSample("silhouette", backing: StickerBacking(width: 10, smoothness: 1))
+                            stickerSample("fully smooth", backing: StickerBacking(width: 10, smoothness: 1, edge: .fullySmooth()))
                             stickerSample(
                                 "torn",
                                 backing: StickerBacking(

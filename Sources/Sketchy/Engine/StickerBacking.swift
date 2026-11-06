@@ -9,10 +9,18 @@ import UIKit
 
 /// How the paper edge is cut.
 public enum StickerEdge: Equatable, Hashable, Sendable {
-    /// A simplified offset of the contour. Corners keep a clamped miter so a
-    /// star point stays a point; a miter longer than about 3.2 times the
-    /// margin becomes a bevel.
+    /// Curves between real corners. An egg can still show the sampled
+    /// silhouette's vertices. Star points and rectangle corners stay sharp.
     case smooth
+
+    /// Continuous tangent around the whole sheet, including the closed seam.
+    ///
+    /// Corners of the silhouette are rounded on purpose. This is separate
+    /// from `StickerBacking.smoothness`, which only chooses the rough outline
+    /// or the input silhouette. `radius` is how far along the edge the
+    /// rounding reaches, in points. `0` picks a radius from the outline
+    /// length that removes sampled facets.
+    case fullySmooth(radius: CGFloat = 0)
 
     /// Chopped facets. `depth` of `0` uses 55% of the backing width, at least
     /// 3 points. The same `Options.seed` repeats the chops.
@@ -148,6 +156,8 @@ public struct StickerBacking: Equatable, Hashable {
         switch edge {
         case .smooth:
             return .smooth
+        case .fullySmooth(let radius):
+            return .fullySmooth(radius: max(0, radius))
         case .torn(let tear):
             return .torn(StickerTear(
                 depth: tear.depth,

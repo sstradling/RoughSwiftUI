@@ -179,6 +179,36 @@ extension DocExampleCatalog {
                     texture: .paper(amount: 0.55, scale: 10, seed: 18)
                 )
                 .egg(tilt: 0.4)
+        },
+        still(
+            "sticker-fully-smooth",
+            section: "Stickers",
+            title: "Fully smooth edge",
+            description: "fullySmooth rounds the whole cutout, including corners of the sampled egg. smoothness still only chooses the silhouette. The slate mat is gallery chrome.",
+            snippet: """
+            RoughView()
+                .fill(\(leaf.snippet))
+                .fillStyle(.hachure)
+                .fillAngle(0)
+                .fillSpacing(3)
+                .stroke(\(charcoal.snippet))
+                .strokeWidth(2)
+                .seed(17)
+                .stickerBacking(width: 22, smoothness: 1, edge: .fullySmooth())
+                .egg(tilt: 0.42)
+            """,
+            picture: .stickerMat
+        ) {
+            RoughView()
+                .fill(leaf.color)
+                .fillStyle(.hachure)
+                .fillAngle(0)
+                .fillSpacing(3)
+                .stroke(charcoal.color)
+                .strokeWidth(2)
+                .seed(17)
+                .stickerBacking(width: 22, smoothness: 1, edge: .fullySmooth())
+                .egg(tilt: 0.42)
         }
     ]
 }
