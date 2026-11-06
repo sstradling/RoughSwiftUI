@@ -73,6 +73,7 @@ import Sketchy
 | `CrayonStyle` | Wax-crayon grain, edge, and seed | Used by `BrushProfile.crayon` |
 | `OpacityProfile` | Opacity along a stroke | Uniform, values, stops, or seeded noise |
 | `WatercolorStyle` | Wet-wash pigment, rim, and seed | Used by `BrushProfile.watercolor` and `.fillStyle(.watercolor)` |
+| `NativeStrokeOutline` | Filled outline of a uniform-width stroke | `NativeStrokeOutline.path(from:width:cap:join:miterLimit:)` |
 | `AnimationConfig` | Animation settings | Steps, speed, variance |
 
 ### Point
@@ -131,8 +132,9 @@ Pass any `Drawable` type for precise positioning.
 | Modifier | Parameter | Default | Description |
 |----------|-----------|---------|-------------|
 | `.strokeWidth(_ value:)` | `Float` | 1 | Line width in points |
-| `.strokeCap(_ cap:)` | `BrushCap` | `.round` | Line ending style |
-| `.strokeJoin(_ join:)` | `BrushJoin` | `.round` | Corner style |
+| `.strokeCap(_ cap:)` | `BrushCap` | `.round` | Line ending style. Also on `RoughText` |
+| `.strokeJoin(_ join:)` | `BrushJoin` | `.round` | Corner style: `.miter`, `.round`, `.bevel`, `.curvedBevel(bulge:)`. Also on `RoughText` |
+| `.strokeMiterLimit(_ value:)` | `CGFloat` | 10 | Maximum miter spike ratio before bevel fallback. Also on `RoughText`. Values below 1 clamp to 1 |
 
 ### Roughness Modifiers
 
@@ -472,6 +474,7 @@ public struct Options: Equatable, Hashable {
     public var stroke: UIColor = .black
     public var strokeWidth: Float = 1
     public var strokeOpacity: Float = 1.0  // 0.0 - 1.0
+    public var strokeMiterLimit: CGFloat = 10 // miter length / width; values below 1 clamp to 1
     
     // Fill
     public var fill: UIColor = .clear
@@ -717,11 +720,58 @@ public enum BrushCap: Equatable, Hashable, Sendable {
 
 ```swift
 public enum BrushJoin: Equatable, Hashable, Sendable {
-    case miter   // Sharp corner
-    case round   // Rounded corner (default)
-    case bevel   // Flat corner
+    case miter   // Sharp corner, limited by strokeMiterLimit
+    case round   // Circular arc centred on the vertex
+    case bevel   // Straight chord across the corner
+    case curvedBevel(bulge: CGFloat) // Quadratic bow between the bevel corners
 }
 ```
+
+`.curvedBevel` is not a circular arc. The curve starts and ends on the same two outer corners as a bevel, and the control point moves from the chord (`bulge` 0) toward the miter tip (`bulge` 1). `BrushJoin.defaultCurvedBevelBulge` is `0.65`, and `BrushJoin.standardCurvedBevel` uses it. Values below `0` or above `1` clamp when the join is drawn. CoreGraphics has no such join (`cgLineJoin` reports `.bevel`). A uniform stroke is filled from `NativeStrokeOutline`. Variable-width ribbons, crayon, and watercolor use the same join at a sharp corner. Smooth cubics, including the continuous default, do not. Crayon adds wax along the join without moving the grain on a straight stroke. Watercolor pins the corner before it smooths the centreline, and the dark rim skips that corner so the wash is not crossed by a second dark chord.
+
+Use `.strokeMiterLimit(_:)` with `.strokeJoin(.miter)` to control how far
+sharp corners may extend before falling back to a bevel join. Lower values
+clamp spikes sooner; higher values allow longer pointed corners.
+
+```swift
+RoughView()
+    .strokeJoin(.miter)
+    .strokeMiterLimit(2)
+    .draw(Polygon(points: points))
+```
+
+### NativeStrokeOutline
+
+```swift
+public enum NativeStrokeOutline {
+    public static func path(
+        from path: SwiftUI.Path,
+        width: CGFloat,
+        cap: BrushCap,
+        join: BrushJoin,
+        miterLimit: CGFloat = 10
+    ) -> SwiftUI.Path
+
+    public static func path(
+        operations: [Operation],
+        width: CGFloat,
+        cap: BrushCap,
+        join: BrushJoin,
+        miterLimit: CGFloat = 10
+    ) -> SwiftUI.Path
+}
+```
+
+`NativeStrokeOutline` asks CoreGraphics to convert a uniform-width stroke
+into a filled outline for `.miter`, `.round`, and `.bevel`, including the
+miter limit. `.curvedBevel` is built by the same offset-join helper the
+variable-width converter uses, because CoreGraphics cannot draw it. Use the
+result for clipping or compositing. `RoughView` and `RoughText` both expose
+`.strokeMiterLimit(_:)`. The value is stored on `Options.strokeMiterLimit`
+(default `10`) and included in `Options.cacheHash`. Values below `1` clamp
+to `1`. Taper, a calligraphic tip, and width stops go through
+`StrokeToFillConverter`, which now applies the same miter, bevel, round, and
+curved-bevel joins where the tangent breaks. A smooth curve does not.
 
 ### BrushProfile
 

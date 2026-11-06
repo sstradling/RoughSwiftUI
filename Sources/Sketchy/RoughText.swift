@@ -128,6 +128,22 @@ public extension RoughText {
     func strokeWidth(_ value: Float) -> Self {
         RoughText(roughView: roughView.strokeWidth(value), textSize: textSize)
     }
+
+    /// Set the stroke cap style for line endings.
+    func strokeCap(_ cap: BrushCap) -> Self {
+        RoughText(roughView: roughView.strokeCap(cap), textSize: textSize)
+    }
+
+    /// Set the stroke join style for corners.
+    func strokeJoin(_ join: BrushJoin) -> Self {
+        RoughText(roughView: roughView.strokeJoin(join), textSize: textSize)
+    }
+
+    /// Set the miter limit used when `strokeJoin(.miter)` is active.
+    /// See `RoughView.strokeMiterLimit(_:)` for details.
+    func strokeMiterLimit(_ value: CGFloat) -> Self {
+        RoughText(roughView: roughView.strokeMiterLimit(value), textSize: textSize)
+    }
     
     /// Set the fill pattern line weight.
     func fillWeight(_ value: Float) -> Self {

@@ -235,6 +235,9 @@ RoughView()
 | `.maxRandomnessOffset` | 2 | How far the two outline passes wander |
 | `.stroke` / `.fill` | black / clear | Line colour and interior colour |
 | `.strokeWidth` | 1 | Outline width, in points |
+| `.strokeCap` | `.round` | `.butt`, `.round`, or `.square`. Also on `RoughText` |
+| `.strokeJoin` | `.round` | `.miter`, `.round`, `.bevel`, or `.curvedBevel(bulge:)`. Also on `RoughText` |
+| `.strokeMiterLimit` | 10 | Longest miter, as a multiple of the stroke width, before a miter join becomes a bevel. Values below 1 clamp to 1. Also on `RoughText` |
 | `.strokeOpacity` / `.fillOpacity` | 100 | 0 is clear, 100 is opaque |
 | `.fillStyle` | `.hachure` | Interior pattern |
 | `.fillWeight` | half the stroke, at least 1 | Width of each fill line |
@@ -274,6 +277,37 @@ RoughView()
 RoughView()
     .strokeContinuity(.legacy)
     .circle()
+```
+
+### Caps, joins, and native outlines
+
+`.strokeJoin(.miter)` draws a pointed corner. `.strokeMiterLimit` is how long that point may get, measured as miter length divided by stroke width, before the corner falls back to a bevel. The default is `10`. A sharp polygon with a limit of `1` looks close to a bevel. `.round` is a circular arc centred on the vertex. `.curvedBevel(bulge:)` keeps the bevel's two outer corners and bows a quadratic toward the miter tip. `bulge` runs from `0` (a straight bevel) to `1` (the control sits on the miter tip, so the curve reaches halfway). `BrushJoin.standardCurvedBevel` uses `0.65`. CoreGraphics cannot draw that bow, so a uniform stroke is filled from the outline. Variable-width strokes (taper, a calligraphic tip, width stops), crayon, and watercolor use the same joins at a sharp tangent break. A smooth cubic is unchanged. Crayon keeps its wax grain. Watercolor keeps its glazes, and the dark rim does not cross the join. `RoughText` has the same cap, join, and miter-limit modifiers.
+
+```swift
+RoughView()
+    .stroke(Color(red: 0.12, green: 0.14, blue: 0.18))
+    .strokeWidth(8)
+    .strokeCap(.butt)
+    .strokeJoin(.miter)
+    .strokeMiterLimit(2)
+    .roughness(0)
+    .draw(Polygon(points: [
+        Point(x: 40, y: 180),
+        Point(x: 120, y: 24),
+        Point(x: 200, y: 180)
+    ]))
+```
+
+`NativeStrokeOutline` turns that uniform-width centerline into a filled path with the same CoreGraphics caps, joins, and miter limit. Use the filled path for clipping or masking. A width of `0` or less is an empty path. Taper, calligraphy, and width jitter still go through `StrokeToFillConverter`.
+
+```swift
+let outline = NativeStrokeOutline.path(
+    from: centerline,
+    width: 8,
+    cap: .butt,
+    join: .miter,
+    miterLimit: 2
+)
 ```
 
 ### Scribble

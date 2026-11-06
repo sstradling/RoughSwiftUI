@@ -455,15 +455,14 @@ public struct AnimatedRoughView: View {
     private func drawCommand(_ command: RoughRenderCommand, in context: inout GraphicsContext) {
         switch command.style {
         case let .stroke(color, lineWidth):
-            let strokeStyle = StrokeStyle(
+            UniformStrokePaint.draw(
+                path: command.path,
+                color: color,
                 lineWidth: lineWidth,
-                lineCap: command.cap.cgLineCap,
-                lineJoin: command.join.cgLineJoin
-            )
-            context.stroke(
-                command.path,
-                with: .color(color),
-                style: strokeStyle
+                cap: command.cap,
+                join: command.join,
+                miterLimit: command.miterLimit,
+                in: &context
             )
         case let .fill(color):
             context.fill(

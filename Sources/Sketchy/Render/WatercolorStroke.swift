@@ -29,7 +29,8 @@ enum WatercolorStroke {
         style: WatercolorStyle,
         strokeOpacity: CGFloat,
         color: Color,
-        nextGroup: inout Int
+        nextGroup: inout Int,
+        miterLimit: CGFloat = 10
     ) -> [RoughRenderCommand] {
         _ = nextGroup
         guard width >= 0.5, strokeOpacity > 0, style.pigment > 0 else { return [] }
@@ -52,7 +53,8 @@ enum WatercolorStroke {
                 strokeOpacity: strokeOpacity,
                 layer: layer,
                 edged: layer == 0,
-                strength: 1 - 0.12 * CGFloat(layer)
+                strength: 1 - 0.12 * CGFloat(layer),
+                miterLimit: miterLimit
             ))
         }
         pieces.append(contentsOf: granules(
@@ -81,7 +83,8 @@ enum WatercolorStroke {
         strokeOpacity: CGFloat,
         layer: Int,
         edged: Bool,
-        strength: CGFloat
+        strength: CGFloat,
+        miterLimit: CGFloat
     ) -> [RibbonPiece] {
         let stations = stations(line: line, width: width, brush: brush, style: style, layer: layer)
         guard stations.count >= 2 else { return [] }
@@ -92,7 +95,11 @@ enum WatercolorStroke {
         // keeps the stroke colour. The noise still wobbles the edge.
         let core = min(1, pigment * (0.34 + 0.08 * (1 - darkening)) * strokeOpacity)
         var pieces = [
-            RibbonPiece(path: ribbon(stations, closed: line.isClosed), opacity: core, t: 0.5)
+            RibbonPiece(
+                path: ribbon(stations, closed: line.isClosed, join: brush.join, miterLimit: miterLimit),
+                opacity: core,
+                t: 0.5
+            )
         ]
         if edged {
             pieces.append(contentsOf: brokenRim(
@@ -122,6 +129,8 @@ enum WatercolorStroke {
             let next = (index + 1) % count
             let start = stations[index]
             let end = stations[next]
+            // The body ribbon owns the join. A rim across that corner stacks a dark chord.
+            if start.cornerIncoming != nil || end.cornerIncoming != nil { continue }
             let gate = SeededNoise.unit(at: Float(start.t * 3.4), seed: seed &+ 71)
             let flicker = SeededNoise.unit(at: Float(start.t * 9.5), seed: seed &+ 93)
             let presence = max(0, (CGFloat(gate) - 0.22) / 0.78) * (0.25 + 0.75 * CGFloat(flicker))
@@ -165,24 +174,71 @@ enum WatercolorStroke {
     }
 
     /// The wash as one shape. The cap meets the real edge points so a peak does not pinch.
-    private static func ribbon(_ stations: [Station], closed: Bool) -> SwiftUI.Path {
+    private static func ribbon(
+        _ stations: [Station],
+        closed: Bool,
+        join: BrushJoin,
+        miterLimit: CGFloat
+    ) -> SwiftUI.Path {
         var path = SwiftUI.Path()
         guard let first = stations.first, let last = stations.last else { return path }
-        path.move(to: first.outerLeft)
-        for station in stations.dropFirst() {
-            path.addLine(to: station.outerLeft)
+        let leftEdge = contour(stations, left: true, join: join, miterLimit: miterLimit)
+        let rightEdge = contour(stations, left: false, join: join, miterLimit: miterLimit)
+        guard let leftFirst = leftEdge.first, let rightFirst = rightEdge.first, let rightLast = rightEdge.last else {
+            return path
+        }
+        path.move(to: leftFirst)
+        for point in leftEdge.dropFirst() {
+            path.addLine(to: point)
         }
         if !closed {
-            addCap(to: &path, from: last.outerLeft, center: last.center, to: last.outerRight, forward: last.forward)
+            addCap(to: &path, from: leftEdge.last ?? last.outerLeft, center: last.center, to: rightLast, forward: last.forward)
+        } else {
+            path.addLine(to: rightLast)
         }
-        for station in stations.reversed() {
-            path.addLine(to: station.outerRight)
+        for point in rightEdge.dropLast().reversed() {
+            path.addLine(to: point)
         }
         if !closed {
-            addCap(to: &path, from: first.outerRight, center: first.center, to: first.outerLeft, forward: first.forward + .pi)
+            addCap(to: &path, from: rightFirst, center: first.center, to: leftFirst, forward: first.forward + .pi)
         }
         path.closeSubpath()
         return path
+    }
+
+    /// One offset edge in forward order. Corners insert the shared join.
+    /// A station that is not a corner contributes its offset point, as before.
+    private static func contour(
+        _ stations: [Station],
+        left: Bool,
+        join: BrushJoin,
+        miterLimit: CGFloat
+    ) -> [CGPoint] {
+        guard let first = stations.first else { return [] }
+        var points = [left ? first.outerLeft : first.outerRight]
+        var index = 1
+        while index < stations.count {
+            let here = stations[index]
+            if let incoming = here.cornerIncoming, let outgoing = here.cornerOutgoing, index + 1 < stations.count {
+                let next = stations[index + 1]
+                let lines = StrokeJoinGeometry.sidePolylines(
+                    vertex: here.center,
+                    incomingTangent: incoming,
+                    outgoingTangent: outgoing,
+                    incomingHalf: stations[index - 1].outerRadius,
+                    outgoingHalf: next.outerRadius,
+                    join: join,
+                    miterLimit: miterLimit
+                )
+                points.append(contentsOf: left ? lines.left : lines.right)
+                points.append(left ? next.outerLeft : next.outerRight)
+                index += 2
+                continue
+            }
+            points.append(left ? here.outerLeft : here.outerRight)
+            index += 1
+        }
+        return points
     }
 
     /// Arc from `from` to `to` that bulges along `forward` and lands on both edges.
@@ -489,7 +545,9 @@ enum WatercolorStroke {
                 outerRadius: max(left, right),
                 innerRadius: max(left, right) * innerScale,
                 curvature: sample.curvature,
-                t: sample.t
+                t: sample.t,
+                cornerIncoming: sample.cornerIncoming,
+                cornerOutgoing: sample.cornerOutgoing
             )
         }
         return built
@@ -540,6 +598,109 @@ enum WatercolorStroke {
 
     /// Averages the centreline in point space, then takes one stable tangent.
     private static func smoothedCenterline(
+        _ samples: [StrokeCenterSample],
+        closed: Bool
+    ) -> [SmoothSample] {
+        let pins = sharpCornerPins(samples, closed: closed)
+        if !pins.isEmpty {
+            return smoothPinnedCenterline(samples, pins: pins, closed: closed)
+        }
+        return smoothWholeCenterline(samples, closed: closed)
+    }
+
+    /// Indices where the raw polyline turns hard enough to be a join, not a curve.
+    private static func sharpCornerPins(_ samples: [StrokeCenterSample], closed: Bool) -> [(index: Int, incoming: CGFloat, outgoing: CGFloat)] {
+        let count = samples.count
+        guard count >= 3 else { return [] }
+        var pins: [(index: Int, incoming: CGFloat, outgoing: CGFloat)] = []
+        let start = closed ? 0 : 1
+        let end = closed ? count : count - 1
+        for index in start..<end {
+            let previous = samples[(index - 1 + count) % count].point
+            let here = samples[index].point
+            let next = samples[(index + 1) % count].point
+            let incoming = atan2(here.y - previous.y, here.x - previous.x)
+            let outgoing = atan2(next.y - here.y, next.x - here.x)
+            if abs(StrokeJoinGeometry.signedAngleDelta(incoming, outgoing)) >= 0.45 {
+                pins.append((index, incoming, outgoing))
+            }
+        }
+        return pins
+    }
+
+    /// Smooths each arm on its own and keeps the corner point, with the real tangents.
+    private static func smoothPinnedCenterline(
+        _ samples: [StrokeCenterSample],
+        pins: [(index: Int, incoming: CGFloat, outgoing: CGFloat)],
+        closed: Bool
+    ) -> [SmoothSample] {
+        var anchors = pins.map(\.index)
+        if !closed {
+            if anchors.first != 0 { anchors.insert(0, at: 0) }
+            if anchors.last != samples.count - 1 { anchors.append(samples.count - 1) }
+        }
+        var result: [SmoothSample] = []
+        if closed {
+            for pinIndex in pins.indices {
+                let start = pins[pinIndex]
+                let end = pins[(pinIndex + 1) % pins.count]
+                let span = spanSamples(samples, from: start.index, to: end.index)
+                var smoothed = smoothWholeCenterline(span, closed: false)
+                snapEnds(&smoothed, first: span[0].point, last: span[span.count - 1].point)
+                if pinIndex == 0, !smoothed.isEmpty {
+                    smoothed[0].cornerIncoming = start.incoming
+                    smoothed[0].cornerOutgoing = start.outgoing
+                }
+                if pinIndex < pins.count - 1, let last = smoothed.indices.last {
+                    smoothed[last].cornerIncoming = end.incoming
+                    smoothed[last].cornerOutgoing = end.outgoing
+                }
+                if pinIndex > 0 { smoothed.removeFirst() }
+                result.append(contentsOf: smoothed)
+            }
+            if !result.isEmpty { result.removeLast() }
+            return result
+        }
+        for index in 0..<(anchors.count - 1) {
+            let start = anchors[index]
+            let end = anchors[index + 1]
+            let span = Array(samples[start...end])
+            var smoothed = smoothWholeCenterline(span, closed: false)
+            snapEnds(&smoothed, first: span[0].point, last: span[span.count - 1].point)
+            if index > 0 { smoothed.removeFirst() }
+            if let pin = pins.first(where: { $0.index == end }), let last = smoothed.indices.last, end != samples.count - 1 {
+                smoothed[last].cornerIncoming = pin.incoming
+                smoothed[last].cornerOutgoing = pin.outgoing
+            }
+            result.append(contentsOf: smoothed)
+        }
+        return result
+    }
+
+    private static func spanSamples(_ samples: [StrokeCenterSample], from start: Int, to end: Int) -> [StrokeCenterSample] {
+        if start <= end { return Array(samples[start...end]) }
+        return Array(samples[start...]) + Array(samples[0...end])
+    }
+
+    private static func snapEnds(_ samples: inout [SmoothSample], first: CGPoint, last: CGPoint) {
+        guard !samples.isEmpty else { return }
+        samples[0].point = first
+        samples[samples.count - 1].point = last
+        let forwards = stableForwards(samples.map(\.point), closed: false)
+        let curvatures = smoothScalars(
+            signedCurvatures(points: samples.map(\.point), forwards: forwards, closed: false),
+            reach: 4,
+            closed: false
+        )
+        for index in samples.indices {
+            samples[index].forward = forwards[index]
+            let curvature = curvatures[index]
+            samples[index].curvature = curvature
+            samples[index].radius = 1 / max(0.0004, abs(curvature))
+        }
+    }
+
+    private static func smoothWholeCenterline(
         _ samples: [StrokeCenterSample],
         closed: Bool
     ) -> [SmoothSample] {
@@ -900,6 +1061,8 @@ private struct SmoothSample {
     var forward: CGFloat
     var curvature: CGFloat
     var radius: CGFloat
+    var cornerIncoming: CGFloat? = nil
+    var cornerOutgoing: CGFloat? = nil
 }
 
 /// One sample of a watercolor ribbon, split into a light core and a dark rim.
@@ -914,4 +1077,6 @@ private struct Station {
         var innerRadius: CGFloat
         var curvature: CGFloat
         var t: CGFloat
+        var cornerIncoming: CGFloat? = nil
+        var cornerOutgoing: CGFloat? = nil
 }

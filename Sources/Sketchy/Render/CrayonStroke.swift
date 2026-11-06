@@ -38,7 +38,9 @@ public enum CrayonStroke {
         operations: [Operation],
         width: CGFloat,
         style: CrayonStyle,
-        transform: CGAffineTransform = .identity
+        transform: CGAffineTransform = .identity,
+        join: BrushJoin = .round,
+        miterLimit: CGFloat = 10
     ) -> [CrayonStrokePass] {
         guard width >= 0.25 else { return [] }
         let subpaths = subpaths(from: operations)
@@ -50,7 +52,9 @@ public enum CrayonStroke {
             subpaths: subpaths,
             width: width,
             style: style,
-            transform: transform
+            transform: transform,
+            join: join,
+            miterLimit: miterLimit
         ))
         for pass in 0..<style.passes {
             let marks = CGMutablePath()
@@ -62,7 +66,9 @@ public enum CrayonStroke {
                     style: style,
                     transform: transform,
                     pass: pass,
-                    subpathIndex: index
+                    subpathIndex: index,
+                    join: join,
+                    miterLimit: miterLimit
                 )
             }
             guard !marks.isEmpty else { continue }
@@ -78,7 +84,9 @@ private func basePasses(
     subpaths: [CrayonSubpath],
     width: CGFloat,
     style: CrayonStyle,
-    transform: CGAffineTransform
+    transform: CGAffineTransform,
+    join: BrushJoin,
+    miterLimit: CGFloat
 ) -> [CrayonStrokePass] {
     let halo = CGMutablePath()
     let core = CGMutablePath()
@@ -90,7 +98,9 @@ private func basePasses(
             width: width,
             style: style,
             transform: transform,
-            subpathIndex: index
+            subpathIndex: index,
+            join: join,
+            miterLimit: miterLimit
         )
     }
     let baseOpacity = CGFloat(style.baseOpacity)
@@ -260,7 +270,9 @@ private func stampBase(
     width: CGFloat,
     style: CrayonStyle,
     transform: CGAffineTransform,
-    subpathIndex: Int
+    subpathIndex: Int,
+    join: BrushJoin,
+    miterLimit: CGFloat
 ) {
     let placed = transformed(subpath.samples, by: transform)
     guard placed.count >= 2 else { return }
@@ -313,6 +325,18 @@ private func stampBase(
         }
         traveled += span
     }
+    stampCornerWax(
+        samples: placed,
+        width: width,
+        style: style,
+        join: join,
+        miterLimit: miterLimit,
+        serialBase: subpathIndex * 20_000 + 80_000,
+        halo: halo,
+        core: core,
+        grit: nil,
+        pass: 0
+    )
 }
 
 /// Dark clumps, smaller paper-tooth specks, and detached edge flakes. Never opens a gap in the base.
@@ -323,7 +347,9 @@ private func stampGrit(
     style: CrayonStyle,
     transform: CGAffineTransform,
     pass: Int,
-    subpathIndex: Int
+    subpathIndex: Int,
+    join: BrushJoin,
+    miterLimit: CGFloat
 ) {
     let placed = transformed(subpath.samples, by: transform)
     guard placed.count >= 2 else { return }
@@ -364,6 +390,98 @@ private func stampGrit(
             next += step * (0.82 + 0.36 * unit(style.seed, pass, serial, 2))
         }
         traveled += span
+    }
+    stampCornerWax(
+        samples: placed,
+        width: width,
+        style: style,
+        join: join,
+        miterLimit: miterLimit,
+        serialBase: subpathIndex * 20_000 + pass * 3_000 + 90_000,
+        halo: nil,
+        core: nil,
+        grit: path,
+        pass: pass
+    )
+}
+
+/// Fills a sharp corner out to the stroke join. Smooth samples never get here,
+/// so a cubic keeps the same wax. Extra marks use their own serials and do not
+/// shift the centreline grain.
+private func stampCornerWax(
+    samples: [CrayonSample],
+    width: CGFloat,
+    style: CrayonStyle,
+    join: BrushJoin,
+    miterLimit: CGFloat,
+    serialBase: Int,
+    halo: CGMutablePath?,
+    core: CGMutablePath?,
+    grit: CGMutablePath?,
+    pass: Int
+) {
+    guard samples.count >= 2 else { return }
+    var joint = 0
+    for index in 0..<(samples.count - 1) {
+        let turn = StrokeJoinGeometry.signedAngleDelta(samples[index].tangent, samples[index + 1].tangent)
+        guard abs(turn) >= 0.45 else { continue }
+        let vertex = samples[index].point
+        let lines = StrokeJoinGeometry.sidePolylines(
+            vertex: vertex,
+            incomingTangent: samples[index].tangent,
+            outgoingTangent: samples[index + 1].tangent,
+            incomingHalf: width / 2,
+            outgoingHalf: width / 2,
+            join: join,
+            miterLimit: miterLimit
+        )
+        let targets = lines.left + lines.right
+        let softness = CGFloat(style.baseSoftness)
+        var stamp = 0
+        for point in targets {
+            let dx = vertex.x - point.x
+            let dy = vertex.y - point.y
+            let span = hypot(dx, dy)
+            let steps = max(1, Int(ceil(span / max(2, width * 0.28))))
+            for step in 1...steps {
+                let u = CGFloat(step) / CGFloat(steps)
+                let center = CGPoint(x: vertex.x + (point.x - vertex.x) * u, y: vertex.y + (point.y - vertex.y) * u)
+                let serial = serialBase + joint * 256 + stamp
+                stamp += 1
+                if let halo, let core {
+                    addEllipse(
+                        halo,
+                        center: center,
+                        angle: samples[index + 1].tangent,
+                        length: width * 0.55,
+                        thickness: width * (0.72 + softness * 0.12)
+                    )
+                    addEllipse(
+                        core,
+                        center: center,
+                        angle: samples[index + 1].tangent,
+                        length: width * 0.42,
+                        thickness: width * 0.5
+                    )
+                }
+                if let grit, step == steps {
+                    emitGrit(
+                        at: center,
+                        tangent: samples[index + 1].tangent,
+                        width: width,
+                        flake: max(0.45, width * (0.16 + 0.15 * CGFloat(style.flakeSize))),
+                        speck: max(0.28, width * 0.08),
+                        rows: 2,
+                        style: style,
+                        pass: pass,
+                        serial: serial,
+                        lateralBias: 0,
+                        into: grit
+                    )
+                }
+            }
+        }
+        joint += 1
     }
 }
 
