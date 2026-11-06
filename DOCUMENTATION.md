@@ -133,7 +133,7 @@ Pass any `Drawable` type for precise positioning.
 |----------|-----------|---------|-------------|
 | `.strokeWidth(_ value:)` | `Float` | 1 | Line width in points |
 | `.strokeCap(_ cap:)` | `BrushCap` | `.round` | Line ending style. Also on `RoughText` |
-| `.strokeJoin(_ join:)` | `BrushJoin` | `.round` | Corner style. Also on `RoughText` |
+| `.strokeJoin(_ join:)` | `BrushJoin` | `.round` | Corner style: `.miter`, `.round`, `.bevel`, `.curvedBevel(bulge:)`. Also on `RoughText` |
 | `.strokeMiterLimit(_ value:)` | `CGFloat` | 10 | Maximum miter spike ratio before bevel fallback. Also on `RoughText`. Values below 1 clamp to 1 |
 
 ### Roughness Modifiers
@@ -720,11 +720,14 @@ public enum BrushCap: Equatable, Hashable, Sendable {
 
 ```swift
 public enum BrushJoin: Equatable, Hashable, Sendable {
-    case miter   // Sharp corner
-    case round   // Rounded corner (default)
-    case bevel   // Flat corner
+    case miter   // Sharp corner, limited by strokeMiterLimit
+    case round   // Circular arc centred on the vertex
+    case bevel   // Straight chord across the corner
+    case curvedBevel(bulge: CGFloat) // Quadratic bow between the bevel corners
 }
 ```
+
+`.curvedBevel` is not a circular arc. The curve starts and ends on the same two outer corners as a bevel, and the control point moves from the chord (`bulge` 0) toward the miter tip (`bulge` 1). `BrushJoin.defaultCurvedBevelBulge` is `0.65`, and `BrushJoin.standardCurvedBevel` uses it. Values below `0` or above `1` clamp when the join is drawn. CoreGraphics has no such join (`cgLineJoin` reports `.bevel`). A uniform stroke is filled from `NativeStrokeOutline`. Variable-width ribbons use the same join at a corner where the tangent breaks by more than about 10°. Smooth cubics, including the continuous default, do not.
 
 Use `.strokeMiterLimit(_:)` with `.strokeJoin(.miter)` to control how far
 sharp corners may extend before falling back to a bevel join. Lower values
@@ -760,13 +763,15 @@ public enum NativeStrokeOutline {
 ```
 
 `NativeStrokeOutline` asks CoreGraphics to convert a uniform-width stroke
-into a filled outline while preserving native cap, join, and miter-limit
-semantics. Use it when you need a filled path for clipping or compositing
-and want native-quality joins. `RoughView` and `RoughText` both expose
+into a filled outline for `.miter`, `.round`, and `.bevel`, including the
+miter limit. `.curvedBevel` is built by the same offset-join helper the
+variable-width converter uses, because CoreGraphics cannot draw it. Use the
+result for clipping or compositing. `RoughView` and `RoughText` both expose
 `.strokeMiterLimit(_:)`. The value is stored on `Options.strokeMiterLimit`
 (default `10`) and included in `Options.cacheHash`. Values below `1` clamp
-to `1`. Variable-width effects (taper, calligraphic brush tips, width jitter)
-still require `StrokeToFillConverter`.
+to `1`. Taper, a calligraphic tip, and width stops go through
+`StrokeToFillConverter`, which now applies the same miter, bevel, round, and
+curved-bevel joins where the tangent breaks. A smooth curve does not.
 
 ### BrushProfile
 

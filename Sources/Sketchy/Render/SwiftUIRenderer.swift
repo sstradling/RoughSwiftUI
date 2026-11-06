@@ -300,15 +300,14 @@ public struct SwiftUIRenderer {
                         let gray = Color(white: Double(min(1, max(0, command.maskOpacity))))
                         switch command.style {
                         case .stroke(_, let lineWidth):
-                            mask.stroke(
-                                command.path,
-                                with: .color(gray),
-                                style: StrokeStyle(
-                                    lineWidth: lineWidth,
-                                    lineCap: command.cap.cgLineCap,
-                                    lineJoin: command.join.cgLineJoin,
-                                    miterLimit: command.miterLimit
-                                )
+                            UniformStrokePaint.draw(
+                                path: command.path,
+                                color: gray,
+                                lineWidth: lineWidth,
+                                cap: command.cap,
+                                join: command.join,
+                                miterLimit: command.miterLimit,
+                                in: &mask
                             )
                         case .fill:
                             mask.fill(
@@ -352,16 +351,14 @@ public struct SwiftUIRenderer {
     private func renderCommand(_ command: RoughRenderCommand, in context: inout GraphicsContext) {
         switch command.style {
         case let .stroke(color, lineWidth):
-            let strokeStyle = StrokeStyle(
+            UniformStrokePaint.draw(
+                path: command.path,
+                color: color,
                 lineWidth: lineWidth,
-                lineCap: command.cap.cgLineCap,
-                lineJoin: command.join.cgLineJoin,
-                miterLimit: command.miterLimit
-            )
-            context.stroke(
-                command.path,
-                with: .color(color),
-                style: strokeStyle
+                cap: command.cap,
+                join: command.join,
+                miterLimit: command.miterLimit,
+                in: &context
             )
         case let .fill(color):
             // Even-odd keeps holes in glyphs. Crayon passes opt into winding so wax marks union.
@@ -438,7 +435,8 @@ private extension SwiftUIRenderer {
                 let filledPath = StrokeToFillConverter.convert(
                     operations: set.operations,
                     baseWidth: CGFloat(strokeWidth),
-                    profile: options.brushProfile
+                    profile: options.brushProfile,
+                    miterLimit: options.strokeMiterLimit
                 )
                 // Apply transform if needed
                 let finalPath: SwiftPath
@@ -688,7 +686,8 @@ private extension SwiftUIRenderer {
                 let filledPath = StrokeToFillConverter.convert(
                     operations: set.operations,
                     baseWidth: CGFloat(fillWeight),
-                    profile: options.brushProfile
+                    profile: options.brushProfile,
+                    miterLimit: options.strokeMiterLimit
                 )
                 return [
                     RoughRenderCommand(

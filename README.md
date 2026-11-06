@@ -236,7 +236,7 @@ RoughView()
 | `.stroke` / `.fill` | black / clear | Line colour and interior colour |
 | `.strokeWidth` | 1 | Outline width, in points |
 | `.strokeCap` | `.round` | `.butt`, `.round`, or `.square`. Also on `RoughText` |
-| `.strokeJoin` | `.round` | `.miter`, `.round`, or `.bevel`. Also on `RoughText` |
+| `.strokeJoin` | `.round` | `.miter`, `.round`, `.bevel`, or `.curvedBevel(bulge:)`. Also on `RoughText` |
 | `.strokeMiterLimit` | 10 | Longest miter, as a multiple of the stroke width, before a miter join becomes a bevel. Values below 1 clamp to 1. Also on `RoughText` |
 | `.strokeOpacity` / `.fillOpacity` | 100 | 0 is clear, 100 is opaque |
 | `.fillStyle` | `.hachure` | Interior pattern |
@@ -281,7 +281,7 @@ RoughView()
 
 ### Caps, joins, and native outlines
 
-`.strokeJoin(.miter)` draws a pointed corner. `.strokeMiterLimit` is how long that point may get, measured as miter length divided by stroke width, before the corner falls back to a bevel. The default is `10`. A sharp polygon with a limit of `1` looks close to a bevel. `RoughText` has the same cap, join, and miter-limit modifiers.
+`.strokeJoin(.miter)` draws a pointed corner. `.strokeMiterLimit` is how long that point may get, measured as miter length divided by stroke width, before the corner falls back to a bevel. The default is `10`. A sharp polygon with a limit of `1` looks close to a bevel. `.round` is a circular arc centred on the vertex. `.curvedBevel(bulge:)` keeps the bevel's two outer corners and bows a quadratic toward the miter tip. `bulge` runs from `0` (a straight bevel) to `1` (the control sits on the miter tip, so the curve reaches halfway). `BrushJoin.standardCurvedBevel` uses `0.65`. CoreGraphics cannot draw that bow, so a uniform stroke is filled from the outline. Variable-width strokes (taper, a calligraphic tip, width stops) use the same joins at a sharp tangent break. A smooth cubic is unchanged. `RoughText` has the same cap, join, and miter-limit modifiers.
 
 ```swift
 RoughView()

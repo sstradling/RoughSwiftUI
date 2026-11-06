@@ -382,19 +382,53 @@ public enum BrushCap: Equatable, Hashable, Sendable {
 
 /// Style for corners/vertices in strokes.
 public enum BrushJoin: Equatable, Hashable, Sendable {
-    /// Sharp corner with miter limit.
+    /// Sharp corner. Falls back to a bevel when the miter exceeds `strokeMiterLimit`.
     case miter
-    /// Rounded corner.
+    /// Circular arc centred on the vertex, with radius equal to half the local width.
     case round
-    /// Beveled (flat) corner.
+    /// Straight chord between the two outer offset corners.
     case bevel
+    /// The bevel's two outer corners, joined by a quadratic bow toward the miter tip.
+    ///
+    /// `bulge` is clamped to `0...1` when the join is drawn. `0` is a straight
+    /// bevel. `1` puts the control point on the miter tip, so the curve reaches
+    /// halfway to that tip. This is not `.round`: a round join is a circle
+    /// centred on the vertex, while a curved bevel never leaves the bevel endpoints.
+    ///
+    /// CoreGraphics has no equivalent. Uniform strokes are filled from a
+    /// constructed outline, and variable-width strokes use the same helper.
+    /// `cgLineJoin` reports `.bevel` only as the nearest CoreGraphics value.
+    case curvedBevel(bulge: CGFloat)
+
+    /// Bulge used by `standardCurvedBevel`.
+    public static let defaultCurvedBevelBulge: CGFloat = 0.65
+
+    /// Curved bevel with `defaultCurvedBevelBulge`.
+    public static var standardCurvedBevel: BrushJoin {
+        .curvedBevel(bulge: defaultCurvedBevelBulge)
+    }
+
+    /// Bulge after clamping, or `nil` for the other joins.
+    public var curvedBevelBulge: CGFloat? {
+        guard case .curvedBevel(let bulge) = self else { return nil }
+        return min(1, max(0, bulge))
+    }
+
+    /// `true` when a `StrokeStyle` cannot draw this join.
+    public var requiresCustomOutline: Bool {
+        if case .curvedBevel = self { return true }
+        return false
+    }
     
     /// Converts to SwiftUI's CGLineJoin for standard stroke rendering.
+    ///
+    /// `.curvedBevel` has no CoreGraphics join. Callers that see
+    /// `requiresCustomOutline` fill a constructed outline instead of using this value.
     public var cgLineJoin: CGLineJoin {
         switch self {
         case .miter: return .miter
         case .round: return .round
-        case .bevel: return .bevel
+        case .bevel, .curvedBevel: return .bevel
         }
     }
 }

@@ -29,6 +29,13 @@ struct PathSample {
     var normalAngle: CGFloat {
         tangentAngle + .pi / 2
     }
+
+    /// Tangent leaving a sharp corner. `nil` on smooth samples.
+    ///
+    /// Set only where two segments meet and the tangent jumps by more than
+    /// `StrokeJoinGeometry.cornerTurnThreshold`. Smooth cubics stay `nil`, so
+    /// their offset outline is unchanged.
+    let outgoingTangent: CGFloat?
 }
 
 // MARK: - Stroke To Fill Converter
@@ -66,7 +73,8 @@ struct StrokeToFillConverter {
     static func convert(
         path: SwiftUI.Path,
         baseWidth: CGFloat,
-        profile: BrushProfile
+        profile: BrushProfile,
+        miterLimit: CGFloat = 10
     ) -> SwiftUI.Path {
         measurePerformance(PathOpsSignpost.strokeToFill, log: RoughPerformanceLog.pathOps, metadata: "width=\(Int(baseWidth))") {
             // Extract path elements
@@ -82,7 +90,8 @@ struct StrokeToFillConverter {
                 if let outlinePath = convertSubpath(
                     subpath,
                     baseWidth: baseWidth,
-                    profile: profile
+                    profile: profile,
+                    miterLimit: miterLimit
                 ) {
                     resultPath.addPath(outlinePath)
                 }
@@ -102,7 +111,8 @@ struct StrokeToFillConverter {
     static func convert(
         operations: [Operation],
         baseWidth: CGFloat,
-        profile: BrushProfile
+        profile: BrushProfile,
+        miterLimit: CGFloat = 10
     ) -> SwiftUI.Path {
         measurePerformance(PathOpsSignpost.strokeToFill, log: RoughPerformanceLog.pathOps, metadata: "ops=\(operations.count)") {
             // Convert operations to path elements
@@ -118,7 +128,8 @@ struct StrokeToFillConverter {
                 if let outlinePath = convertSubpath(
                     subpath,
                     baseWidth: baseWidth,
-                    profile: profile
+                    profile: profile,
+                    miterLimit: miterLimit
                 ) {
                     resultPath.addPath(outlinePath)
                 }
@@ -219,7 +230,8 @@ struct StrokeToFillConverter {
     private static func convertSubpath(
         _ elements: [PathElement],
         baseWidth: CGFloat,
-        profile: BrushProfile
+        profile: BrushProfile,
+        miterLimit: CGFloat
     ) -> SwiftUI.Path? {
         // Check if subpath is closed
         let isClosed = elements.contains { element in
@@ -228,7 +240,7 @@ struct StrokeToFillConverter {
         }
         
         // Sample the subpath
-        let samples = sampleSubpath(elements)
+        let samples = sampleSubpath(elements, isClosed: isClosed)
         guard samples.count >= 2 else { return nil }
         
         // Generate outline points
@@ -236,7 +248,8 @@ struct StrokeToFillConverter {
             samples: samples,
             baseWidth: baseWidth,
             profile: profile,
-            isClosed: isClosed
+            isClosed: isClosed,
+            miterLimit: miterLimit
         )
         
         guard !leftPoints.isEmpty, !rightPoints.isEmpty else { return nil }
@@ -265,14 +278,32 @@ struct StrokeToFillConverter {
     ///
     /// Performance optimization: Instead of two passes (one for total length, one for sampling),
     /// this collects samples with accumulated length in one pass, then normalizes t values.
-    private static func sampleSubpath(_ elements: [PathElement]) -> [PathSample] {
+    private static func sampleSubpath(_ elements: [PathElement], isClosed: Bool) -> [PathSample] {
         // Reserve capacity based on estimated sample count to reduce allocations
         var rawSamples: [RawSample] = []
         rawSamples.reserveCapacity(elements.count * minSamplesPerSegment)
+        var outgoingTangents: [CGFloat?] = []
+        var lastEndIndex: Int? = nil
         
         var currentPoint = CGPoint.zero
         var subpathStartPoint: CGPoint? = nil
         var accumulatedLength: CGFloat = 0
+
+        func noteSegmentStart(tangent: CGFloat) {
+            guard let index = lastEndIndex else { return }
+            let turn = StrokeJoinGeometry.signedAngleDelta(rawSamples[index].tangentAngle, tangent)
+            if abs(turn) >= StrokeJoinGeometry.cornerTurnThreshold {
+                outgoingTangents[index] = tangent
+            }
+        }
+
+        func push(_ sample: RawSample, isSegmentEnd: Bool) {
+            rawSamples.append(sample)
+            outgoingTangents.append(nil)
+            if isSegmentEnd {
+                lastEndIndex = rawSamples.count - 1
+            }
+        }
         
         // Single pass: collect samples with accumulated length
         for (index, element) in elements.enumerated() {
@@ -282,7 +313,7 @@ struct StrokeToFillConverter {
                 subpathStartPoint = to
                 // Add starting point with initial tangent computed lazily
                 let tangent = computeInitialTangentFast(elements: elements, startIndex: index)
-                rawSamples.append(RawSample(point: to, tangentAngle: tangent, accumulatedLength: 0))
+                push(RawSample(point: to, tangentAngle: tangent, accumulatedLength: 0), isSegmentEnd: false)
                 
             case .line(let to):
                 let segmentLength = distanceFast(currentPoint, to)
@@ -293,12 +324,16 @@ struct StrokeToFillConverter {
                 
                 let numSamples = max(2, Int(ceil(segmentLength / maxSampleSpacing)))
                 let tangent = atan2(to.y - currentPoint.y, to.x - currentPoint.x)
+                noteSegmentStart(tangent: tangent)
                 
                 for i in 1...numSamples {
                     let localT = CGFloat(i) / CGFloat(numSamples)
                     let point = lerpFast(currentPoint, to, t: localT)
                     let sampleAccLength = accumulatedLength + segmentLength * localT
-                    rawSamples.append(RawSample(point: point, tangentAngle: tangent, accumulatedLength: sampleAccLength))
+                    push(
+                        RawSample(point: point, tangentAngle: tangent, accumulatedLength: sampleAccLength),
+                        isSegmentEnd: i == numSamples
+                    )
                 }
                 
                 accumulatedLength += segmentLength
@@ -313,13 +348,17 @@ struct StrokeToFillConverter {
                 
                 // Adaptive sampling based on curve complexity
                 let numSamples = adaptiveQuadSampleCount(from: currentPoint, to: to, control: control, length: segmentLength)
+                noteSegmentStart(tangent: atan2(control.y - currentPoint.y, control.x - currentPoint.x))
                 
                 for i in 1...numSamples {
                     let localT = CGFloat(i) / CGFloat(numSamples)
                     let point = quadraticBezierPoint(from: currentPoint, to: to, control: control, t: localT)
                     let tangent = quadraticBezierTangent(from: currentPoint, to: to, control: control, t: localT)
                     let sampleAccLength = accumulatedLength + segmentLength * localT
-                    rawSamples.append(RawSample(point: point, tangentAngle: tangent, accumulatedLength: sampleAccLength))
+                    push(
+                        RawSample(point: point, tangentAngle: tangent, accumulatedLength: sampleAccLength),
+                        isSegmentEnd: i == numSamples
+                    )
                 }
                 
                 accumulatedLength += segmentLength
@@ -334,13 +373,17 @@ struct StrokeToFillConverter {
                 
                 // Adaptive sampling based on curve complexity
                 let numSamples = adaptiveCubicSampleCount(from: currentPoint, to: to, control1: control1, control2: control2, length: segmentLength)
+                noteSegmentStart(tangent: atan2(control1.y - currentPoint.y, control1.x - currentPoint.x))
                 
                 for i in 1...numSamples {
                     let localT = CGFloat(i) / CGFloat(numSamples)
                     let point = cubicBezierPoint(from: currentPoint, to: to, control1: control1, control2: control2, t: localT)
                     let tangent = cubicBezierTangent(from: currentPoint, to: to, control1: control1, control2: control2, t: localT)
                     let sampleAccLength = accumulatedLength + segmentLength * localT
-                    rawSamples.append(RawSample(point: point, tangentAngle: tangent, accumulatedLength: sampleAccLength))
+                    push(
+                        RawSample(point: point, tangentAngle: tangent, accumulatedLength: sampleAccLength),
+                        isSegmentEnd: i == numSamples
+                    )
                 }
                 
                 accumulatedLength += segmentLength
@@ -353,12 +396,16 @@ struct StrokeToFillConverter {
                     if segmentLength > 0 {
                         let numSamples = max(2, Int(ceil(segmentLength / maxSampleSpacing)))
                         let tangent = atan2(startPoint.y - currentPoint.y, startPoint.x - currentPoint.x)
+                        noteSegmentStart(tangent: tangent)
                         
                         for i in 1...numSamples {
                             let localT = CGFloat(i) / CGFloat(numSamples)
                             let point = lerpFast(currentPoint, startPoint, t: localT)
                             let sampleAccLength = accumulatedLength + segmentLength * localT
-                            rawSamples.append(RawSample(point: point, tangentAngle: tangent, accumulatedLength: sampleAccLength))
+                            push(
+                                RawSample(point: point, tangentAngle: tangent, accumulatedLength: sampleAccLength),
+                                isSegmentEnd: i == numSamples
+                            )
                         }
                         
                         accumulatedLength += segmentLength
@@ -374,11 +421,18 @@ struct StrokeToFillConverter {
         
         // Normalize t values in a single allocation
         let inverseTotalLength = 1.0 / totalLength
-        return rawSamples.map { raw in
+        if isClosed, let first = rawSamples.first, let lastIndex = lastEndIndex {
+            let turn = StrokeJoinGeometry.signedAngleDelta(rawSamples[lastIndex].tangentAngle, first.tangentAngle)
+            if abs(turn) >= StrokeJoinGeometry.cornerTurnThreshold {
+                outgoingTangents[lastIndex] = first.tangentAngle
+            }
+        }
+        return rawSamples.enumerated().map { index, raw in
             PathSample(
                 point: raw.point,
                 tangentAngle: raw.tangentAngle,
-                t: raw.accumulatedLength * inverseTotalLength
+                t: raw.accumulatedLength * inverseTotalLength,
+                outgoingTangent: outgoingTangents[index]
             )
         }
     }
@@ -413,52 +467,67 @@ struct StrokeToFillConverter {
     
     // MARK: - Outline Generation
     
-    /// Generates left and right outline points from samples.
+    /// Generates left and right outline steps from samples.
+    ///
+    /// Smooth samples stay a plain offset polyline. A sharp segment joint
+    /// inserts the profile's join on the outside and a trimmed inner corner.
     private static func generateOutlinePoints(
         samples: [PathSample],
         baseWidth: CGFloat,
         profile: BrushProfile,
-        isClosed: Bool = false
-    ) -> (left: [CGPoint], right: [CGPoint]) {
-        var leftPoints: [CGPoint] = []
-        var rightPoints: [CGPoint] = []
+        isClosed: Bool = false,
+        miterLimit: CGFloat
+    ) -> (left: [StrokeSideStep], right: [StrokeSideStep]) {
+        var leftSteps: [StrokeSideStep] = []
+        var rightSteps: [StrokeSideStep] = []
         
         // Closed paths stay an even strokeWidth so the join does not seam.
         // Tapers, width stops, and variable noise are all dropped here.
         let effectiveProfile = isClosed ? profile.withUniformThickness() : profile
-        
-        for sample in samples {
-            // Point width. Stops are already points; other profiles scale baseWidth.
-            // Closed contours have replaced the profile with an even strokeWidth.
-            let localWidth = effectiveProfile.thicknessProfile.width(
-                at: sample.t,
-                strokeWidth: baseWidth
-            )
-            
-            // Calculate effective width based on brush tip and direction
+
+        func halfWidth(at t: CGFloat, tangent: CGFloat) -> CGFloat {
+            let localWidth = effectiveProfile.thicknessProfile.width(at: t, strokeWidth: baseWidth)
             let effectiveWidth = effectiveProfile.tip.effectiveWidth(
                 baseWidth: localWidth,
-                strokeAngle: sample.tangentAngle
+                strokeAngle: tangent
             )
-            
-            let halfWidth = effectiveWidth / 2
-            
-            // Calculate offset points perpendicular to the stroke
-            let normalAngle = sample.normalAngle
-            let dx = cos(normalAngle) * halfWidth
-            let dy = sin(normalAngle) * halfWidth
-            
-            leftPoints.append(CGPoint(x: sample.point.x + dx, y: sample.point.y + dy))
-            rightPoints.append(CGPoint(x: sample.point.x - dx, y: sample.point.y - dy))
+            return max(0, effectiveWidth) / 2
+        }
+
+        func offset(_ sample: PathSample, tangent: CGFloat, sign: CGFloat) -> CGPoint {
+            let half = halfWidth(at: sample.t, tangent: tangent)
+            let normal = tangent + .pi / 2
+            return CGPoint(
+                x: sample.point.x + cos(normal) * half * sign,
+                y: sample.point.y + sin(normal) * half * sign
+            )
         }
         
-        return (leftPoints, rightPoints)
+        for sample in samples {
+            leftSteps.append(.line(offset(sample, tangent: sample.tangentAngle, sign: 1)))
+            rightSteps.append(.line(offset(sample, tangent: sample.tangentAngle, sign: -1)))
+            if let outgoing = sample.outgoingTangent {
+                StrokeJoinGeometry.appendCorner(
+                    vertex: sample.point,
+                    incomingTangent: sample.tangentAngle,
+                    outgoingTangent: outgoing,
+                    incomingHalf: halfWidth(at: sample.t, tangent: sample.tangentAngle),
+                    outgoingHalf: halfWidth(at: sample.t, tangent: outgoing),
+                    join: profile.join,
+                    miterLimit: miterLimit,
+                    left: &leftSteps,
+                    right: &rightSteps
+                )
+            }
+        }
+        
+        return (leftSteps, rightSteps)
     }
     
-    /// Builds a closed outline path from left and right points.
+    /// Builds a closed outline path from left and right contours.
     private static func buildOutlinePath(
-        leftPoints: [CGPoint],
-        rightPoints: [CGPoint],
+        leftPoints: [StrokeSideStep],
+        rightPoints: [StrokeSideStep],
         cap: BrushCap,
         samples: [PathSample],
         isClosed: Bool = false
@@ -468,63 +537,36 @@ struct StrokeToFillConverter {
         guard !leftPoints.isEmpty, !rightPoints.isEmpty else { return path }
         
         if isClosed && leftPoints.count > 2 {
-            // For closed paths, create two separate closed shapes:
-            // - Outer boundary (left points going forward, forms outer edge)
-            // - Inner boundary (right points going forward, forms inner edge)
-            // This creates a ring shape when rendered with even-odd fill.
-            
-            // Outer path (left points)
-            path.move(to: leftPoints[0])
-            for i in 1..<leftPoints.count {
-                path.addLine(to: leftPoints[i])
-            }
-            path.closeSubpath()
-            
-            // Inner path (right points) - same direction, will be subtracted by even-odd
-            path.move(to: rightPoints[0])
-            for i in 1..<rightPoints.count {
-                path.addLine(to: rightPoints[i])
-            }
+            // One ribbon. Nonzero fill keeps a reflex corner solid; the centre stays outside.
+            path.move(to: leftPoints[0].endPoint)
+            StrokeJoinGeometry.replay(leftPoints.dropFirst(), into: &path)
+            path.addLine(to: rightPoints[rightPoints.count - 1].endPoint)
+            StrokeJoinGeometry.replayReversed(rightPoints, into: &path)
             path.closeSubpath()
         } else {
-            // For open paths, create a "tube" shape
-            // Start with the first left point
-            path.move(to: leftPoints[0])
-            
-            // Draw along the left side (forward)
-            for i in 1..<leftPoints.count {
-                path.addLine(to: leftPoints[i])
-            }
-            
-            // Add end cap. It has to bulge along the leaving tangent. The
-            // other semicircle folds back between the corners and leaves a V.
-            if let lastLeft = leftPoints.last, let lastRight = rightPoints.last {
-                addCap(
-                    to: &path,
-                    from: lastLeft,
-                    to: lastRight,
-                    cap: cap,
-                    isEnd: true,
-                    tangent: samples.last?.tangentAngle ?? 0
-                )
-            }
-            
-            // Draw along the right side (backward)
-            for i in (0..<rightPoints.count - 1).reversed() {
-                path.addLine(to: rightPoints[i])
-            }
-            
-            // Add start cap, bulging back against the travel direction.
-            if let firstLeft = leftPoints.first, let firstRight = rightPoints.first {
-                addCap(
-                    to: &path,
-                    from: firstRight,
-                    to: firstLeft,
-                    cap: cap,
-                    isEnd: false,
-                    tangent: samples.first?.tangentAngle ?? 0
-                )
-            }
+            path.move(to: leftPoints[0].endPoint)
+            StrokeJoinGeometry.replay(leftPoints.dropFirst(), into: &path)
+
+            // End cap bulges along the leaving tangent.
+            addCap(
+                to: &path,
+                from: leftPoints[leftPoints.count - 1].endPoint,
+                to: rightPoints[rightPoints.count - 1].endPoint,
+                cap: cap,
+                isEnd: true,
+                tangent: samples.last?.tangentAngle ?? 0
+            )
+
+            StrokeJoinGeometry.replayReversed(rightPoints, into: &path)
+
+            addCap(
+                to: &path,
+                from: rightPoints[0].endPoint,
+                to: leftPoints[0].endPoint,
+                cap: cap,
+                isEnd: false,
+                tangent: samples.first?.tangentAngle ?? 0
+            )
             
             path.closeSubpath()
         }
@@ -896,7 +938,7 @@ extension StrokeToFillConverter {
                 if case .closeSubpath = element { return true }
                 return false
             }
-            let raw = sampleSubpath(subpath)
+            let raw = sampleSubpath(subpath, isClosed: closed)
             let samples = destinationSamples(raw, transform: transform)
             guard samples.count >= 2 else { return nil }
             return (samples, closed)

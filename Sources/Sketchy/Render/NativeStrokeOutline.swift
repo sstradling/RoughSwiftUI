@@ -17,11 +17,12 @@ import CoreGraphics
 /// uniform-width stroke while preserving CoreGraphics' exact cap/join geometry
 /// (`round`, `bevel`, `miter`) and miter-limit behavior.
 ///
-/// It intentionally does not handle variable-width effects (taper,
-/// calligraphic brush tips, or width jitter). Those still require
-/// `StrokeToFillConverter`. Use this helper for the uniform-width case where
-/// native-quality joins matter but a filled outline is desired for clipping,
-/// compositing, masking, or future segmentation work.
+/// `.miter`, `.round`, and `.bevel` come from CoreGraphics. `.curvedBevel`
+/// is constructed, because CoreGraphics has no such join. Variable-width
+/// effects (taper, calligraphic tips, width jitter) still go through
+/// `StrokeToFillConverter`, which uses the same corner joins where the
+/// tangent breaks. Use this helper for a uniform-width filled outline when
+/// clipping, compositing, or masking.
 public enum NativeStrokeOutline: Sendable {
     /// Converts `path` into the filled outline of its native stroke.
     ///
@@ -43,6 +44,21 @@ public enum NativeStrokeOutline: Sendable {
         miterLimit: CGFloat = 10
     ) -> SwiftUI.Path {
         guard width > 0 else { return SwiftUI.Path() }
+
+        if join.requiresCustomOutline {
+            let profile = BrushProfile(
+                tip: .circular,
+                thicknessProfile: .uniform,
+                cap: cap,
+                join: join
+            )
+            return StrokeToFillConverter.convert(
+                path: path,
+                baseWidth: width,
+                profile: profile,
+                miterLimit: miterLimit
+            )
+        }
 
         let stroked = path.cgPath.copy(
             strokingWithWidth: width,
