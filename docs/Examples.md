@@ -221,7 +221,7 @@ RoughView()
 
 ### Egg
 
-tilt 0.4 narrows the top. curveStepCount(16) sets how many samples build the outline.
+tilt 0.4 narrows the top. The outline is four continuous cubics per pass. curveStepCount(16) samples the hachure polygon.
 
 ![Egg](images/shapes/egg.png)
 
