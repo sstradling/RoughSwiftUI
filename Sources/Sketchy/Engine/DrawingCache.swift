@@ -62,6 +62,7 @@ public struct DrawingCacheKey: Hashable {
         hasher.combine(options.strokeWidth)
         hasher.combine(options.curveTightness)
         hasher.combine(options.curveStepCount)
+        hasher.combine(options.strokeContinuity)
         hasher.combine(options.fillStyle)
         hasher.combine(options.fillWeight)
         hasher.combine(options.fillAngle)

@@ -243,6 +243,7 @@ RoughView()
 | `.fillPadding` | 0 | Inset of the fill from the outline, in points. Negative grows the fill |
 | `.fillOffset` | `.zero` | Shifts the fill relative to the outline |
 | `.seed` | `nil` | Stable random sequence. `nil` picks a new drawing on a cache miss |
+| `.strokeContinuity` | `.legacy` | `.continuous` draws native outlines as a few cubic Beziers |
 
 ### Fill angle
 
@@ -255,6 +256,20 @@ RoughView()
 `.seed(42)` restarts a SplitMix64 sequence for that drawing. The same seed and the same options redraw the same strokes.
 
 Crayon grain uses `CrayonStyle.seed`. When that seed is still `CrayonStyle.defaultSeed` (`1`) and `Options.seed` is set, the grain comes from `Options.seed`. Any other crayon seed wins. `AnimationConfig.seed` is separate and only affects the animation frames.
+
+### Stroke continuity
+
+`.strokeContinuity(.legacy)` is the default. Curved outlines are still sampled at `.curveStepCount` and stitched into short cubics. `.strokeContinuity(.continuous)` replaces that for `line`, `rectangle`, `ellipse`, `circle`, `linearPath`, `polygon`, `arc`, `roundedRectangle`, and `egg`: a circle is four cubics per pass, and a polygon is one subpath per pass with shared corners. `curve`, SVG paths, and text stay on the sampled path. `RoughText` has the same modifier for parity.
+
+```swift
+RoughView()
+    .stroke(Color(red: 0.12, green: 0.14, blue: 0.18))
+    .strokeWidth(3)
+    .strokeContinuity(.continuous)
+    .seed(42)
+    .circle()
+    .frame(width: 240, height: 240)
+```
 
 ### Scribble
 

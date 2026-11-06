@@ -115,10 +115,16 @@ public final class NativeGenerator {
               let y2 = (arguments[3] as? NSNumber)?.floatValue else {
             return nil
         }
-        
-        let ops = RoughMath.doubleLineOps(x1: x1, y1: y1, x2: x2, y2: y2, options: options)
+
+        let ops: [Operation]
+        switch options.strokeContinuity {
+        case .legacy:
+            ops = RoughMath.doubleLineOps(x1: x1, y1: y1, x2: x2, y2: y2, options: options)
+        case .continuous:
+            ops = RoughCurves.doubleLineOps(x1: x1, y1: y1, x2: x2, y2: y2, options: options)
+        }
         let pathSet = OperationSet(type: .path, operations: ops, path: nil, size: nil)
-        
+
         return Drawing(shape: "line", sets: [pathSet], options: options)
     }
     
@@ -140,9 +146,15 @@ public final class NativeGenerator {
         }
         
         // Generate stroke
-        let ops = RoughMath.rectangleOps(x: x, y: y, width: width, height: height, options: options)
+        let ops: [Operation]
+        switch options.strokeContinuity {
+        case .legacy:
+            ops = RoughMath.rectangleOps(x: x, y: y, width: width, height: height, options: options)
+        case .continuous:
+            ops = RoughCurves.rectangleOps(x: x, y: y, width: width, height: height, options: options)
+        }
         sets.append(OperationSet(type: .path, operations: ops, path: nil, size: nil))
-        
+
         return Drawing(shape: "rectangle", sets: sets, options: options)
     }
     
@@ -168,11 +180,21 @@ public final class NativeGenerator {
             sets.append(fillSet)
         }
         
-        let ops = RoughMath.ellipseStroke(
-            cx: cx, cy: cy, rx: resolved.rx, ry: resolved.ry, options: options
-        )
+        // Stroke the same radii the fill used. Continuous mode does not
+        // resolve them again.
+        let ops: [Operation]
+        switch options.strokeContinuity {
+        case .legacy:
+            ops = RoughMath.ellipseStroke(
+                cx: cx, cy: cy, rx: resolved.rx, ry: resolved.ry, options: options
+            )
+        case .continuous:
+            ops = RoughCurves.ellipseOps(
+                cx: cx, cy: cy, rx: resolved.rx, ry: resolved.ry, options: options
+            )
+        }
         sets.append(OperationSet(type: .path, operations: ops, path: nil, size: nil))
-        
+
         return Drawing(shape: "ellipse", sets: sets, options: options)
     }
     
@@ -195,11 +217,19 @@ public final class NativeGenerator {
             sets.append(fillSet)
         }
         
-        let ops = RoughMath.ellipseStroke(
-            cx: cx, cy: cy, rx: resolved.rx, ry: resolved.ry, options: options
-        )
+        let ops: [Operation]
+        switch options.strokeContinuity {
+        case .legacy:
+            ops = RoughMath.ellipseStroke(
+                cx: cx, cy: cy, rx: resolved.rx, ry: resolved.ry, options: options
+            )
+        case .continuous:
+            ops = RoughCurves.ellipseOps(
+                cx: cx, cy: cy, rx: resolved.rx, ry: resolved.ry, options: options
+            )
+        }
         sets.append(OperationSet(type: .path, operations: ops, path: nil, size: nil))
-        
+
         return Drawing(shape: "circle", sets: sets, options: options)
     }
     
@@ -207,10 +237,16 @@ public final class NativeGenerator {
     private func generateLinearPath(arguments: [Any], options: Options) -> Drawing? {
         let points = extractPoints(from: arguments)
         guard !points.isEmpty else { return nil }
-        
-        let ops = RoughMath.linearPathOps(points: points, close: false, options: options)
+
+        let ops: [Operation]
+        switch options.strokeContinuity {
+        case .legacy:
+            ops = RoughMath.linearPathOps(points: points, close: false, options: options)
+        case .continuous:
+            ops = RoughCurves.linearPathOps(points: points, close: false, options: options)
+        }
         let pathSet = OperationSet(type: .path, operations: ops, path: nil, size: nil)
-        
+
         return Drawing(shape: "linearPath", sets: [pathSet], options: options)
     }
     
@@ -227,9 +263,15 @@ public final class NativeGenerator {
         }
         
         // Generate stroke
-        let ops = RoughMath.polygonOps(points: points, options: options)
+        let ops: [Operation]
+        switch options.strokeContinuity {
+        case .legacy:
+            ops = RoughMath.polygonOps(points: points, options: options)
+        case .continuous:
+            ops = RoughCurves.polygonOps(points: points, options: options)
+        }
         sets.append(OperationSet(type: .path, operations: ops, path: nil, size: nil))
-        
+
         return Drawing(shape: "polygon", sets: sets, options: options)
     }
     
@@ -259,9 +301,15 @@ public final class NativeGenerator {
         }
         
         // Generate stroke
-        let ops = RoughMath.arcOps(cx: cx, cy: cy, rx: rx, ry: ry, start: start, stop: stop, closed: closed, roughClosure: true, options: options)
+        let ops: [Operation]
+        switch options.strokeContinuity {
+        case .legacy:
+            ops = RoughMath.arcOps(cx: cx, cy: cy, rx: rx, ry: ry, start: start, stop: stop, closed: closed, roughClosure: true, options: options)
+        case .continuous:
+            ops = RoughCurves.arcOps(cx: cx, cy: cy, rx: rx, ry: ry, start: start, stop: stop, closed: closed, options: options)
+        }
         sets.append(OperationSet(type: .path, operations: ops, path: nil, size: nil))
-        
+
         return Drawing(shape: "arc", sets: sets, options: options)
     }
     
@@ -295,9 +343,15 @@ public final class NativeGenerator {
         }
         
         // Generate stroke
-        let ops = RoughMath.roundedRectangleOps(x: x, y: y, width: width, height: height, cornerRadius: cornerRadius, options: options)
+        let ops: [Operation]
+        switch options.strokeContinuity {
+        case .legacy:
+            ops = RoughMath.roundedRectangleOps(x: x, y: y, width: width, height: height, cornerRadius: cornerRadius, options: options)
+        case .continuous:
+            ops = RoughCurves.roundedRectangleOps(x: x, y: y, width: width, height: height, cornerRadius: cornerRadius, options: options)
+        }
         sets.append(OperationSet(type: .path, operations: ops, path: nil, size: nil))
-        
+
         return Drawing(shape: "roundedRectangle", sets: sets, options: options)
     }
     
@@ -321,9 +375,15 @@ public final class NativeGenerator {
         }
         
         // Generate stroke
-        let ops = RoughMath.eggOps(cx: cx, cy: cy, width: width, height: height, tilt: tilt, options: options)
+        let ops: [Operation]
+        switch options.strokeContinuity {
+        case .legacy:
+            ops = RoughMath.eggOps(cx: cx, cy: cy, width: width, height: height, tilt: tilt, options: options)
+        case .continuous:
+            ops = RoughCurves.eggOps(cx: cx, cy: cy, width: width, height: height, tilt: tilt, options: options)
+        }
         sets.append(OperationSet(type: .path, operations: ops, path: nil, size: nil))
-        
+
         return Drawing(shape: "egg", sets: sets, options: options)
     }
     

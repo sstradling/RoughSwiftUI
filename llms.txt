@@ -49,6 +49,7 @@ Modifiers write `Options`. Stored defaults:
 | `fillSpacingPattern` | `nil` |
 | `curveTightness` | `0` |
 | `curveStepCount` | `9` |
+| `strokeContinuity` | `.legacy`. `.continuous` draws native outlines as a few cubic Beziers. `curve`, SVG paths, and text stay sampled |
 | `seed` | `nil` (`UInt64?`). `nil` is a new drawing on a cache miss |
 | `dashOffset`, `dashGap`, `zigzagOffset` | `-1` (automatic) |
 | `brushProfile` | `.default` |

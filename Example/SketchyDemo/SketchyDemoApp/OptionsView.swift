@@ -54,6 +54,15 @@ struct OptionsView: View {
 
                 Divider()
 
+                section("Stroke continuity", detail: "Same seed. Legacy samples the circle. Continuous uses four cubics per pass.") {
+                    HStack(spacing: 16) {
+                        continuitySample("legacy", continuity: .legacy)
+                        continuitySample("continuous", continuity: .continuous)
+                    }
+                }
+
+                Divider()
+
                 section("Randomness", detail: "maxRandomnessOffset and roughness. The middle tile is the default.") {
                     HStack(spacing: 16) {
                         roughSample("subtle", color: .gray, randomness: 0.5, roughness: 0.2)
@@ -125,6 +134,22 @@ struct OptionsView: View {
                 .seed(23)
                 .circle()
                 .frame(width: 90, height: 90)
+            SwiftUI.Text(caption)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private func continuitySample(_ caption: String, continuity: StrokeContinuity) -> some View {
+        VStack(spacing: 8) {
+            RoughView()
+                .stroke(Color(red: 0.12, green: 0.14, blue: 0.18))
+                .strokeWidth(3)
+                .roughness(1.4)
+                .strokeContinuity(continuity)
+                .seed(42)
+                .circle()
+                .frame(width: 120, height: 120)
             SwiftUI.Text(caption)
                 .font(.caption)
                 .foregroundStyle(.secondary)
