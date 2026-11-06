@@ -273,11 +273,21 @@ func stickerBacking(_ backing: StickerBacking?) -> Self
 func stickerBacking(
     width: CGFloat,
     smoothness: CGFloat = 0,
-    edge: StickerEdge = .smooth
+    edge: StickerEdge = .smooth,
+    color: Color = .white,
+    texture: StickerTexture? = nil
+) -> Self
+
+func stickerBacking(
+    width: CGFloat,
+    smoothness: CGFloat = 0,
+    edge: StickerEdge = .smooth,
+    color: UIColor,
+    texture: StickerTexture? = nil
 ) -> Self
 ```
 
-`RoughText` has the same methods. `nil` or a width of `0` draws nothing. The default paper color is white. Set `StickerBacking.color` (`UIColor`) for another color. See [Sticker Backing](#sticker-backing).
+`RoughText` has the same methods. `nil` or a width of `0` draws nothing. The SwiftUI overload defaults to white with no grain. The `UIColor` overload requires `color`, so `color: .white` is not ambiguous: write `Color.white` or `UIColor.white`. See [Sticker Backing](#sticker-backing).
 
 ### Animation Modifier
 
@@ -1032,8 +1042,21 @@ RoughView()
     .stroke(Color(red: 0.12, green: 0.14, blue: 0.18))
     .strokeWidth(2)
     .seed(42)
-    .stickerBacking(width: 14, smoothness: 0.65)
+    .stickerBacking(
+        width: 14,
+        smoothness: 0.65,
+        color: Color(red: 0.96, green: 0.93, blue: 0.84),
+        texture: .paper(amount: 0.5, scale: 12, seed: 42)
+    )
     .circle()
+```
+
+Color alone, grain on white, or both:
+
+```swift
+.stickerBacking(width: 14, color: Color(red: 0.96, green: 0.93, blue: 0.84))
+.stickerBacking(width: 14, texture: .paper())
+.stickerBacking(width: 14, color: UIColor(red: 0.96, green: 0.93, blue: 0.84, alpha: 1), texture: .paper(seed: 42))
 ```
 
 ### StickerBacking
@@ -1043,9 +1066,20 @@ RoughView()
 | `width` | none | Margin past the nominal stroke, in points. `0` draws nothing |
 | `smoothness` | `0` | `0` follows the rough outline. `1` follows the input silhouette. Clamped to `0...1` |
 | `edge` | `.smooth` | `.smooth` or `.torn(StickerTear())` |
-| `color` | white | `UIColor`. Alpha is honored |
+| `color` | white | `UIColor`, or `Color` on the view modifier. Alpha is honored |
+| `texture` | `nil` | `StickerTexture` fibers inside the sheet. `nil` is flat color |
 
-`width` is the paper visible beyond the ink. The sheet extends `width + strokeWidth / 2` from the outline centerline. Torn chops use `Options.seed` and do not advance the sketch's random sequence. A `nil` seed uses a fixed tear seed.
+`width` is the paper visible beyond the ink. The sheet extends `width + strokeWidth / 2` from the outline centerline. Torn chops use `Options.seed` and do not advance the sketch's random sequence. A `nil` seed uses a fixed tear seed. Grain uses `StickerTexture.seed`, then `Options.seed`, then a fixed seed. It does not advance the sketch sequence either.
+
+### StickerTexture
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `amount` | `0.45` | Strength, `0...1`. `0` draws no fibers |
+| `scale` | `11` | Grid spacing in points. Minimum `4` |
+| `seed` | `nil` | Repeats the fibers. `nil` follows `Options.seed` |
+
+`.paper()` and `.paper(amount:scale:seed:)` build that struct. Fibers are clipped to the sheet with the even-odd rule, so a hole stays clear. Grain does not change the sketch, and it is independent of smooth versus torn.
 
 ### StickerTear
 
@@ -1067,7 +1101,7 @@ RoughView()
 
 `.strokeContinuity(.legacy)` draws rectangles and polygons as open edge strokes, so the backing is a ribbon along each edge. Use `.continuous` (the default) for a die-cut sheet.
 
-Smooth edges keep a clamped miter, so a star point stays a point. A miter longer than about 3.2 times the margin is beveled. A notch tighter than the margin, or a torn edge that would cross itself, does not emit a self-intersecting fill. Tear depth is reduced first. If the offset still crosses, that closed contour falls back to a round dilation (filled centerline plus a round stroke).
+A `.smooth` sheet is drawn as curves between real corners, so an egg or circle reads as a continuous edge instead of a faceted polygon. Star points and rectangle corners stay sharp. `.torn` keeps the chopped straight facets. The offset still uses a clamped miter: a miter longer than about 3.2 times the margin is beveled. A notch tighter than the margin, or a torn edge that would cross itself, does not emit a self-intersecting fill. Tear depth is reduced first. If the offset still crosses, that closed contour falls back to a round dilation (filled centerline plus a round stroke). Grain on that fallback clips to the interior; the dilation stroke stays flat.
 
 Crayon and watercolor paint after the sheet, so the paper shows past the mark. Wax grit and a wet fringe can extend past the nominal stroke. Give those brushes a larger `width` if the texture should stay on the paper.
 

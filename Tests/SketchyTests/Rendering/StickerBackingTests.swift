@@ -238,6 +238,96 @@ final class StickerBackingTests: XCTestCase {
         XCTAssertGreaterThan(ratio, 1.35)
     }
 
+    func testSmoothEggPaperIsACurveAndStarKeepsCorners() throws {
+        let eggOptions = cleanOptions()
+        var eggBacking = eggOptions
+        eggBacking.strokeWidth = 2
+        eggBacking.stickerBacking = StickerBacking(width: 22, smoothness: 1)
+        let eggSize = CGSize(width: 240, height: 280)
+        let eggPath = try paperPath(
+            EggShape(x: 120, y: 140, width: 90, height: 140, tilt: 0.42),
+            options: eggBacking,
+            size: eggSize
+        )
+        let eggKinds = elementKinds(eggPath)
+        XCTAssertGreaterThan(eggKinds.curves, 12)
+        XCTAssertEqual(eggKinds.lines, 0)
+        let eggTurns = turningSamples(eggPath, spacing: 8)
+        XCTAssertLessThan(eggTurns.max() ?? 1, 0.7)
+        XCTAssertEqual(isolatedFacets(eggTurns), 0)
+
+        var starOptions = cleanOptions()
+        starOptions.stickerBacking = StickerBacking(width: 12, smoothness: 1)
+        let starPath = try paperPath(
+            Polygon(points: star(cx: 110, cy: 100, outer: 70, inner: 28)),
+            options: starOptions,
+            size: CGSize(width: 220, height: 200)
+        )
+        let starTurns = turningSamples(starPath, spacing: 6)
+        XCTAssertGreaterThan(starTurns.max() ?? 0, 0.85)
+        XCTAssertGreaterThan(isolatedFacets(starTurns), 3)
+
+        var tornOptions = eggBacking
+        tornOptions.stickerBacking = StickerBacking(
+            width: 22,
+            smoothness: 1,
+            edge: .torn(StickerTear(depth: 8, length: 16, jaggedness: 0.4))
+        )
+        let tornPath = try paperPath(
+            EggShape(x: 120, y: 140, width: 90, height: 140, tilt: 0.42),
+            options: tornOptions,
+            size: eggSize
+        )
+        XCTAssertEqual(elementKinds(tornPath).curves, 0)
+        XCTAssertGreaterThan(elementKinds(tornPath).lines, 8)
+    }
+
+    func testTextureIsSeededClippedAndOptional() throws {
+        let size = CGSize(width: 180, height: 160)
+        var options = cleanOptions()
+        options.strokeWidth = 2
+        options.stickerBacking = StickerBacking(width: 12, smoothness: 1, color: .white, texture: nil)
+        let plain = try commands(Rectangle(x: 30, y: 28, width: 100, height: 70), options: options, size: size)
+        let bare = try commands(Rectangle(x: 30, y: 28, width: 100, height: 70), options: cleanOptions(strokeWidth: 2), size: size)
+        XCTAssertEqual(plain.count, bare.count + 1)
+
+        options.stickerBacking = StickerBacking(
+            width: 12,
+            smoothness: 1,
+            color: UIColor(red: 0.95, green: 0.90, blue: 0.75, alpha: 1),
+            texture: StickerTexture(amount: 0.5, scale: 10, seed: 5)
+        )
+        let tinted = try commands(Rectangle(x: 30, y: 28, width: 100, height: 70), options: options, size: size)
+        let again = try commands(Rectangle(x: 30, y: 28, width: 100, height: 70), options: options, size: size)
+        let fibers = tinted.filter { $0.clipPath != nil }
+        XCTAssertFalse(fibers.isEmpty)
+        XCTAssertEqual(fibers.count, again.filter { $0.clipPath != nil }.count)
+        XCTAssertEqual(samples(fibers[0].path), samples(again.first { $0.clipPath != nil }!.path))
+        XCTAssertEqual(fibers[0].clipPath?.boundingRect, tinted[0].path.boundingRect)
+
+        options.stickerBacking = StickerBacking(
+            width: 12,
+            smoothness: 1,
+            texture: StickerTexture(amount: 0.5, scale: 10, seed: 9)
+        )
+        let other = try commands(Rectangle(x: 30, y: 28, width: 100, height: 70), options: options, size: size)
+        XCTAssertNotEqual(
+            samples(fibers[0].path),
+            samples(other.first { $0.clipPath != nil }!.path)
+        )
+
+        let view = RoughView().stickerBacking(
+            width: 10,
+            color: Color(red: 0.2, green: 0.4, blue: 0.8),
+            texture: .paper(seed: 3)
+        )
+        XCTAssertEqual(view.options.stickerBacking?.texture?.seed, 3)
+        XCTAssertEqual(view.options.stickerBacking?.texture?.amount, 0.45)
+        var red: CGFloat = 0
+        view.options.stickerBacking?.color.getRed(&red, green: nil, blue: nil, alpha: nil)
+        XCTAssertEqual(red, 0.2, accuracy: 0.02)
+    }
+
     func testCacheHashIncludesBacking() {
         var options = Options()
         let plain = options.cacheHash
@@ -320,6 +410,11 @@ final class StickerBackingTests: XCTestCase {
         return command.path.boundingRect
     }
 
+    private func commands(_ shape: Drawable, options: Options, size: CGSize) throws -> [RoughRenderCommand] {
+        let drawing = try drawing(shape, options: options, size: size)
+        return SwiftUIRenderer().commands(for: drawing, options: options, in: size)
+    }
+
     private func paperPath(_ shape: Drawable, options: Options, size: CGSize) throws -> SwiftUI.Path {
         let drawing = try drawing(shape, options: options, size: size)
         let command = try XCTUnwrap(
@@ -377,6 +472,110 @@ final class StickerBackingTests: XCTestCase {
         let minRadius = max(radii.min() ?? 1, 0.5)
         _ = first
         return maxRadius / minRadius
+    }
+
+    private func elementKinds(_ path: SwiftUI.Path) -> (lines: Int, curves: Int) {
+        var lines = 0
+        var curves = 0
+        path.cgPath.applyWithBlock { element in
+            switch element.pointee.type {
+            case .addLineToPoint:
+                lines += 1
+            case .addCurveToPoint, .addQuadCurveToPoint:
+                curves += 1
+            default:
+                break
+            }
+        }
+        return (lines, curves)
+    }
+
+    /// A kink with straight neighbors is a polygon vertex. A smooth curve is not.
+    private func isolatedFacets(_ turns: [CGFloat]) -> Int {
+        guard turns.count >= 5 else { return 0 }
+        var count = 0
+        for index in 0..<turns.count {
+            let previous = turns[(index + turns.count - 2) % turns.count]
+            let next = turns[(index + 2) % turns.count]
+            if turns[index] > 0.5, previous < 0.12, next < 0.12 {
+                count += 1
+            }
+        }
+        return count
+    }
+
+    /// Largest direction change along the paper edge, in radians.
+    private func turningSamples(_ path: SwiftUI.Path, spacing: CGFloat) -> [CGFloat] {
+        let points = resampled(path.cgPath, spacing: spacing)
+        guard points.count >= 3 else { return [] }
+        return (0..<points.count).map { index in
+            let previous = points[(index + points.count - 1) % points.count]
+            let next = points[(index + 1) % points.count]
+            let point = points[index]
+            let ux = point.x - previous.x
+            let uy = point.y - previous.y
+            let vx = next.x - point.x
+            let vy = next.y - point.y
+            return abs(atan2(ux * vy - uy * vx, ux * vx + uy * vy))
+        }
+    }
+
+    private func resampled(_ path: CGPath, spacing: CGFloat) -> [CGPoint] {
+        var raw: [CGPoint] = []
+        path.applyWithBlock { element in
+            let values = element.pointee.points
+            switch element.pointee.type {
+            case .moveToPoint:
+                raw.append(values[0])
+            case .addLineToPoint:
+                raw.append(values[0])
+            case .addQuadCurveToPoint:
+                appendCurve(&raw, from: raw.last ?? values[1], controls: [values[0]], to: values[1])
+            case .addCurveToPoint:
+                appendCurve(&raw, from: raw.last ?? values[2], controls: [values[0], values[1]], to: values[2])
+            default:
+                break
+            }
+        }
+        guard raw.count >= 2 else { return raw }
+        var spaced: [CGPoint] = [raw[0]]
+        var carry: CGFloat = 0
+        for index in 1..<raw.count {
+            var cursor = raw[index - 1]
+            let end = raw[index]
+            var span = hypot(end.x - cursor.x, end.y - cursor.y)
+            var remaining = spacing - carry
+            while span + 0.001 >= remaining, span > 0.001 {
+                let step = remaining / span
+                cursor = CGPoint(x: cursor.x + (end.x - cursor.x) * step, y: cursor.y + (end.y - cursor.y) * step)
+                spaced.append(cursor)
+                span = hypot(end.x - cursor.x, end.y - cursor.y)
+                remaining = spacing
+                carry = 0
+            }
+            carry += span
+        }
+        return spaced
+    }
+
+    private func appendCurve(_ points: inout [CGPoint], from start: CGPoint, controls: [CGPoint], to end: CGPoint) {
+        let steps = 8
+        for step in 1...steps {
+            let t = CGFloat(step) / CGFloat(steps)
+            if controls.count == 1 {
+                let u = 1 - t
+                points.append(CGPoint(
+                    x: u * u * start.x + 2 * u * t * controls[0].x + t * t * end.x,
+                    y: u * u * start.y + 2 * u * t * controls[0].y + t * t * end.y
+                ))
+            } else if controls.count == 2 {
+                let u = 1 - t
+                points.append(CGPoint(
+                    x: u * u * u * start.x + 3 * u * u * t * controls[0].x + 3 * u * t * t * controls[1].x + t * t * t * end.x,
+                    y: u * u * u * start.y + 3 * u * u * t * controls[0].y + 3 * u * t * t * controls[1].y + t * t * t * end.y
+                ))
+            }
+        }
     }
 
     private func samples(_ path: SwiftUI.Path) -> [CGPoint] {

@@ -50,7 +50,35 @@ public struct StickerTear: Equatable, Hashable, Sendable {
     }
 }
 
-/// Solid paper drawn behind a shape's fill and stroke.
+/// Paper grain drawn inside a sticker sheet.
+///
+/// The grain is short fibers on the paper color. It does not change the
+/// sketch stroke or fill. `nil` texture on `StickerBacking` is a flat color.
+/// The same `seed` repeats the fibers. A `nil` seed uses `Options.seed`, then
+/// a fixed seed. Fibers are clipped to the sheet, including around holes.
+public struct StickerTexture: Equatable, Hashable, Sendable {
+    /// How visible the grain is, from 0 (flat) to 1 (strong). Default 0.45.
+    public var amount: CGFloat
+
+    /// Spacing of the fiber grid, in points. Larger values are coarser. Minimum 4.
+    public var scale: CGFloat
+
+    /// Stable grain seed. `nil` follows `Options.seed`.
+    public var seed: UInt64?
+
+    public init(amount: CGFloat = 0.45, scale: CGFloat = 11, seed: UInt64? = nil) {
+        self.amount = min(1, max(0, amount))
+        self.scale = max(4, scale)
+        self.seed = seed
+    }
+
+    /// A visible sheet of paper. `amount` 0.45, `scale` 11 points.
+    public static func paper(amount: CGFloat = 0.45, scale: CGFloat = 11, seed: UInt64? = nil) -> StickerTexture {
+        StickerTexture(amount: amount, scale: scale, seed: seed)
+    }
+}
+
+/// Paper drawn behind a shape's fill and stroke.
 ///
 /// Leave `Options.stickerBacking` nil to draw nothing extra. A value does not
 /// change the generated outline or fill, and it does not consume `Options.seed`
@@ -85,7 +113,14 @@ public struct StickerBacking: Equatable, Hashable {
     public var smoothness: CGFloat
 
     /// Smooth die-cut edge, or chopped paper.
+    ///
+    /// `.smooth` draws the sheet as curves between real corners, so an egg
+    /// or circle stays a continuous outline. Star points and rectangle
+    /// corners stay sharp. `.torn` keeps the chopped facets.
     public var edge: StickerEdge
+
+    /// Fibers on the sheet. `nil` is a flat color.
+    public var texture: StickerTexture?
 
     private var paperColor: RoughColor
 
@@ -99,11 +134,13 @@ public struct StickerBacking: Equatable, Hashable {
         width: CGFloat,
         smoothness: CGFloat = 0,
         edge: StickerEdge = .smooth,
-        color: UIColor = .white
+        color: UIColor = .white,
+        texture: StickerTexture? = nil
     ) {
         self.width = max(0, width)
         self.smoothness = min(1, max(0, smoothness))
         self.edge = Self.clamped(edge)
+        self.texture = texture
         self.paperColor = RoughColor(uiColor: color)
     }
 

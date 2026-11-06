@@ -36,7 +36,7 @@ final class DocExampleCatalogTests: XCTestCase {
             if case .gif = example.kind { return true }
             return false
         }
-        XCTAssertEqual(stills.count, 67)
+        XCTAssertEqual(stills.count, 68)
         XCTAssertEqual(gifs.count, 7)
     }
 

@@ -1124,6 +1124,30 @@ RoughView()
     .circle()
 ```
 
+### Tinted paper
+
+The sheet color and the grain are separate. Fibers stay inside the cutout and repeat with the texture seed.
+
+![Tinted paper](images/stickers/sticker-paper.png)
+
+```swift
+RoughView()
+    .fill(Color(red: 0.22, green: 0.48, blue: 0.34))
+    .fillStyle(.hachure)
+    .fillAngle(0)
+    .fillSpacing(3)
+    .stroke(Color(red: 0.12, green: 0.14, blue: 0.18))
+    .strokeWidth(2)
+    .seed(18)
+    .stickerBacking(
+        width: 16,
+        smoothness: 0.8,
+        color: Color(red: 0.96, green: 0.91, blue: 0.78),
+        texture: .paper(amount: 0.55, scale: 10, seed: 18)
+    )
+    .egg(tilt: 0.4)
+```
+
 ## Seeding
 
 The same seed redraws the same strokes. A different seed is a different drawing of the same shape.

@@ -14,6 +14,7 @@
 
 import CoreGraphics
 import SwiftUI
+import UIKit
 
 /// Paper geometry and render commands for `StickerBacking`.
 enum StickerBackingBuilder {
@@ -82,7 +83,10 @@ enum StickerBackingBuilder {
                 closed,
                 outward: outward,
                 tear: tear,
-                color: paper
+                texture: backing.texture,
+                seed: options.seed,
+                color: paper,
+                uiColor: backing.color
             ))
         }
 
@@ -100,13 +104,30 @@ enum StickerBackingBuilder {
                         seed: tear.seed &+ UInt64(index) &+ 0x0F1E
                     )
                 }
+                let curved = tear == nil
+                let center = contourPath(points, closed: false, curved: curved)
                 commands.append(RoughRenderCommand(
-                    path: polyline(points, closed: false),
+                    path: center,
                     style: .stroke(paper, lineWidth: ribbon),
                     cap: .round,
                     join: tear == nil ? .round : .bevel,
                     miterLimit: 4
                 ))
+                if let texture = backing.texture, texture.amount > 0.01 {
+                    let clip = NativeStrokeOutline.path(
+                        from: center,
+                        width: ribbon,
+                        cap: .round,
+                        join: tear == nil ? .round : .bevel,
+                        miterLimit: 4
+                    )
+                    commands.append(contentsOf: textureCommands(
+                        clip: clip,
+                        texture: texture,
+                        seed: options.seed,
+                        base: backing.color
+                    ))
+                }
             }
         }
 
@@ -139,7 +160,10 @@ enum StickerBackingBuilder {
         _ lines: [Centerline],
         outward: CGFloat,
         tear: TearSettings?,
-        color: Color
+        texture: StickerTexture?,
+        seed: UInt64?,
+        color: Color,
+        uiColor: UIColor
     ) -> [RoughRenderCommand] {
         let rings = lines.filter { $0.points.count >= 3 }
         guard !rings.isEmpty else { return [] }
@@ -167,16 +191,13 @@ enum StickerBackingBuilder {
         }
 
         if !failed, offsets.count == rings.count, !offsets.isEmpty {
-            return [RoughRenderCommand(
-                path: compoundPath(offsets, closed: true),
-                style: .fill(color),
-                fillRule: .evenOdd
-            )]
+            let paper = compoundPath(offsets, closed: true, curved: tear == nil)
+            return sheetCommands(paper, color: color, uiColor: uiColor, texture: texture, seed: seed)
         }
 
-        let center = compoundPath(lines.map(\.points), closed: true)
+        let center = compoundPath(lines.map(\.points), closed: true, curved: tear == nil)
         let dilation = max(outward * 2, 0.5)
-        return [
+        var commands = [
             RoughRenderCommand(path: center, style: .fill(color), fillRule: .evenOdd),
             RoughRenderCommand(
                 path: center,
@@ -186,6 +207,39 @@ enum StickerBackingBuilder {
                 miterLimit: 1
             )
         ]
+        // The round stroke supplies the margin. Grain clips to the interior
+        // sheet; the margin stroke stays a flat color when offset failed.
+        if let texture, texture.amount > 0.01 {
+            commands.append(contentsOf: textureCommands(
+                clip: center,
+                texture: texture,
+                seed: seed,
+                base: uiColor
+            ))
+        }
+        return commands
+    }
+
+    /// Flat color, then optional fibers clipped to the sheet.
+    private static func sheetCommands(
+        _ paper: SwiftUI.Path,
+        color: Color,
+        uiColor: UIColor,
+        texture: StickerTexture?,
+        seed: UInt64?
+    ) -> [RoughRenderCommand] {
+        var commands = [
+            RoughRenderCommand(path: paper, style: .fill(color), fillRule: .evenOdd)
+        ]
+        if let texture, texture.amount > 0.01 {
+            commands.append(contentsOf: textureCommands(
+                clip: paper,
+                texture: texture,
+                seed: seed,
+                base: uiColor
+            ))
+        }
+        return commands
     }
 
     /// Chops `ring`, halving the depth until the ring stays simple.
@@ -217,6 +271,93 @@ enum StickerBackingBuilder {
             }
         }
         return segmentsIntersect(best) ? ring : best
+    }
+
+    /// Short fibers inside `clip`. Even-odd clip keeps holes empty.
+    private static func textureCommands(
+        clip: SwiftUI.Path,
+        texture: StickerTexture,
+        seed: UInt64?,
+        base: UIColor
+    ) -> [RoughRenderCommand] {
+        let bounds = clip.boundingRect
+        guard bounds.width > 2, bounds.height > 2, texture.amount > 0.01 else { return [] }
+        var spacing = texture.scale
+        let budget: CGFloat = 1600
+        while (bounds.width / spacing) * (bounds.height / spacing) > budget {
+            spacing *= 1.2
+        }
+        let columns = max(1, Int(ceil(bounds.width / spacing)))
+        let rows = max(1, Int(ceil(bounds.height / spacing)))
+        let grainSeed = (texture.seed ?? seed ?? 0xB0A9_E5E1) ^ 0x9A9E_2
+        var fibers = SwiftUI.Path()
+        var specks = SwiftUI.Path()
+        for row in 0..<rows {
+            for column in 0..<columns {
+                var rng = SplitMix64(seed: grainSeed &+ UInt64(row) &* 0x9E37_79B9 &+ UInt64(column) &* 0xBF58_476D)
+                let chance = CGFloat.random(in: 0...1, using: &rng)
+                guard chance < 0.35 + 0.65 * texture.amount else { continue }
+                let origin = CGPoint(
+                    x: bounds.minX + (CGFloat(column) + CGFloat.random(in: 0...1, using: &rng)) * spacing,
+                    y: bounds.minY + (CGFloat(row) + CGFloat.random(in: 0...1, using: &rng)) * spacing
+                )
+                let along = CGFloat.random(in: -0.55...0.55, using: &rng)
+                let cross = (row + column).isMultiple(of: 5)
+                let angle = (cross ? CGFloat.pi / 2 : 0) + along
+                let length = spacing * CGFloat.random(in: 0.55...1.35, using: &rng)
+                let end = CGPoint(
+                    x: origin.x + cos(angle) * length,
+                    y: origin.y + sin(angle) * length
+                )
+                if cross {
+                    specks.move(to: origin)
+                    specks.addLine(to: end)
+                } else {
+                    fibers.move(to: origin)
+                    fibers.addLine(to: end)
+                }
+            }
+        }
+        let ink = fiberColor(base, amount: texture.amount)
+        let width = 0.55 + texture.amount * 0.7
+        var commands: [RoughRenderCommand] = []
+        if !fibers.isEmpty {
+            commands.append(RoughRenderCommand(
+                path: fibers,
+                style: .stroke(ink, lineWidth: width),
+                clipPath: clip,
+                cap: .round,
+                join: .round
+            ))
+        }
+        if !specks.isEmpty {
+            commands.append(RoughRenderCommand(
+                path: specks,
+                style: .stroke(ink.opacity(0.7), lineWidth: max(0.4, width * 0.65)),
+                clipPath: clip,
+                cap: .round,
+                join: .round
+            ))
+        }
+        return commands
+    }
+
+    /// A darker shade of the sheet so grain reads on white and on a tint.
+    private static func fiberColor(_ base: UIColor, amount: CGFloat) -> Color {
+        var red: CGFloat = 0
+        var green: CGFloat = 0
+        var blue: CGFloat = 0
+        var alpha: CGFloat = 1
+        let resolved = base.resolvedColor(with: UITraitCollection(userInterfaceStyle: .light))
+        guard resolved.getRed(&red, green: &green, blue: &blue, alpha: &alpha) else {
+            return Color(white: 0.45).opacity(0.7)
+        }
+        let contrast = 0.28 + 0.4 * amount
+        func shade(_ channel: CGFloat) -> Double {
+            Double(min(1, max(0, channel * (1 - contrast))))
+        }
+        return Color(red: shade(red), green: shade(green), blue: shade(blue))
+            .opacity(Double(min(1, max(0.35, alpha))))
     }
 
     // MARK: - Outline extraction
@@ -696,12 +837,131 @@ enum StickerBackingBuilder {
 
     // MARK: - Paths
 
-    private static func compoundPath(_ rings: [[CGPoint]], closed: Bool) -> SwiftUI.Path {
+    /// A turning angle at least this large, in radians, is a real corner.
+    /// Egg and circle samples stay under it. Star tips and rectangle corners do not.
+    /// About 52°. Egg samples and circle steps stay under this. A rectangle
+    /// corner is 90°, and a star tip is sharper still.
+    private static let cornerTurn: CGFloat = 0.90
+
+    private static func compoundPath(_ rings: [[CGPoint]], closed: Bool, curved: Bool) -> SwiftUI.Path {
         var path = SwiftUI.Path()
         for ring in rings where ring.count >= 2 {
-            path.addPath(polyline(ring, closed: closed && ring.count >= 3))
+            path.addPath(contourPath(ring, closed: closed && ring.count >= 3, curved: curved))
         }
         return path
+    }
+
+    /// Smooth paper between corners. Torn paper and short runs stay lines.
+    static func contourPath(_ points: [CGPoint], closed: Bool, curved: Bool) -> SwiftUI.Path {
+        let ring = clean(points, dropClosingDuplicate: closed)
+        guard curved, ring.count >= 4 else {
+            return polyline(ring.isEmpty ? points : ring, closed: closed && ring.count >= 3)
+        }
+        var corners = ring.indices.filter { isCorner(ring, index: $0, closed: closed) }
+        if !closed {
+            if corners.first != 0 { corners.insert(0, at: 0) }
+            if corners.last != ring.count - 1 { corners.append(ring.count - 1) }
+        }
+        if closed && corners.isEmpty {
+            return closedSpline(ring)
+        }
+        guard !corners.isEmpty else {
+            return openSpline(ring)
+        }
+        var path = SwiftUI.Path()
+        let chainCount = closed ? corners.count : corners.count - 1
+        for index in 0..<chainCount {
+            let start = corners[index]
+            let end = closed ? corners[(index + 1) % corners.count] : corners[index + 1]
+            let chain = slice(ring, from: start, to: end)
+            appendSpline(&path, chain, needsMove: path.isEmpty)
+        }
+        if closed {
+            path.closeSubpath()
+        }
+        return path
+    }
+
+    private static func isCorner(_ points: [CGPoint], index: Int, closed: Bool) -> Bool {
+        let count = points.count
+        let previous = closed ? (index + count - 1) % count : index - 1
+        let next = closed ? (index + 1) % count : index + 1
+        guard previous >= 0, next < count, previous != index, next != index else { return false }
+        let spanIn = distance(points[previous], points[index])
+        let spanOut = distance(points[index], points[next])
+        guard spanIn > 0.4, spanOut > 0.4 else { return false }
+        return abs(turning(points[previous], points[index], points[next])) >= cornerTurn
+    }
+
+    private static func turning(_ a: CGPoint, _ b: CGPoint, _ c: CGPoint) -> CGFloat {
+        let ux = b.x - a.x
+        let uy = b.y - a.y
+        let vx = c.x - b.x
+        let vy = c.y - b.y
+        return atan2(ux * vy - uy * vx, ux * vx + uy * vy)
+    }
+
+    private static func slice(_ points: [CGPoint], from start: Int, to end: Int) -> [CGPoint] {
+        if end >= start {
+            return Array(points[start...end])
+        }
+        return Array(points[start...]) + Array(points[...end])
+    }
+
+    private static func closedSpline(_ points: [CGPoint]) -> SwiftUI.Path {
+        var path = SwiftUI.Path()
+        guard let first = points.first, points.count >= 2 else { return path }
+        path.move(to: first)
+        let count = points.count
+        for index in 0..<count {
+            let p0 = points[(index - 1 + count) % count]
+            let p1 = points[index]
+            let p2 = points[(index + 1) % count]
+            let p3 = points[(index + 2) % count]
+            let controls = splineControls(p0, p1, p2, p3)
+            path.addCurve(to: p2, control1: controls.0, control2: controls.1)
+        }
+        path.closeSubpath()
+        return path
+    }
+
+    private static func openSpline(_ points: [CGPoint]) -> SwiftUI.Path {
+        var path = SwiftUI.Path()
+        appendSpline(&path, points, needsMove: true)
+        return path
+    }
+
+    private static func appendSpline(_ path: inout SwiftUI.Path, _ chain: [CGPoint], needsMove: Bool) {
+        guard let first = chain.first else { return }
+        if needsMove || path.isEmpty {
+            path.move(to: first)
+        }
+        guard chain.count >= 2 else { return }
+        if chain.count == 2 {
+            path.addLine(to: chain[1])
+            return
+        }
+        for index in 0..<(chain.count - 1) {
+            let p1 = chain[index]
+            let p2 = chain[index + 1]
+            let p0 = index == 0
+                ? CGPoint(x: 2 * p1.x - p2.x, y: 2 * p1.y - p2.y)
+                : chain[index - 1]
+            let p3 = index + 2 < chain.count
+                ? chain[index + 2]
+                : CGPoint(x: 2 * p2.x - p1.x, y: 2 * p2.y - p1.y)
+            let controls = splineControls(p0, p1, p2, p3)
+            path.addCurve(to: p2, control1: controls.0, control2: controls.1)
+        }
+    }
+
+    /// Uniform Catmull-Rom segment from `p1` to `p2`.
+    private static func splineControls(
+        _ p0: CGPoint, _ p1: CGPoint, _ p2: CGPoint, _ p3: CGPoint
+    ) -> (CGPoint, CGPoint) {
+        let c1 = CGPoint(x: p1.x + (p2.x - p0.x) / 6, y: p1.y + (p2.y - p0.y) / 6)
+        let c2 = CGPoint(x: p2.x - (p3.x - p1.x) / 6, y: p2.y - (p3.y - p1.y) / 6)
+        return (c1, c2)
     }
 
     private static func polyline(_ points: [CGPoint], closed: Bool) -> SwiftUI.Path {

@@ -139,6 +139,46 @@ extension DocExampleCatalog {
                 .seed(4)
                 .stickerBacking(width: 18, smoothness: 0.7)
                 .circle()
+        },
+        still(
+            "sticker-paper",
+            section: "Stickers",
+            title: "Tinted paper",
+            description: "The sheet color and the grain are separate. Fibers stay inside the cutout and repeat with the texture seed.",
+            snippet: """
+            RoughView()
+                .fill(\(leaf.snippet))
+                .fillStyle(.hachure)
+                .fillAngle(0)
+                .fillSpacing(3)
+                .stroke(\(charcoal.snippet))
+                .strokeWidth(2)
+                .seed(18)
+                .stickerBacking(
+                    width: 16,
+                    smoothness: 0.8,
+                    color: Color(red: 0.96, green: 0.91, blue: 0.78),
+                    texture: .paper(amount: 0.55, scale: 10, seed: 18)
+                )
+                .egg(tilt: 0.4)
+            """,
+            picture: .stickerMat
+        ) {
+            RoughView()
+                .fill(leaf.color)
+                .fillStyle(.hachure)
+                .fillAngle(0)
+                .fillSpacing(3)
+                .stroke(charcoal.color)
+                .strokeWidth(2)
+                .seed(18)
+                .stickerBacking(
+                    width: 16,
+                    smoothness: 0.8,
+                    color: Color(red: 0.96, green: 0.91, blue: 0.78),
+                    texture: .paper(amount: 0.55, scale: 10, seed: 18)
+                )
+                .egg(tilt: 0.4)
         }
     ]
 }

@@ -755,14 +755,43 @@ public extension RoughView {
     /// Draws paper `width` points past the nominal stroke.
     ///
     /// `smoothness` `0` follows the rough edge. `1` removes fine wobble and
-    /// keeps the silhouette. `edge` is `.smooth` or `.torn()`. The paper
-    /// color defaults to white; set `StickerBacking.color` for another color.
+    /// keeps the silhouette. `edge` is `.smooth` or `.torn()`. `color`
+    /// defaults to white. `texture` adds paper grain inside the sheet.
+    /// Pass `Color.white` or `UIColor.white` when both overloads are visible.
     func stickerBacking(
         width: CGFloat,
         smoothness: CGFloat = 0,
-        edge: StickerEdge = .smooth
+        edge: StickerEdge = .smooth,
+        color: Color = .white,
+        texture: StickerTexture? = nil
     ) -> Self {
-        stickerBacking(StickerBacking(width: width, smoothness: smoothness, edge: edge))
+        stickerBacking(StickerBacking(
+            width: width,
+            smoothness: smoothness,
+            edge: edge,
+            color: UIColor(color),
+            texture: texture
+        ))
+    }
+
+    /// Draws paper `width` points past the nominal stroke in a `UIColor`.
+    ///
+    /// `color` has no default here, so a bare `.white` is not ambiguous with
+    /// the SwiftUI `Color` overload. `texture` adds paper grain.
+    func stickerBacking(
+        width: CGFloat,
+        smoothness: CGFloat = 0,
+        edge: StickerEdge = .smooth,
+        color: UIColor,
+        texture: StickerTexture? = nil
+    ) -> Self {
+        stickerBacking(StickerBacking(
+            width: width,
+            smoothness: smoothness,
+            edge: edge,
+            color: color,
+            texture: texture
+        ))
     }
     
     // MARK: - Animation

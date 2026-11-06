@@ -108,7 +108,7 @@ RoughView()
 
 ### Sticker backing
 
-`.stickerBacking(width:smoothness:edge:)` puts solid paper behind the shape. `width` is the margin past the stroke. `smoothness` `0` follows the rough edge and `1` follows the input silhouette. `.torn()` chops that edge. The default color is white, so the gallery mat below is there to show it. Omit the modifier and the drawing is unchanged.
+`.stickerBacking(width:smoothness:edge:color:texture:)` puts paper behind the shape. `width` is the margin past the stroke. `smoothness` `0` follows the rough edge and `1` follows the input silhouette. A smooth edge is a continuous curve between real corners. `.torn()` chops that edge. `color` defaults to white. `texture: .paper()` adds grain on that color. Omit the modifier and the drawing is unchanged. The gallery mat below is there so the white margin shows.
 
 ![Sticker star](docs/images/stickers/sticker-star.png)
 

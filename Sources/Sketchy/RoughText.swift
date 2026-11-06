@@ -309,13 +309,45 @@ public extension RoughText {
     }
 
     /// Draws paper `width` points past the nominal glyph stroke.
+    ///
+    /// `color` defaults to white. `texture` adds paper grain. See
+    /// `RoughView.stickerBacking(width:smoothness:edge:color:texture:)`.
     func stickerBacking(
         width: CGFloat,
         smoothness: CGFloat = 0,
-        edge: StickerEdge = .smooth
+        edge: StickerEdge = .smooth,
+        color: Color = .white,
+        texture: StickerTexture? = nil
     ) -> Self {
         RoughText(
-            roughView: roughView.stickerBacking(width: width, smoothness: smoothness, edge: edge),
+            roughView: roughView.stickerBacking(
+                width: width,
+                smoothness: smoothness,
+                edge: edge,
+                color: color,
+                texture: texture
+            ),
+            textSize: textSize
+        )
+    }
+
+    /// Draws paper in a `UIColor`. `color` is required so it does not clash
+    /// with the SwiftUI `Color` overload.
+    func stickerBacking(
+        width: CGFloat,
+        smoothness: CGFloat = 0,
+        edge: StickerEdge = .smooth,
+        color: UIColor,
+        texture: StickerTexture? = nil
+    ) -> Self {
+        RoughText(
+            roughView: roughView.stickerBacking(
+                width: width,
+                smoothness: smoothness,
+                edge: edge,
+                color: color,
+                texture: texture
+            ),
             textSize: textSize
         )
     }

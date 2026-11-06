@@ -29,7 +29,7 @@ struct WhatsNewView: View {
                 }
                 .padding(.top)
 
-                section("Sticker backing", detail: "White paper behind the ink. Smoothness 1 follows the star. Torn chops the edge.") {
+                section("Sticker backing", detail: "White, tinted, or grained paper behind the ink. Smoothness 1 follows the star. Torn chops the edge.") {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(alignment: .top, spacing: 16) {
                             stickerSample("none", backing: nil)
@@ -44,6 +44,30 @@ struct WhatsNewView: View {
                                 )
                             )
                         }
+                    }
+
+                    HStack(spacing: 16) {
+                        stickerSample(
+                            "tint",
+                            backing: StickerBacking(
+                                width: 10,
+                                smoothness: 1,
+                                color: UIColor(red: 0.96, green: 0.91, blue: 0.78, alpha: 1)
+                            )
+                        )
+                        stickerSample(
+                            "grain",
+                            backing: StickerBacking(width: 10, smoothness: 1, texture: .paper(seed: 6))
+                        )
+                        stickerSample(
+                            "tint + grain",
+                            backing: StickerBacking(
+                                width: 10,
+                                smoothness: 1,
+                                color: UIColor(red: 0.96, green: 0.91, blue: 0.78, alpha: 1),
+                                texture: .paper(amount: 0.55, seed: 6)
+                            )
+                        )
                     }
                 }
 

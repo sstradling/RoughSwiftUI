@@ -8,7 +8,7 @@ import XCTest
 final class StickerBackingPreviewTests: XCTestCase {
 
     private let cardWidth: CGFloat = 980
-    private let cardHeight: CGFloat = 400
+    private let cardHeight: CGFloat = 480
     private let slate = Color(red: 0.22, green: 0.31, blue: 0.39)
     private let ink = Color(red: 0.12, green: 0.14, blue: 0.18)
     private let blue = Color(red: 0.20, green: 0.48, blue: 0.78)
@@ -24,6 +24,12 @@ final class StickerBackingPreviewTests: XCTestCase {
         try write(starCard, name: "sticker-star-compare.png", to: directory)
         try write(organicCard, name: "sticker-organic-widths.png", to: directory)
         try write(compoundCard, name: "sticker-compound-crayon.png", to: directory)
+        let curvedEdge = eggOutline(curved: true)
+        let facetedEdge = eggOutline(curved: false)
+        XCTAssertGreaterThan(curvedEdge.boundingRect.width, 40)
+        XCTAssertGreaterThan(facetedEdge.boundingRect.width, 40)
+        try write(edgeCloseup, name: "sticker-egg-edge-closeup.png", to: directory)
+        try write(surfaceCard, name: "sticker-color-texture.png", to: directory)
     }
 
     private var starCard: some View {
@@ -67,6 +73,106 @@ final class StickerBackingPreviewTests: XCTestCase {
                 sample("Crayon", crayon, fillsView: true)
                 sample("Watercolor", watercolor, fillsView: true)
             }
+        }
+    }
+
+    private var edgeCloseup: some View {
+        let faceted = eggOutline(curved: false)
+        let curved = eggOutline(curved: true)
+        return card("Egg edge, close-up: offset polygon and smooth curve") {
+            HStack(alignment: .top, spacing: 24) {
+                zoomedOutline("Offset polygon", faceted)
+                zoomedOutline("Smooth curve", curved)
+            }
+        }
+    }
+
+    private var surfaceCard: some View {
+        card("Sheet color, grain, and both. Torn grain stays chopped.") {
+            HStack(alignment: .top, spacing: 16) {
+                sample("Tinted", egg(backing: StickerBacking(
+                    width: 18,
+                    smoothness: 1,
+                    color: UIColor(red: 0.96, green: 0.91, blue: 0.78, alpha: 1)
+                )))
+                sample("White grain", egg(backing: StickerBacking(
+                    width: 18,
+                    smoothness: 1,
+                    texture: .paper(amount: 0.62, scale: 9, seed: 6)
+                )))
+                sample("Tint + grain", egg(backing: StickerBacking(
+                    width: 18,
+                    smoothness: 1,
+                    color: UIColor(red: 0.73, green: 0.84, blue: 0.78, alpha: 1),
+                    texture: .paper(amount: 0.62, scale: 9, seed: 6)
+                )))
+                sample("Torn + grain", egg(backing: StickerBacking(
+                    width: 16,
+                    smoothness: 0.7,
+                    edge: .torn(StickerTear(depth: 8, length: 16, jaggedness: 0.4)),
+                    texture: .paper(amount: 0.5, scale: 10, seed: 6)
+                )))
+            }
+        }
+    }
+
+    private func eggOutline(curved: Bool) -> SwiftUI.Path {
+        var options = Options()
+        options.roughness = 0
+        options.bowing = 0
+        options.maxRandomnessOffset = 0
+        options.strokeWidth = 2
+        options.seed = 17
+        options.stickerBacking = StickerBacking(width: 22, smoothness: 1)
+        let size = CGSize(width: 240, height: 280)
+        let generator = Engine().generator(size: size)
+        guard let drawing = generator.generate(
+            drawable: EggShape(x: 120, y: 145, width: 100, height: 160, tilt: 0.42),
+            options: options
+        ) else {
+            return SwiftUI.Path()
+        }
+        let lines = StickerBackingBuilder.centerlines(
+            for: drawing,
+            options: options,
+            backing: options.stickerBacking!,
+            transform: nil
+        )
+        guard let line = lines.first(where: \.closed) ?? lines.first else {
+            return SwiftUI.Path()
+        }
+        let ring = StickerBackingBuilder.offsetClosed(line.points, by: 23) ?? line.points
+        return StickerBackingBuilder.contourPath(ring, closed: true, curved: curved)
+    }
+
+    private func zoomedOutline(_ label: String, _ path: SwiftUI.Path) -> some View {
+        let bounds = path.boundingRect
+        let focus = CGRect(
+            x: bounds.midX - bounds.width * 0.02,
+            y: bounds.midY - bounds.height * 0.34,
+            width: bounds.width * 0.62,
+            height: bounds.height * 0.58
+        )
+        return VStack(spacing: 8) {
+            Text(label)
+                .font(.system(size: 15, weight: .medium))
+                .foregroundStyle(Color(white: 0.93))
+            Canvas { context, size in
+                let scale = min(size.width / max(focus.width, 1), size.height / max(focus.height, 1))
+                let transform = CGAffineTransform(
+                    a: scale,
+                    b: 0,
+                    c: 0,
+                    d: scale,
+                    tx: -focus.minX * scale,
+                    ty: -focus.minY * scale
+                )
+                let drawn = path.applying(transform)
+                context.fill(drawn, with: .color(.white))
+                context.stroke(drawn, with: .color(Color(white: 0.12)), lineWidth: 2)
+            }
+            .frame(width: 360, height: 240)
+            .background(slate)
         }
     }
 
