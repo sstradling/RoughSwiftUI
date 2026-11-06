@@ -27,7 +27,7 @@ The package is iOS 17+ (`Package.swift`). Tests run on an iPhone simulator. Do n
 | `scripts/render-docs.sh` | Renders the catalog into `docs/images` and `docs/Examples.md` |
 | `.github/workflows/tests.yml` | CI test job |
 
-`Example/` is a sample app. `DOCUMENTATION.md` is the long API reference. `docs/Examples.md` is generated. `docs/Performance.md` is the cache and signpost notes.
+`Example/SketchyDemo` is the sample app. Open `Example/SketchyDemo/SketchyDemoApp.xcodeproj` and run the `SketchyDemoApp` scheme. The bundle id is `com.sstradling.SketchyDemo`, and the target links the local package product `Sketchy`. `DOCUMENTATION.md` is the long API reference. `docs/Examples.md` is generated. `docs/Performance.md` is the cache and signpost notes.
 
 ## Tests
 

@@ -1,5 +1,7 @@
 # Sketchy Cursor Rules
 
+The demo app is `Example/SketchyDemo`. The Xcode project, target, scheme, and `@main` type are `SketchyDemoApp`. The bundle id is `com.sstradling.SketchyDemo`. It depends on the local package product `Sketchy`.
+
 ## Documentation Requirements
 
 **IMPORTANT:** When adding new features, modifying existing APIs, or changing behavior that affects usage, you MUST update:

@@ -327,6 +327,10 @@ Placed with `.draw`: `Line`, `Rectangle`, `Ellipse`, `Circle`, `LinearPath`, `Ar
 
 Generators are cached by size. Drawings are cached by shape and by the options that change geometry, including the seed. How to clear those caches, and how to read the signposts in Instruments, is in [Performance](docs/Performance.md).
 
+## Demo
+
+`Example/SketchyDemo` is the sample app. Open `Example/SketchyDemo/SketchyDemoApp.xcodeproj` and run the `SketchyDemoApp` scheme. It links the local `Sketchy` package. The bundle id is `com.sstradling.SketchyDemo`.
+
 ## Author
 
 **Seth Stradling** - [@sstradling](https://github.com/sstradling)

@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Render the DocExample gallery into docs/images and docs/Examples.md.
+# The sample app is Example/SketchyDemo (scheme SketchyDemoApp). This script does not build it.
 #
 # Usage:
 #   scripts/render-docs.sh

@@ -1,14 +1,14 @@
 //
-//  RoughSwiftAppApp.swift
-//  RoughSwiftApp
+//  SketchyDemoApp.swift
+//  SketchyDemoApp
 //
-//  Created by khoa on 26/03/2022.
+//  Demo app for Sketchy.
 //
 
 import SwiftUI
 
 @main
-struct RoughSwiftAppApp: App {
+struct SketchyDemoApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
