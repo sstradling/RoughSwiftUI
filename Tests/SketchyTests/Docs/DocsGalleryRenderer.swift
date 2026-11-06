@@ -185,6 +185,12 @@ enum DocsGalleryRenderer {
             example.view()
         case .roughTextBesideCircle:
             DocRoughTextCard()
+        case .stickerMat:
+            example.view()
+                .background(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(Color(red: 0.27, green: 0.36, blue: 0.43))
+                )
         }
     }
 

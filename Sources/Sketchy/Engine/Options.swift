@@ -77,6 +77,10 @@ public struct Options: Equatable, Hashable {
     /// Shifts the fill relative to the outline. `.zero` leaves it centered.
     public var fillOffset: CGSize = .zero
 
+    /// Paper cutout behind the fill and stroke. `nil` (the default) draws none,
+    /// and the sketch is unchanged. See `StickerBacking`.
+    public var stickerBacking: StickerBacking? = nil
+
     /// Seed for roughness, bowing, and fill wobble.
     ///
     /// `nil` (the default) keeps the system random generator, so an uncached
@@ -258,6 +262,7 @@ public struct Options: Equatable, Hashable {
         hasher.combine(fillPadding)
         hasher.combine(fillOffset.width)
         hasher.combine(fillOffset.height)
+        hasher.combine(stickerBacking)
         hasher.combine(fillSpacing)
         hasher.combine(fillSpacingPattern)
         hasher.combine(dashOffset)

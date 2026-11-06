@@ -325,6 +325,7 @@ intros = {
     "Strokes": "Width, colour, opacity, and several lines in one view. Each outline is drawn as two offset passes.",
     "Roughness": "Roughness, bowing, and maxRandomnessOffset set how far those two passes wander from the true edge.",
     "Brushes": "Calligraphic, marker, and pen presets, plus crayon wax. A crayon brush textures fill lines as well as the outline.",
+    "Stickers": "A white sheet behind the ink. Smoothness 0 follows the rough edge and 1 follows the input silhouette. Torn chops the margin. The slate rectangle is gallery chrome so the white paper shows. It is not part of the snippet.",
     "Seeding": "The same seed redraws the same strokes. A different seed is a different drawing of the same shape.",
     "SVG": "Path strings are scaled to fit the card. Stroke width, fill weight, and fill alignment can be set for SVG paths alone.",
     "Text": "Glyphs are drawn at the font size you set and placed in the card. Text is not scaled to fill the frame the way an SVG path is.",

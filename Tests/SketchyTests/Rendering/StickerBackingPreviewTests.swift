@@ -1,0 +1,205 @@
+import SwiftUI
+import XCTest
+@testable import Sketchy
+
+/// Writes paper-card PNGs of the real sticker backing. Skipped unless
+/// `STICKER_PREVIEW=1`. xcodebuild delivers that as `TEST_RUNNER_STICKER_PREVIEW`.
+@MainActor
+final class StickerBackingPreviewTests: XCTestCase {
+
+    private let cardWidth: CGFloat = 980
+    private let cardHeight: CGFloat = 400
+    private let slate = Color(red: 0.22, green: 0.31, blue: 0.39)
+    private let ink = Color(red: 0.12, green: 0.14, blue: 0.18)
+    private let blue = Color(red: 0.20, green: 0.48, blue: 0.78)
+    private let coral = Color(red: 0.86, green: 0.36, blue: 0.28)
+    private let leaf = Color(red: 0.24, green: 0.58, blue: 0.40)
+    private let plum = Color(red: 0.50, green: 0.32, blue: 0.62)
+
+    func testRenderStickerPreviewCards() throws {
+        guard previewsEnabled() else {
+            throw XCTSkip("Set STICKER_PREVIEW=1 to write sticker preview cards.")
+        }
+        let directory = try outputDirectory()
+        try write(starCard, name: "sticker-star-compare.png", to: directory)
+        try write(organicCard, name: "sticker-organic-widths.png", to: directory)
+        try write(compoundCard, name: "sticker-compound-crayon.png", to: directory)
+    }
+
+    private var starCard: some View {
+        card("Star: none, close, smoothed silhouette, torn") {
+            HStack(alignment: .top, spacing: 18) {
+                sample("No backing", star(backing: nil))
+                sample("Close, 14pt", star(backing: StickerBacking(width: 14, smoothness: 0)))
+                sample("Smoothed, 14pt", star(backing: StickerBacking(width: 14, smoothness: 1)))
+                sample("Torn, 14pt", star(backing: StickerBacking(
+                    width: 14,
+                    smoothness: 0.45,
+                    edge: .torn(StickerTear(depth: 8, length: 16, jaggedness: 0.45))
+                )))
+            }
+        }
+    }
+
+    private var organicCard: some View {
+        card("Egg: narrow close cut, wide smooth cut, wide torn cut") {
+            HStack(alignment: .top, spacing: 28) {
+                sample("Close, width 8", egg(backing: StickerBacking(width: 8, smoothness: 0.08)))
+                sample("Smoothed, width 22", egg(backing: StickerBacking(width: 22, smoothness: 1)))
+                sample("Torn, width 22", egg(backing: StickerBacking(
+                    width: 22,
+                    smoothness: 0.55,
+                    edge: .torn(StickerTear(depth: 9, length: 18, jaggedness: 0.35))
+                )))
+            }
+        }
+    }
+
+    private var compoundCard: some View {
+        card("Hole, crayon, and watercolor on the same sheet") {
+            HStack(alignment: .top, spacing: 18) {
+                sample("Hole, smoothed", donut(backing: StickerBacking(width: 12, smoothness: 0.9)), fillsView: true)
+                sample("Hole, torn", donut(backing: StickerBacking(
+                    width: 14,
+                    smoothness: 0.4,
+                    edge: .torn(StickerTear(depth: 9, length: 20, jaggedness: 0.55))
+                )), fillsView: true)
+                sample("Crayon", crayon, fillsView: true)
+                sample("Watercolor", watercolor, fillsView: true)
+            }
+        }
+    }
+
+    private func star(backing: StickerBacking?) -> RoughView {
+        RoughView()
+            .fill(blue)
+            .fillStyle(.hachure)
+            .fillAngle(0)
+            .fillSpacing(2.8)
+            .stroke(ink)
+            .strokeWidth(2)
+            .roughness(2.1)
+            .maxRandomnessOffset(3.2)
+            .bowing(1)
+            .seed(42)
+            .stickerBacking(backing)
+            .draw(Polygon(points: starPoints(cx: 100, cy: 108, outer: 64, inner: 26)))
+    }
+
+    private func egg(backing: StickerBacking?) -> RoughView {
+        RoughView()
+            .fill(leaf)
+            .fillStyle(.hachure)
+            .fillAngle(0)
+            .fillSpacing(3)
+            .stroke(ink)
+            .strokeWidth(2)
+            .roughness(1.45)
+            .maxRandomnessOffset(2.4)
+            .seed(17)
+            .stickerBacking(backing)
+            .draw(EggShape(x: 100, y: 112, width: 86, height: 124, tilt: 0.42))
+    }
+
+    private func donut(backing: StickerBacking?) -> RoughView {
+        RoughView()
+            .fill(coral)
+            .fillStyle(.hachure)
+            .fillAngle(0)
+            .fillSpacing(3)
+            .stroke(ink)
+            .strokeWidth(2)
+            .roughness(1.2)
+            .seed(9)
+            .stickerBacking(backing)
+            .draw(Sketchy.Path(d: "M16 16 H144 V144 H16 Z M50 50 H110 V110 H50 Z"))
+    }
+
+    private var crayon: RoughView {
+        RoughView()
+            .fill(plum)
+            .fillStyle(.hachure)
+            .fillAngle(0)
+            .fillSpacing(3.4)
+            .stroke(plum)
+            .strokeWidth(13)
+            .brushProfile(.crayon(seed: 4))
+            .seed(4)
+            .stickerBacking(width: 20, smoothness: 0.75)
+            .circle()
+    }
+
+    private var watercolor: RoughView {
+        RoughView()
+            .fill(Color(red: 0.20, green: 0.48, blue: 0.66))
+            .fillStyle(.watercolor)
+            .stroke(ink)
+            .strokeWidth(2)
+            .seed(11)
+            .stickerBacking(width: 16, smoothness: 0.8)
+            .circle()
+    }
+
+    private func card<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(title)
+                .font(.system(size: 22, weight: .semibold))
+                .foregroundStyle(Color(white: 0.96))
+            content()
+        }
+        .padding(24)
+        .frame(width: cardWidth, height: cardHeight, alignment: .top)
+        .background(slate)
+    }
+
+    private func sample(_ label: String, _ view: RoughView, fillsView: Bool = false) -> some View {
+        let canvas = fillsView
+            ? AnyView(view.frame(width: 168, height: 196).frame(width: 214, height: 242))
+            : AnyView(view.frame(width: 214, height: 242))
+        return VStack(spacing: 6) {
+            canvas
+            Text(label)
+                .font(.system(size: 15, weight: .medium))
+                .foregroundStyle(Color(white: 0.93))
+                .lineLimit(2)
+                .multilineTextAlignment(.center)
+                .frame(width: 214)
+        }
+    }
+
+    private func starPoints(cx: Float, cy: Float, outer: Float, inner: Float) -> [Point] {
+        (0..<10).map { index in
+            let angle = -Float.pi / 2 + Float(index) * .pi / 5
+            let radius: Float = index.isMultiple(of: 2) ? outer : inner
+            return Point(x: cx + cos(angle) * radius, y: cy + sin(angle) * radius)
+        }
+    }
+
+    private func write<Content: View>(_ content: Content, name: String, to directory: URL) throws {
+        let renderer = ImageRenderer(content: content)
+        renderer.scale = 2
+        renderer.proposedSize = ProposedViewSize(width: cardWidth, height: cardHeight)
+        renderer.isOpaque = true
+        let image = try XCTUnwrap(renderer.uiImage, "No image for \(name)")
+        let data = try XCTUnwrap(image.pngData(), "No PNG for \(name)")
+        XCTAssertLessThan(data.count, 10 * 1024 * 1024, "\(name) exceeds 10 MB")
+        XCTAssertGreaterThan(data.count, 8 * 1024, "\(name) looks empty")
+        try data.write(to: directory.appendingPathComponent(name), options: .atomic)
+        NSLog("STICKER_PREVIEW %@", directory.appendingPathComponent(name).path)
+    }
+
+    private func previewsEnabled() -> Bool {
+        let environment = ProcessInfo.processInfo.environment
+        return environment["STICKER_PREVIEW"] == "1" || environment["TEST_RUNNER_STICKER_PREVIEW"] == "1"
+    }
+
+    private func outputDirectory() throws -> URL {
+        let environment = ProcessInfo.processInfo.environment
+        let path = environment["STICKER_PREVIEW_OUTPUT"]
+            ?? environment["TEST_RUNNER_STICKER_PREVIEW_OUTPUT"]
+            ?? FileManager.default.temporaryDirectory.appendingPathComponent("sticker-previews").path
+        let url = URL(fileURLWithPath: path, isDirectory: true)
+        try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+        return url
+    }
+}

@@ -106,6 +106,37 @@ RoughView()
     .circle()
 ```
 
+### Sticker backing
+
+`.stickerBacking(width:smoothness:edge:)` puts solid paper behind the shape. `width` is the margin past the stroke. `smoothness` `0` follows the rough edge and `1` follows the input silhouette. `.torn()` chops that edge. The default color is white, so the gallery mat below is there to show it. Omit the modifier and the drawing is unchanged.
+
+![Sticker star](docs/images/stickers/sticker-star.png)
+
+```swift
+RoughView()
+    .fill(Color(red: 0.18, green: 0.46, blue: 0.67))
+    .fillStyle(.hachure)
+    .fillAngle(0)
+    .fillSpacing(3)
+    .stroke(Color(red: 0.12, green: 0.14, blue: 0.18))
+    .strokeWidth(2)
+    .roughness(1.4)
+    .seed(42)
+    .stickerBacking(width: 14, smoothness: 0.85)
+    .draw(Polygon(points: [
+        Point(x: 92, y: 36),
+        Point(x: 106, y: 73),
+        Point(x: 145, y: 75),
+        Point(x: 115, y: 99),
+        Point(x: 125, y: 137),
+        Point(x: 92, y: 116),
+        Point(x: 59, y: 137),
+        Point(x: 69, y: 99),
+        Point(x: 39, y: 75),
+        Point(x: 78, y: 73)
+    ]))
+```
+
 ### Opacity
 
 `.opacityProfile` multiplies `strokeOpacity` along the outline. `.uniform` changes nothing. `.values` spaces samples evenly, `.stops` places `OpacityStop` values from 0 to 1, and `.noise` wobbles between a minimum and a maximum. The same noise seed repeats. A varying profile is painted into one mask, so overlaps do not turn dark.

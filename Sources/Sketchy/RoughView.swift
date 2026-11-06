@@ -740,6 +740,30 @@ public extension RoughView {
         v.options.strokeJoin = join
         return v
     }
+
+    /// Draws a die-cut sheet or paper ribbon behind the shape.
+    ///
+    /// Pass `nil` to remove it. A width of `0` also draws nothing. The sketch
+    /// itself is unchanged. See `StickerBacking` for closed contours, holes,
+    /// and open strokes.
+    func stickerBacking(_ backing: StickerBacking?) -> Self {
+        var v = self
+        v.options.stickerBacking = backing
+        return v
+    }
+
+    /// Draws paper `width` points past the nominal stroke.
+    ///
+    /// `smoothness` `0` follows the rough edge. `1` removes fine wobble and
+    /// keeps the silhouette. `edge` is `.smooth` or `.torn()`. The paper
+    /// color defaults to white; set `StickerBacking.color` for another color.
+    func stickerBacking(
+        width: CGFloat,
+        smoothness: CGFloat = 0,
+        edge: StickerEdge = .smooth
+    ) -> Self {
+        stickerBacking(StickerBacking(width: width, smoothness: smoothness, edge: edge))
+    }
     
     // MARK: - Animation
     

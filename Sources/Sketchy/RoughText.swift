@@ -300,6 +300,25 @@ public extension RoughText {
     func widthStops(_ stops: [WidthStop]) -> Self {
         RoughText(roughView: roughView.widthStops(stops), textSize: textSize)
     }
+
+    /// Draws a paper sheet behind glyph outlines. See `RoughView.stickerBacking(_:)`.
+    ///
+    /// Counters stay open. A width of `0` or `nil` draws no paper.
+    func stickerBacking(_ backing: StickerBacking?) -> Self {
+        RoughText(roughView: roughView.stickerBacking(backing), textSize: textSize)
+    }
+
+    /// Draws paper `width` points past the nominal glyph stroke.
+    func stickerBacking(
+        width: CGFloat,
+        smoothness: CGFloat = 0,
+        edge: StickerEdge = .smooth
+    ) -> Self {
+        RoughText(
+            roughView: roughView.stickerBacking(width: width, smoothness: smoothness, edge: edge),
+            textSize: textSize
+        )
+    }
     
     // MARK: - SVG-specific modifiers
     

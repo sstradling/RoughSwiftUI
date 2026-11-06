@@ -70,4 +70,7 @@ struct DocExample {
 enum DocPicture: Equatable {
     case rough
     case roughTextBesideCircle
+    /// Slate mat behind the rough view so a white sticker margin is visible.
+    /// The snippet does not include the mat.
+    case stickerMat
 }

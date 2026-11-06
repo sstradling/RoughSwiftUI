@@ -14,11 +14,12 @@ The sample app is `Example/SketchyDemo`. Open `SketchyDemoApp.xcodeproj` and run
 6. [Fill Styles](#fill-styles)
 7. [Text Rendering](#text-rendering)
 8. [Brush Profiles](#brush-profiles)
-9. [Animation](#animation)
-10. [Stroke Continuity](#stroke-continuity)
-11. [Engine & Caching](#engine--caching)
-12. [Common Patterns](#common-patterns)
-13. [Troubleshooting](#troubleshooting)
+9. [Sticker Backing](#sticker-backing)
+10. [Animation](#animation)
+11. [Stroke Continuity](#stroke-continuity)
+12. [Engine & Caching](#engine--caching)
+13. [Common Patterns](#common-patterns)
+14. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -73,6 +74,9 @@ import Sketchy
 | `CrayonStyle` | Wax-crayon grain, edge, and seed | Used by `BrushProfile.crayon` |
 | `OpacityProfile` | Opacity along a stroke | Uniform, values, stops, or seeded noise |
 | `WatercolorStyle` | Wet-wash pigment, rim, and seed | Used by `BrushProfile.watercolor` and `.fillStyle(.watercolor)` |
+| `StickerBacking` | Die-cut paper behind a shape | `nil` draws none. Width, smoothness, smooth or torn edge |
+| `StickerEdge` | Paper edge | `.smooth` or `.torn(StickerTear)` |
+| `StickerTear` | Chopped-edge depth, length, jaggedness | Depth `0` follows the backing width |
 | `NativeStrokeOutline` | Filled outline of a uniform-width stroke | `NativeStrokeOutline.path(from:width:cap:join:miterLimit:)` |
 | `AnimationConfig` | Animation settings | Steps, speed, variance |
 
@@ -260,6 +264,20 @@ func widthStops(_ stops: [WidthStop]) -> Self
 ```
 
 `RoughText` has the same `.widthStops` methods. Most glyph outlines are closed, so they keep an even `strokeWidth`.
+
+### Sticker Backing
+
+```swift
+func stickerBacking(_ backing: StickerBacking?) -> Self
+
+func stickerBacking(
+    width: CGFloat,
+    smoothness: CGFloat = 0,
+    edge: StickerEdge = .smooth
+) -> Self
+```
+
+`RoughText` has the same methods. `nil` or a width of `0` draws nothing. The default paper color is white. Set `StickerBacking.color` (`UIColor`) for another color. See [Sticker Backing](#sticker-backing).
 
 ### Animation Modifier
 
@@ -512,6 +530,9 @@ public struct Options: Equatable, Hashable {
     
     // Brush
     public var brushProfile: BrushProfile = .default
+
+    // Paper cutout. nil draws none.
+    public var stickerBacking: StickerBacking? = nil
 }
 ```
 
@@ -999,6 +1020,61 @@ RoughView()
 
 ---
 
+## Sticker Backing
+
+Opt-in paper behind the existing fill and stroke, like a die-cut sticker or a paper cutout. It is a solid sheet, not a second sketch stroke. Leave it unset and the drawing is unchanged.
+
+```swift
+RoughView()
+    .fill(Color(red: 0.18, green: 0.46, blue: 0.67))
+    .fillStyle(.hachure)
+    .fillAngle(0)
+    .stroke(Color(red: 0.12, green: 0.14, blue: 0.18))
+    .strokeWidth(2)
+    .seed(42)
+    .stickerBacking(width: 14, smoothness: 0.65)
+    .circle()
+```
+
+### StickerBacking
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `width` | none | Margin past the nominal stroke, in points. `0` draws nothing |
+| `smoothness` | `0` | `0` follows the rough outline. `1` follows the input silhouette. Clamped to `0...1` |
+| `edge` | `.smooth` | `.smooth` or `.torn(StickerTear())` |
+| `color` | white | `UIColor`. Alpha is honored |
+
+`width` is the paper visible beyond the ink. The sheet extends `width + strokeWidth / 2` from the outline centerline. Torn chops use `Options.seed` and do not advance the sketch's random sequence. A `nil` seed uses a fixed tear seed.
+
+### StickerTear
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `depth` | `0` | Peak chip size in points. `0` means `max(3, width * 0.55)` |
+| `length` | `16` | Nominal facet length in points. Minimum `4` |
+| `jaggedness` | `0.35` | Extra nicks on a facet, `0...1` |
+
+### What gets paper
+
+| Contour | Result |
+|---------|--------|
+| Closed continuous outline (rectangle, ellipse, polygon, rounded rect, egg, closed arc) | Filled sheet around the shape |
+| SVG subpath or glyph outline | Filled sheet. The path is fitted first, then the margin is in view points |
+| Hole (a ring inside another) | Stays open. The same margin is cut into the hole |
+| Second rough pass of the same contour | Not a second sheet |
+| Line, curve, open arc, legacy per-edge stroke | Paper ribbon of width `strokeWidth + 2 * width`, not a filled cutout |
+
+`.strokeContinuity(.legacy)` draws rectangles and polygons as open edge strokes, so the backing is a ribbon along each edge. Use `.continuous` (the default) for a die-cut sheet.
+
+Smooth edges keep a clamped miter, so a star point stays a point. A miter longer than about 3.2 times the margin is beveled. A notch tighter than the margin, or a torn edge that would cross itself, does not emit a self-intersecting fill. Tear depth is reduced first. If the offset still crosses, that closed contour falls back to a round dilation (filled centerline plus a round stroke).
+
+Crayon and watercolor paint after the sheet, so the paper shows past the mark. Wax grit and a wet fringe can extend past the nominal stroke. Give those brushes a larger `width` if the texture should stay on the paper.
+
+The default color is white. On a white or cream background the margin disappears. Put the view on a contrasting surface.
+
+---
+
 ## Animation
 
 ### AnimationSpeed
@@ -1385,6 +1461,15 @@ Engine.shared.clearCaches()
 2. `.brushProfile(...)` was called after `.widthStops` and replaced the stops. Set the brush first.
 3. `.brushProfile(.crayon)` does not use thickness profiles. Crayon width is `strokeWidth` plus `widthVariation`.
 4. The numbers in `.widthStops` are points. A non-empty list ignores `strokeWidth`.
+
+### Issue: Sticker margin is missing or the sheet looks wrong
+
+**Causes & Solutions:**
+1. The default paper is white. On a white or paper-colored background it blends in. Use a contrasting surface, or set `StickerBacking.color`.
+2. `width` of `0`, or no `.stickerBacking`, draws nothing.
+3. `.strokeContinuity(.legacy)` and open contours (lines, curves, open arcs) get a ribbon, not a filled cutout. Closed sheets need `.continuous`, the default.
+4. A margin thinner than the roughness can let the second sketch pass cross the paper. Increase `width`.
+5. Crayon grit and watercolor fringe extend past `strokeWidth`. Increase `width` if that texture should stay on the sheet.
 
 ### Issue: Drawing Changes Every Redraw
 

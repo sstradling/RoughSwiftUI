@@ -11,6 +11,7 @@ final class DocExampleCatalogTests: XCTestCase {
         "Strokes",
         "Roughness",
         "Brushes",
+        "Stickers",
         "Seeding",
         "SVG",
         "Text",
@@ -35,7 +36,7 @@ final class DocExampleCatalogTests: XCTestCase {
             if case .gif = example.kind { return true }
             return false
         }
-        XCTAssertEqual(stills.count, 64)
+        XCTAssertEqual(stills.count, 67)
         XCTAssertEqual(gifs.count, 7)
     }
 
@@ -194,6 +195,31 @@ final class DocExampleCatalogTests: XCTestCase {
                 XCTAssertTrue(example.snippet.contains("AnimationConfig"))
             }
         }
+    }
+
+    func testStickerExamplesAreSeededSheets() {
+        let star = example("sticker-star").view()
+        XCTAssertEqual(star.options.seed, 42)
+        XCTAssertEqual(star.options.fillAngle, 0)
+        XCTAssertEqual(star.options.stickerBacking?.width, 14)
+        XCTAssertEqual(star.options.stickerBacking?.smoothness, 0.85)
+        guard case .smooth = star.options.stickerBacking?.edge else {
+            return XCTFail("sticker-star should use a smooth edge")
+        }
+
+        let torn = example("sticker-torn").view()
+        XCTAssertEqual(torn.options.seed, 42)
+        guard case .torn(let tear) = torn.options.stickerBacking?.edge else {
+            return XCTFail("sticker-torn should chop the edge")
+        }
+        XCTAssertEqual(tear.depth, 7)
+        XCTAssertEqual(tear.length, 14)
+
+        let crayon = example("sticker-crayon").view()
+        XCTAssertNotNil(crayon.options.brushProfile.crayon)
+        XCTAssertEqual(crayon.options.stickerBacking?.width, 18)
+        XCTAssertEqual(crayon.options.seed, 4)
+        XCTAssertEqual(example("sticker-star").picture, .stickerMat)
     }
 
     private func example(_ id: String) -> DocExample {

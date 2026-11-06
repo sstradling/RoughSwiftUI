@@ -159,6 +159,17 @@ public struct SwiftUIRenderer {
             }
             
             var result: [RoughRenderCommand] = []
+
+            // Paper sits under the sketch. A nil backing adds nothing here.
+            // Outline and fill generation below is the same either way.
+            if let backing = options.stickerBacking, backing.width > 0 {
+                result.append(contentsOf: StickerBackingBuilder.commands(
+                    for: drawing,
+                    options: options,
+                    backing: backing,
+                    transform: svgTransform
+                ))
+            }
             
             // Check if scribble fill is requested - handle it with native generation
             if options.fillStyle == .scribble {
