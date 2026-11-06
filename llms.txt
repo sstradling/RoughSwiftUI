@@ -1,0 +1,247 @@
+# Sketchy
+
+> Native SwiftUI port of rough.js. `RoughView` draws seeded hand-drawn shapes, SVG paths, and text. One view has one `Options` value. iOS 17+. Install with Swift Package Manager from `1.3.0`.
+
+## Docs
+
+- [README](README.md): pitch, install line, quick start, and a short tour of the catalog.
+- [Examples](docs/Examples.md): every seeded tile, with the snippet that drew it. Generated. Do not hand-edit.
+- [Performance](docs/Performance.md): generator and drawing caches, and `os_signpost` instrumentation.
+- [AGENTS.md](AGENTS.md): how to build, test, and regenerate docs in this repository.
+- Demo app: `Example/SketchyDemo`. Scheme `SketchyDemoApp`, bundle id `com.sstradling.SketchyDemo`, local package product `Sketchy`.
+
+## Install
+
+```swift
+.package(url: "https://github.com/sstradling/Sketchy", from: "1.3.0"),
+```
+
+```swift
+.product(name: "Sketchy", package: "Sketchy")
+```
+
+```swift
+import SwiftUI
+import Sketchy
+```
+
+`RoughView()` needs a size. Put `.frame(width:height:)` on it, or place it where the parent proposes one.
+
+## RoughView defaults
+
+Modifiers write `Options`. Stored defaults:
+
+| Option | Default |
+| --- | --- |
+| `roughness` | `1` |
+| `bowing` | `1` |
+| `maxRandomnessOffset` | `2` |
+| `stroke` | black (`UIColor.black` / `Color`) |
+| `fill` | clear |
+| `strokeWidth` | `1` |
+| `strokeOpacity`, `fillOpacity` | `1` stored as 0...1. The modifiers take `0...100` and divide by 100 |
+| `fillStyle` | `.hachure` |
+| `fillWeight` | `-1`, which resolves to `max(strokeWidth / 2, 1)` |
+| `fillAngle` | `45`. `0` is horizontal, `90` is vertical, positive is clockwise |
+| `fillSpacing` | `4`, clamped to `0.5...100`. Gap is the resolved fill weight times `fillSpacing` |
+| `fillPadding` | `0` (`CGFloat`). Positive insets the fill, negative grows it past the outline. A value that collapses the shape draws no fill. Ellipses shrink their radii; polygons offset inward |
+| `fillOffset` | `.zero` (`CGSize`). Shifts the fill after padding. `.fillOffset(x:y:)` is the same |
+| `fillSpacingPattern` | `nil` |
+| `curveTightness` | `0` |
+| `curveStepCount` | `9` |
+| `strokeContinuity` | `.continuous`. Native outlines are a few cubic Beziers. `.legacy` samples at `curveStepCount`. `curve`, SVG paths, and text stay sampled |
+| `seed` | `nil` (`UInt64?`). `nil` is a new drawing on a cache miss |
+| `dashOffset`, `dashGap`, `zigzagOffset` | `-1` (automatic) |
+| `brushProfile` | `.default` |
+
+`FillStyle` cases: `.hachure`, `.solid`, `.zigzag`, `.crossHatch`, `.dots`, `.sunBurst`, `.starBurst`, `.dashed`, `.zigzagLine`, `.scribble`, `.watercolor`. `.sunBurst` and `.starBurst` use the same filler. Dots ignore `fillAngle` and stay on the horizontal grid. Sunburst is radial and ignores `fillAngle`. Scribble uses `scribbleOrigin` instead. Ellipse and circle hachure lines are chords of the same jittered ellipse the outline draws, at `fillAngle`, spaced perpendicular to the lines and centered in the ellipse. Zigzag, cross-hatch, dashed, zigzag-line, and dots on an ellipse reuse those chords. `fillPadding` and `fillOffset` change only the fill.
+
+`.fill` and `.stroke` each have a `Color` overload and a `UIColor` overload. In a file that imports both SwiftUI and UIKit, write `Color.red` or `UIColor.red`. A bare `.red` is ambiguous.
+
+## Shapes
+
+Filling the view: `.rectangle()`, `.circle()`, `.roundedRectangle(cornerRadius:)` default `8`, `.egg(tilt:)` default `0.3`.
+
+Placed with `.draw`:
+
+| Type | Init | Position |
+| --- | --- | --- |
+| `Line` | `init(from: Point, to: Point)` | endpoints |
+| `Rectangle` | `init(x:y:width:height:)` | top-left |
+| `RoundedRectangle` | `init(x:y:width:height:cornerRadius:)` | top-left |
+| `Ellipse` | `init(x:y:width:height:)` | center. Radii are half of width and height |
+| `Circle` | `init(x:y:diameter:)` | center |
+| `Arc` | `init(x:y:width:height:start:stop:closed:)` | center. Angles are radians. `closed` defaults to `false` |
+| `LinearPath` | `init(points: [Point])` | open polyline, no fill |
+| `Curve` | `init(points: [Point])` | open spline, no fill |
+| `Polygon` | `init(points: [Point])` | closed |
+| `EggShape` | `init(x:y:width:height:tilt:)` | center. `tilt` defaults to `0.3` |
+| `Path` | `init(d: String)` | SVG, fitted to the view |
+| `Text` | `init(_:font:)`, `init(attributedString:)`, `init(svgPath:)` | fixed path, not auto-centered |
+| `Point` | `init(x: Float, y: Float)` | |
+
+`.rectangle()`, `.circle()`, `.roundedRectangle`, `.egg`, and `.text` use full-view drawables. Prefer those when the shape should fill the frame.
+
+## SVG
+
+`.draw(Path(d:))` scales the path to the view and keeps aspect ratio. Path data accepts `M` `L` `H` `V` `Q` `T` `C` `S` `A` `Z` in upper or lower case. `A` / `a` is an elliptical arc (`rx ry rotation large-arc sweep x y`). Radii scale up when they cannot reach the endpoint, a zero radius is a line, and identical endpoints are skipped. The arc is drawn as cubics of at most 90°. A relative `a` offsets only the endpoint. Overrides, all optional except alignment:
+
+- `svgStrokeWidth: Float?` defaults `nil` and falls back to `strokeWidth`
+- `svgFillWeight: Float?` defaults `nil` and falls back to `fillWeight`
+- `svgFillStrokeAlignment` defaults `.center`. Also `.inside` and `.outside`
+
+## Text
+
+`RoughView.text` uses a full-view text drawable that is already in view coordinates. It is not scaled to fit. SVG paths are.
+
+```swift
+func text(
+    _ string: String,
+    font: UIFont,
+    horizontalAlignment: RoughTextHorizontalAlignment = .center,
+    verticalAlignment: RoughTextVerticalAlignment = .center,
+    offsetX: CGFloat = 0,
+    offsetY: CGFloat = 0
+) -> Self
+```
+
+Also `text(attributedString:horizontalAlignment:verticalAlignment:offsetX:offsetY:)` and `text(_:fontName:fontSize:horizontalAlignment:verticalAlignment:offsetX:offsetY:)`.
+
+`RoughTextHorizontalAlignment`: `.leading`, `.center`, `.trailing`. `RoughTextVerticalAlignment`: `.top`, `.center`, `.bottom`. Offsets apply after alignment. Positive `offsetX` moves right. Positive `offsetY` moves down.
+
+`RoughText` sizes itself to the glyphs (`init(_:font:)`, `init(attributedString:)`, `init(_:fontName:fontSize:)`). It has the same style modifiers as `RoughView`, including `.seed`. It does not take alignment. Place it with normal SwiftUI layout.
+
+## Brushes
+
+`BrushProfile` defaults: `tip` `.circular`, `thicknessProfile` `.uniform`, `cap` `.round`, `join` `.round`, `crayon` `nil`, `opacityProfile` `.uniform`, `watercolor` `nil`.
+
+`BrushTip`: `roundness` `1` (clamped `0.01...1`), `angle` `0` radians, `directionSensitive` `true`. Presets: `.circular` (`directionSensitive: false`), `.calligraphic` (`roundness` `0.3`, `angle` `π/4`), `.flat` (`roundness` `0.2`, `angle` `0`).
+
+`ThicknessProfile`: `.uniform`, `.taperIn(start:)`, `.taperOut(end:)`, `.taperBoth(start:end:)`, `.pressure([CGFloat])`, `.custom([CGFloat])`, `.stops([WidthStop])`, `.variable(VariableStrokeWidth)`. Presets: `.naturalPen` is `taperBoth(start: 0.15, end: 0.15)`, `.brushStart` is `taperIn(start: 0.25)`, `.brushEnd` is `taperOut(end: 0.25)`, `.penPressure` is `pressure([0.2, 0.6, 0.9, 1.0, 0.95, 0.8, 0.5, 0.2])`. `.variable(_:)` is the seeded marker width. `VariableStrokeWidth()` (all defaults) is a multiplier of 1.
+
+`.custom([CGFloat])` stays evenly spaced multipliers of `strokeWidth`. With `strokeWidth` 8, `.custom([0.5, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.5])` is 4pt, 8pt at 10%, 8pt through 90%, and 4pt at the end. `.stops` is the same shape in points: `WidthStop(position:width:)` clamps `position` to `0...1` and `width` to at least `0`. Stops are sorted by position. A later stop wins on a tie. Linear interpolation between stops. The end widths hold outside the first and last stop. Empty stops are uniform `strokeWidth`. Non-empty stops ignore `strokeWidth` and, on a brush scribble, `fillWeight`. `width(at:strokeWidth:)` returns points. `multiplier(at:strokeWidth:)` divides that by `strokeWidth` (`0` when the list is non-empty and `strokeWidth` is `0`). `multiplier(at:)` is still the scale for every other profile and returns `1` for `.stops`.
+
+`.widthStops([(0, 4), (0.1, 8), (0.9, 8), (1, 4)])` on `RoughView` and `RoughText` stores `.stops`. It replaces `.variable`, so marker noise, pressure, and taper are not multiplied on top. The brush tip still scales the stop width by direction, including the marker's flat tip. Call `.widthStops` after `.brushProfile` or the profile replaces the stops. An open stopped stroke fills with the winding rule so the two rough passes union into one mark. Closed contours drop stops and `.variable`, use an even `strokeWidth`, and stay even-odd. A crayon brush ignores thickness profiles.
+
+`VariableStrokeWidth(variation:minimum:maximum:taperStart:taperEnd:pressure:seed:frequency:)` defaults: `variation` `0` (clamped `0...1`), `minimum` `nil`, `maximum` `nil`, `taperStart` `0`, `taperEnd` `0`, `pressure` `[]`, `seed` `1`, `frequency` `3` (clamped to at least `0.5`). `variation` `0.35` with no bounds keeps the noisy body in `[0.65, 1.35]`. `minimum` and `maximum` are multipliers of `strokeWidth` and replace that range; when both are set and `variation` is `0`, the noise uses the whole span. When `variation` is also set, it is the fraction of that span used around the midpoint. `pressure` is interpolated like `.pressure` and multiplied by the body. Taper uses `.taperIn` and `.taperOut` and may fall to `0`. The result never exceeds `maximum`. The same `seed` repeats the wobble. Closed contours drop the profile and stay even.
+
+`BrushCap`: `.butt`, `.round`, `.square`. `BrushJoin`: `.miter`, `.round`, `.bevel`.
+
+`BrushProfile` presets: `.default`, `.calligraphic` (calligraphic tip, `.naturalPen`, round cap and join), `.marker` (flat tip, uniform, `.butt` cap, `.bevel` join), `.pen` (circular tip, `.penPressure`), `.crayon` (`CrayonStyle()`), `.watercolor`.
+
+`BrushProfile.marker(variation:minimum:maximum:taperStart:taperEnd:pressure:seed:frequency:)` uses the marker tip with `ThicknessProfile.variable`. Defaults match `.marker` (even width). `marker()` with no arguments is `.marker`.
+
+`.crayon(grain:edgeRoughness:widthVariation:opacityVariation:passes:baseOpacity:baseSoftness:grit:flakeSize:seed:)` defaults: `grain` `0.28`, `edgeRoughness` `0.75`, `widthVariation` `0.18`, `opacityVariation` `0.35`, `passes` `2` (clamped `1...3`), `baseOpacity` `0.8` (clamped `0.2...1`), `baseSoftness` `0.5`, `grit` `0.92`, `flakeSize` `1.45` (clamped `0.35...3`), `seed` `1` (`CrayonStyle.defaultSeed`).
+
+When `Options.seed` is set and the crayon seed is still `1`, grain uses `Options.seed`. Any other crayon seed wins. A crayon brush textures sketch fills: hachure, zigzag, cross-hatch, dots, dashed, zigzag-line, sunburst, and scribble. A `.solid` fill stays flat. Fill-line width is `fillWeight` (or the automatic weight). The outline still uses `strokeWidth`. Closed contours do not taper, so a join does not seam.
+
+`OpacityProfile`: `.uniform` (multiplier `1`), `.values([CGFloat])` evenly spaced, `.stops([OpacityStop])` with `position` `0...1`, `.noise(minimum:maximum:variation:seed:frequency:)`. Values are clamped to `0...1` when sampled. The result multiplies `strokeOpacity`. `.noise` defaults: `minimum` `0.35`, `maximum` `1`, `variation` `1`, `seed` `1` (`OpacityNoise.defaultSeed`), `frequency` `3` (at least `0.5`). `variation` `0` is the midpoint. `Options.seed` replaces noise seed `1` only. A varying profile is one mask: opaque gray at that opacity, then `luminanceToAlpha`, then the stroke colour. Overlaps replace, so joins do not darken. `.uniform` keeps the old stroke. Closed contours blend the join. The profile applies to the outline, not to hachure.
+
+`.watercolor(pigment:wetness:edgeDarkening:layers:variation:bleed:seed:)` defaults: `pigment` `0.72`, `wetness` `0.6`, `edgeDarkening` `0.75`, `layers` `3` (clamped `1...5`), `variation` `0.45`, `bleed` `0.5`, `seed` `1` (`WatercolorStyle.defaultSeed`). `.watercolor` matches that call. `variation` above `0` stores `ThicknessProfile.variable` and sets `OpacityProfile.noise` (minimum `0.42`, seed `style.seed &+ 17`). The painted ribbon does not follow that thickness swell. The base width stays even and both tips taper gradually. `bleed` and `variation` wobble each edge on its own: low-frequency drift, a smaller ripple, and an occasional outward bleed, scaled by `strokeWidth`. The centreline stays smooth. Each glaze layer uses a different edge. The centre is lighter. Only the first glaze draws the broken darker rim, and that rim follows the wobbled edge. Glazes are translucent fills, so a crossing stacks. Variable opacity still uses one mask. `WatercolorStyle.defaultSeed` yields to `Options.seed`. Any other watercolor seed wins. A stroke thinner than `0.5` points is skipped.
+
+`.fillStyle(.watercolor)` clips a wash to the solid-fill region, so `fillPadding` and `fillOffset` apply. The fill uses the brush style when the brush is watercolor, otherwise `WatercolorStyle()`: `pigment` `0.72`, `wetness` `0.6`, `edgeDarkening` `0.75`, `layers` `3` (clamped `1...5`), `variation` `0.45`, `bleed` `0.5`, `seed` `1` (`WatercolorStyle.defaultSeed`). `Options.seed` replaces that default seed. Layers glaze, the dried edge is an uneven darker band, and blooms are irregular puddles. It does not blur. Hachure is not a wash. Variable opacity still uses one mask and does not stack.
+
+## Scribble
+
+`.fillStyle(.scribble)`.
+
+| Modifier | Default | Range |
+| --- | --- | --- |
+| `scribbleOrigin` | `0` | Degrees. `0` right, `90` down, clockwise. Wraps at 360 |
+| `scribbleTightness` | `10` | `1...100` |
+| `scribbleCurvature` | `0` | `0...50` |
+| `scribbleUseBrushStroke` | `false` | Use the current brush on the zig-zag |
+| `scribbleTightnessPattern` | `nil` | Per-band tightness, such as `[10, 30, 10]` |
+
+`scribble(origin:tightness:curvature:useBrushStroke:)` and `scribble(origin:tightnessPattern:curvature:useBrushStroke:)` set the same fields.
+
+SVG paths and native polygons clip the scribble to the padded fill path, so a concave outline does not leak across notches. Rectangles, circles, and ellipses are not clipped.
+
+## Animation
+
+```swift
+func animated(config: AnimationConfig = .default) -> AnimatedRoughView
+func animated(steps: Int = 4, speed: AnimationSpeed = .medium, variance: AnimationVariance = .medium) -> AnimatedRoughView
+```
+
+`AnimationConfig.init(steps:speed:variance:seed:)` defaults: `steps` `4` (minimum `2`), `.medium` (`0.3` s), `.medium` (`0.05`), `seed` `nil`. `AnimationSpeed`: `.slow` `0.6`, `.medium` `0.3`, `.fast` `0.1`. `AnimationVariance.factor`: `.veryLow` `0.005`, `.low` `0.01`, `.medium` `0.05`, `.high` `0.10`.
+
+`AnimatedRoughView.init(config:content:)` and `init(config:roughView:)`. The steps-speed-variance wrapper does not set `seed`. Pass `AnimationConfig(..., seed:)` when frames must repeat.
+
+`pinnedFrame(_ frameIndex: Int) -> AnimatedRoughView` is internal. It draws one step and does not start the timer. Docs capture uses it. App code should use `.animated(config:)`.
+
+## Snippets
+
+```swift
+RoughView()
+    .fill(Color(red: 0.18, green: 0.46, blue: 0.67))
+    .fillStyle(.hachure)
+    .fillAngle(0)
+    .fillSpacing(3)
+    .stroke(Color(red: 0.12, green: 0.14, blue: 0.18))
+    .strokeWidth(2)
+    .seed(42)
+    .rectangle()
+```
+
+```swift
+RoughView()
+    .stroke(Color(red: 0.45, green: 0.28, blue: 0.55))
+    .strokeWidth(11)
+    .brushProfile(.crayon(grit: 0.95, flakeSize: 1.5, seed: 4))
+    .seed(4)
+    .circle()
+```
+
+```swift
+RoughView()
+    .fill(Color(red: 0.76, green: 0.32, blue: 0.28))
+    .fillStyle(.hachure)
+    .stroke(Color(red: 0.12, green: 0.14, blue: 0.18))
+    .strokeWidth(1.5)
+    .seed(160)
+    .text(
+        "Top",
+        font: .systemFont(ofSize: 32, weight: .bold),
+        horizontalAlignment: .leading,
+        verticalAlignment: .top
+    )
+```
+
+```swift
+RoughView()
+    .fill(Color(red: 0.85, green: 0.55, blue: 0.18))
+    .fillStyle(.hachure)
+    .stroke(Color(red: 0.12, green: 0.14, blue: 0.18))
+    .svgStrokeWidth(2.5)
+    .seed(141)
+    .draw(Path(d: "M50,5 L63,40 L100,40 L70,62 L82,98 L50,78 L18,98 L30,62 L0,40 L37,40 Z"))
+```
+
+```swift
+RoughView()
+    .fill(Color(red: 0.22, green: 0.48, blue: 0.34))
+    .fillStyle(.crossHatch)
+    .fillAngle(30)
+    .stroke(Color(red: 0.12, green: 0.14, blue: 0.18))
+    .strokeWidth(2)
+    .seed(42)
+    .circle()
+    .animated(config: AnimationConfig(steps: 6, speed: .medium, variance: .high, seed: 42))
+```
+
+## Common pitfalls
+
+- A bare `.fill(.red)` does not compile when both `Color` and `UIColor` overloads are visible. Write `Color.red`.
+- `.strokeOpacity` and `.fillOpacity` take `0...100`. The stored `Options` values are `0...1`.
+- `fillWeight` of `-1` is automatic: `max(strokeWidth / 2, 1)`, not a zero-width line.
+- `fillAngle` `0` is horizontal. `45` is the default. Positive angles rotate clockwise.
+- `.draw(Path(d:))` is scaled to the view. `.text` and `RoughText` are not.
+- One `RoughView` has one brush. `.brushProfile(.crayon)` waxes the outline and sketch fills (hachure, zigzag, cross-hatch, dots, dashed, zigzag-line, sunburst, scribble). A `.solid` fill stays flat. Stack a second view if the hatch must stay plain ink.
+- `.animated(steps:speed:variance:)` leaves `AnimationConfig.seed` nil, so each run differs. Use `.animated(config:)`.
+- `pinnedFrame` is not public.
+- `seed(nil)` does not freeze the drawing. An uncached rebuild is a new picture.
+- `Ellipse`, `Circle`, `Arc`, and `EggShape` take a center. `Rectangle` and `RoundedRectangle` take a top-left.
+- `.sunBurst` and `.starBurst` are the same radial filler.
+- Tapered thickness is dropped on closed contours so the join does not seam.
+- Do not edit `docs/Examples.md` by hand. Change the example catalog or `scripts/render-docs.sh`, then re-run the script.
