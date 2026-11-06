@@ -727,7 +727,7 @@ public enum BrushJoin: Equatable, Hashable, Sendable {
 }
 ```
 
-`.curvedBevel` is not a circular arc. The curve starts and ends on the same two outer corners as a bevel, and the control point moves from the chord (`bulge` 0) toward the miter tip (`bulge` 1). `BrushJoin.defaultCurvedBevelBulge` is `0.65`, and `BrushJoin.standardCurvedBevel` uses it. Values below `0` or above `1` clamp when the join is drawn. CoreGraphics has no such join (`cgLineJoin` reports `.bevel`). A uniform stroke is filled from `NativeStrokeOutline`. Variable-width ribbons use the same join at a corner where the tangent breaks by more than about 10°. Smooth cubics, including the continuous default, do not.
+`.curvedBevel` is not a circular arc. The curve starts and ends on the same two outer corners as a bevel, and the control point moves from the chord (`bulge` 0) toward the miter tip (`bulge` 1). `BrushJoin.defaultCurvedBevelBulge` is `0.65`, and `BrushJoin.standardCurvedBevel` uses it. Values below `0` or above `1` clamp when the join is drawn. CoreGraphics has no such join (`cgLineJoin` reports `.bevel`). A uniform stroke is filled from `NativeStrokeOutline`. Variable-width ribbons, crayon, and watercolor use the same join at a sharp corner. Smooth cubics, including the continuous default, do not. Crayon adds wax along the join without moving the grain on a straight stroke. Watercolor pins the corner before it smooths the centreline, and the dark rim skips that corner so the wash is not crossed by a second dark chord.
 
 Use `.strokeMiterLimit(_:)` with `.strokeJoin(.miter)` to control how far
 sharp corners may extend before falling back to a bevel join. Lower values

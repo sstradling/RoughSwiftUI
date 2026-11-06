@@ -41,6 +41,38 @@ enum StrokeJoinGeometry {
     /// at their segment knots. A polygon corner is well above it.
     static let cornerTurnThreshold: CGFloat = 0.18
 
+    /// Points to append on each offset side, from just after the incoming
+    /// offset through the outgoing offset. Empty when the turn is too small.
+    static func sidePolylines(
+        vertex: CGPoint,
+        incomingTangent: CGFloat,
+        outgoingTangent: CGFloat,
+        incomingHalf: CGFloat,
+        outgoingHalf: CGFloat,
+        join: BrushJoin,
+        miterLimit: CGFloat
+    ) -> (left: [CGPoint], right: [CGPoint]) {
+        let incomingLeft = offset(vertex, incomingTangent, max(0, incomingHalf), 1)
+        let incomingRight = offset(vertex, incomingTangent, max(0, incomingHalf), -1)
+        var left: [StrokeSideStep] = []
+        var right: [StrokeSideStep] = []
+        appendCorner(
+            vertex: vertex,
+            incomingTangent: incomingTangent,
+            outgoingTangent: outgoingTangent,
+            incomingHalf: incomingHalf,
+            outgoingHalf: outgoingHalf,
+            join: join,
+            miterLimit: miterLimit,
+            left: &left,
+            right: &right
+        )
+        return (
+            [incomingLeft] + flatten(left, start: incomingLeft),
+            [incomingRight] + flatten(right, start: incomingRight)
+        )
+    }
+
     /// Appends the outer join and the inner connection.
     ///
     /// The contours already end on the incoming offsets. New steps run from
@@ -102,6 +134,47 @@ enum StrokeJoinGeometry {
             right.append(contentsOf: outerSteps)
             left.append(contentsOf: innerSteps)
         }
+    }
+
+    static func flatten(_ steps: [StrokeSideStep], start: CGPoint) -> [CGPoint] {
+        var cursor = start
+        var points: [CGPoint] = []
+        for step in steps {
+            switch step {
+            case .line(let point):
+                points.append(point)
+                cursor = point
+            case .quad(let to, let control):
+                for index in 1...8 {
+                    let t = CGFloat(index) / 8
+                    let u = 1 - t
+                    points.append(CGPoint(
+                        x: u * u * cursor.x + 2 * u * t * control.x + t * t * to.x,
+                        y: u * u * cursor.y + 2 * u * t * control.y + t * t * to.y
+                    ))
+                }
+                cursor = to
+            case .arc(let center, let radius, let startAngle, let endAngle, let clockwise, let endPoint):
+                var sweep = endAngle - startAngle
+                if clockwise {
+                    if sweep > 0 { sweep -= .pi * 2 }
+                } else if sweep < 0 {
+                    sweep += .pi * 2
+                }
+                for index in 1...8 {
+                    let angle = startAngle + sweep * CGFloat(index) / 8
+                    points.append(CGPoint(
+                        x: center.x + cos(angle) * radius,
+                        y: center.y + sin(angle) * radius
+                    ))
+                }
+                if let last = points.last, hypot(last.x - endPoint.x, last.y - endPoint.y) > 0.75 {
+                    points.append(endPoint)
+                }
+                cursor = endPoint
+            }
+        }
+        return points
     }
 
     static func replay(_ steps: ArraySlice<StrokeSideStep>, into path: inout SwiftUI.Path) {

@@ -188,7 +188,8 @@ public struct SwiftUIRenderer {
                     style: style,
                     strokeOpacity: CGFloat(options.strokeOpacity),
                     color: Color(options.stroke),
-                    nextGroup: &nextGroup
+                    nextGroup: &nextGroup,
+                    miterLimit: options.strokeMiterLimit
                 ))
             } else if opacityProfile.variesAlongStroke && options.brushProfile.crayon == nil {
                 let sets = drawing.sets.filter { $0.type == .path }.map(\.operations)
@@ -422,7 +423,9 @@ private extension SwiftUIRenderer {
                     color: strokeColor,
                     transform: svgTransform,
                     clipPath: nil,
-                    inverseClip: false
+                    inverseClip: false,
+                    join: options.strokeJoin,
+                    miterLimit: options.strokeMiterLimit
                 )
                 if !crayonCommands.isEmpty {
                     return crayonCommands
@@ -487,7 +490,9 @@ private extension SwiftUIRenderer {
                     color: color,
                     transform: svgTransform,
                     clipPath: clipPath,
-                    inverseClip: inverseClip
+                    inverseClip: inverseClip,
+                    join: options.strokeJoin,
+                    miterLimit: options.strokeMiterLimit
                 )
                 if !crayonCommands.isEmpty {
                     return crayonCommands
@@ -584,7 +589,9 @@ private extension SwiftUIRenderer {
                         color: color,
                         transform: svgTransform,
                         clipPath: shapePath,
-                        inverseClip: false
+                        inverseClip: false,
+                        join: options.strokeJoin,
+                        miterLimit: options.strokeMiterLimit
                     )
                     if !crayonCommands.isEmpty {
                         return crayonCommands
@@ -668,7 +675,9 @@ private extension SwiftUIRenderer {
                     color: color,
                     transform: nil,
                     clipPath: clipPath,
-                    inverseClip: false
+                    inverseClip: false,
+                    join: options.strokeJoin,
+                    miterLimit: options.strokeMiterLimit
                 )
                 if !crayonCommands.isEmpty {
                     return crayonCommands
@@ -894,13 +903,17 @@ private extension SwiftUIRenderer {
         color: Color,
         transform: CGAffineTransform?,
         clipPath: SwiftPath?,
-        inverseClip: Bool
+        inverseClip: Bool,
+        join: BrushJoin,
+        miterLimit: CGFloat
     ) -> [RoughRenderCommand] {
         let passes = CrayonStroke.passes(
             operations: operations,
             width: width,
             style: style,
-            transform: transform ?? .identity
+            transform: transform ?? .identity,
+            join: join,
+            miterLimit: miterLimit
         )
         return passes.map { pass in
             RoughRenderCommand(
