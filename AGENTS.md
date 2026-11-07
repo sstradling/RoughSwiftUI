@@ -2,7 +2,7 @@
 
 This file is for coding agents changing this repository. Agents generating app code that only consumes the library should read [llms.txt](llms.txt) instead.
 
-The package is iOS 17+ (`Package.swift`). Tests run on an iPhone simulator. Do not create a git tag unless a release task says so. The install line in the README is `from: "1.4.0"`. The module is `Sketchy`. Public types such as `RoughView` keep their names.
+The package is iOS 17+ (`Package.swift`). Tests run on an iPhone simulator. Do not create a git tag unless a release task says so. The install line in the README is `from: "1.4.1"`. The module is `Sketchy`. Public types such as `RoughView` keep their names.
 
 ## Layout
 
@@ -12,6 +12,8 @@ The package is iOS 17+ (`Package.swift`). Tests run on an iPhone simulator. Do n
 | `Sources/Sketchy/RoughText.swift` | Self-sizing text view over the same engine |
 | `Sources/Sketchy/AnimatedRoughView.swift` | Looping wobble. `pinnedFrame(_:)` is internal and is how docs capture one frame |
 | `Sources/Sketchy/Engine/Options.swift` | Defaults for roughness, fill, seed, scribble, SVG, brush |
+| `Sources/Sketchy/Engine/StickerBacking.swift` | Opt-in die-cut sheet: width, smoothness, smooth or torn edge |
+| `Sources/Sketchy/Engine/StickerGuide.swift` | Input silhouette the backing blends toward |
 | `Sources/Sketchy/Engine/FillStyle.swift` | Fill style cases |
 | `Sources/Sketchy/Engine/Drawable.swift` | Shape values passed to `.draw`, plus text alignment enums |
 | `Sources/Sketchy/Engine/NativeGenerator.swift` | Builds a `Drawing`. SVG paths stay `shape == "path"` and are fitted. `FullText` is emitted as `shape == "text"` and is not fitted |
@@ -20,7 +22,8 @@ The package is iOS 17+ (`Package.swift`). Tests run on an iPhone simulator. Do n
 | `Sources/Sketchy/Engine/AnimationOptions.swift` | `AnimationConfig`, speed, variance |
 | `Sources/Sketchy/Engine/Engine.swift` | Shared generator and drawing caches |
 | `Sources/Sketchy/Engine/Fillers/` | One filler per fill style. `sunBurst` and `starBurst` share `StarburstFiller` |
-| `Sources/Sketchy/Render/SwiftUIRenderer.swift` | Turns a `Drawing` into `Canvas` commands. Crayon on a view also textures hachure, zigzag, and scribble lines |
+| `Sources/Sketchy/Render/SwiftUIRenderer.swift` | Turns a `Drawing` into `Canvas` commands. Crayon on a view also textures hachure, zigzag, and scribble lines. Sticker paper is painted first |
+| `Sources/Sketchy/Render/StickerBackingBuilder.swift` | Offset sheet or open ribbon behind the sketch |
 | `Sources/Sketchy/Render/CrayonStroke.swift` | Wax passes for a stroke |
 | `Tests/SketchyTests/` | Unit tests. Docs catalog is under `Docs/` |
 | `Tests/SketchyTests/Docs/DocExampleCatalog.swift` | Paper colour, tile size, and the example list |

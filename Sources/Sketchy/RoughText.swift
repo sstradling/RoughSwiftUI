@@ -300,6 +300,57 @@ public extension RoughText {
     func widthStops(_ stops: [WidthStop]) -> Self {
         RoughText(roughView: roughView.widthStops(stops), textSize: textSize)
     }
+
+    /// Draws a paper sheet behind glyph outlines. See `RoughView.stickerBacking(_:)`.
+    ///
+    /// Counters stay open. A width of `0` or `nil` draws no paper.
+    func stickerBacking(_ backing: StickerBacking?) -> Self {
+        RoughText(roughView: roughView.stickerBacking(backing), textSize: textSize)
+    }
+
+    /// Draws paper `width` points past the nominal glyph stroke.
+    ///
+    /// `color` defaults to white. `texture` adds paper grain. See
+    /// `RoughView.stickerBacking(width:smoothness:edge:color:texture:)`.
+    func stickerBacking(
+        width: CGFloat,
+        smoothness: CGFloat = 0,
+        edge: StickerEdge = .smooth,
+        color: Color = .white,
+        texture: StickerTexture? = nil
+    ) -> Self {
+        RoughText(
+            roughView: roughView.stickerBacking(
+                width: width,
+                smoothness: smoothness,
+                edge: edge,
+                color: color,
+                texture: texture
+            ),
+            textSize: textSize
+        )
+    }
+
+    /// Draws paper in a `UIColor`. `color` is required so it does not clash
+    /// with the SwiftUI `Color` overload.
+    func stickerBacking(
+        width: CGFloat,
+        smoothness: CGFloat = 0,
+        edge: StickerEdge = .smooth,
+        color: UIColor,
+        texture: StickerTexture? = nil
+    ) -> Self {
+        RoughText(
+            roughView: roughView.stickerBacking(
+                width: width,
+                smoothness: smoothness,
+                edge: edge,
+                color: color,
+                texture: texture
+            ),
+            textSize: textSize
+        )
+    }
     
     // MARK: - SVG-specific modifiers
     

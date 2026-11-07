@@ -11,7 +11,7 @@ For AI coding agents: [AGENTS.md](AGENTS.md) is how to work in this repo, and [l
 Add the package to your `Package.swift` dependencies and to the target that uses it. The package requires iOS 17 or later.
 
 ```swift
-.package(url: "https://github.com/sstradling/Sketchy", from: "1.4.0"),
+.package(url: "https://github.com/sstradling/Sketchy", from: "1.4.1"),
 ```
 
 ```swift
@@ -104,6 +104,37 @@ RoughView()
     .brushProfile(.crayon(grit: 0.95, flakeSize: 1.5, seed: 4))
     .seed(4)
     .circle()
+```
+
+### Sticker backing
+
+`.stickerBacking(width:smoothness:edge:color:texture:)` puts paper behind the shape. `width` is the margin past the stroke. `smoothness` `0` follows the rough edge and `1` follows the input silhouette. `.smooth` curves between real corners. `.fullySmooth()` rounds the whole cut, including those corners. `.torn()` chops the edge. `color` defaults to white. `texture: .paper()` adds grain on that color. Omit the modifier and the drawing is unchanged. The gallery mat below is there so the white margin shows.
+
+![Sticker star](docs/images/stickers/sticker-star.png)
+
+```swift
+RoughView()
+    .fill(Color(red: 0.18, green: 0.46, blue: 0.67))
+    .fillStyle(.hachure)
+    .fillAngle(0)
+    .fillSpacing(3)
+    .stroke(Color(red: 0.12, green: 0.14, blue: 0.18))
+    .strokeWidth(2)
+    .roughness(1.4)
+    .seed(42)
+    .stickerBacking(width: 14, smoothness: 0.85)
+    .draw(Polygon(points: [
+        Point(x: 92, y: 36),
+        Point(x: 106, y: 73),
+        Point(x: 145, y: 75),
+        Point(x: 115, y: 99),
+        Point(x: 125, y: 137),
+        Point(x: 92, y: 116),
+        Point(x: 59, y: 137),
+        Point(x: 69, y: 99),
+        Point(x: 39, y: 75),
+        Point(x: 78, y: 73)
+    ]))
 ```
 
 ### Opacity

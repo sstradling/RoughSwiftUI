@@ -740,6 +740,59 @@ public extension RoughView {
         v.options.strokeJoin = join
         return v
     }
+
+    /// Draws a die-cut sheet or paper ribbon behind the shape.
+    ///
+    /// Pass `nil` to remove it. A width of `0` also draws nothing. The sketch
+    /// itself is unchanged. See `StickerBacking` for closed contours, holes,
+    /// and open strokes.
+    func stickerBacking(_ backing: StickerBacking?) -> Self {
+        var v = self
+        v.options.stickerBacking = backing
+        return v
+    }
+
+    /// Draws paper `width` points past the nominal stroke.
+    ///
+    /// `smoothness` `0` follows the rough edge. `1` removes fine wobble and
+    /// keeps the silhouette. `edge` is `.smooth` or `.torn()`. `color`
+    /// defaults to white. `texture` adds paper grain inside the sheet.
+    /// Pass `Color.white` or `UIColor.white` when both overloads are visible.
+    func stickerBacking(
+        width: CGFloat,
+        smoothness: CGFloat = 0,
+        edge: StickerEdge = .smooth,
+        color: Color = .white,
+        texture: StickerTexture? = nil
+    ) -> Self {
+        stickerBacking(StickerBacking(
+            width: width,
+            smoothness: smoothness,
+            edge: edge,
+            color: UIColor(color),
+            texture: texture
+        ))
+    }
+
+    /// Draws paper `width` points past the nominal stroke in a `UIColor`.
+    ///
+    /// `color` has no default here, so a bare `.white` is not ambiguous with
+    /// the SwiftUI `Color` overload. `texture` adds paper grain.
+    func stickerBacking(
+        width: CGFloat,
+        smoothness: CGFloat = 0,
+        edge: StickerEdge = .smooth,
+        color: UIColor,
+        texture: StickerTexture? = nil
+    ) -> Self {
+        stickerBacking(StickerBacking(
+            width: width,
+            smoothness: smoothness,
+            edge: edge,
+            color: color,
+            texture: texture
+        ))
+    }
     
     // MARK: - Animation
     

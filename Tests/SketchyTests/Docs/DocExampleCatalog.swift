@@ -53,6 +53,7 @@ enum DocExampleCatalog {
         + strokeExamples
         + roughnessExamples
         + brushExamples
+        + stickerExamples
         + seedingExamples
         + svgExamples
         + textExamples

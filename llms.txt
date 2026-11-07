@@ -1,6 +1,6 @@
 # Sketchy
 
-> Native SwiftUI port of rough.js. `RoughView` draws seeded hand-drawn shapes, SVG paths, and text. One view has one `Options` value. iOS 17+. Install with Swift Package Manager from `1.4.0`.
+> Native SwiftUI port of rough.js. `RoughView` draws seeded hand-drawn shapes, SVG paths, and text. One view has one `Options` value. iOS 17+. Install with Swift Package Manager from `1.4.1`.
 
 ## Docs
 
@@ -13,7 +13,7 @@
 ## Install
 
 ```swift
-.package(url: "https://github.com/sstradling/Sketchy", from: "1.4.0"),
+.package(url: "https://github.com/sstradling/Sketchy", from: "1.4.1"),
 ```
 
 ```swift
@@ -234,6 +234,12 @@ RoughView()
     .animated(config: AnimationConfig(steps: 6, speed: .medium, variance: .high, seed: 42))
 ```
 
+## Sticker backing
+
+`.stickerBacking(width:smoothness:edge:color:texture:)` or `.stickerBacking(StickerBacking?)` on `RoughView` and `RoughText`. A second overload takes `color: UIColor` with no default, so write `Color.white` or `UIColor.white`. `Options.stickerBacking` defaults `nil`, which draws nothing and does not change the sketch. `width` `0` also draws nothing. `width` is the margin past the nominal stroke, in points. The sheet extends `width + strokeWidth / 2` from the outline centerline. `smoothness` defaults `0` and is clamped to `0...1`: `0` follows the rough outline, `1` follows the input silhouette (a star stays a star). `edge` defaults `.smooth` (curves between real corners; star points stay sharp; a sampled egg can still show vertices). `.fullySmooth()` or `.fullySmooth(radius:)` rounds the whole edge, including original corners, with a continuous tangent and a closed seam. It offsets along the outward normal instead of a miter, so a concave join cannot fold inward. `radius` `0` picks the rounding from the outline length. This is separate from `smoothness`. `.torn(StickerTear(depth:length:jaggedness:))` keeps chopped facets. `StickerTear` defaults: `depth` `0` (rendered as `max(3, width * 0.55)`), `length` `16` (minimum `4`), `jaggedness` `0.35` (clamped `0...1`). `color` defaults to white. `texture` defaults `nil` (flat color). `StickerTexture` / `.paper(amount:scale:seed:)` defaults: `amount` `0.45` (`0...1`, `0` draws no fibers), `scale` `11` (minimum `4`), `seed` `nil` (then `Options.seed`, then a fixed seed). Fibers clip to the sheet, including holes, and do not change the sketch. Torn chops and grain do not advance the sketch sequence.
+
+Closed continuous contours, SVG subpaths, and glyph outlines become one filled sheet. A continuous outline that returns to its start, such as an egg or ellipse with no explicit close, is closed too. Holes stay open with the same margin. The second rough pass of a contour is not a second sheet. Lines, curves, open arcs, and `.strokeContinuity(.legacy)` edges become a ribbon of `strokeWidth + 2 * width`, not a filled cutout. A self-crossing offset falls back to a round dilation instead of a broken fill. Crayon and watercolor paint on top of the sheet. White paper needs a contrasting background.
+
 ## Common pitfalls
 
 - A bare `.fill(.red)` does not compile when both `Color` and `UIColor` overloads are visible. Write `Color.red`.
@@ -249,3 +255,4 @@ RoughView()
 - `.sunBurst` and `.starBurst` are the same radial filler.
 - Tapered thickness is dropped on closed contours so the join does not seam.
 - Do not edit `docs/Examples.md` by hand. Change the example catalog or `scripts/render-docs.sh`, then re-run the script.
+- `.stickerBacking` defaults to white paper. On a white background the margin is invisible. Legacy and open contours are ribbons, not filled sheets.

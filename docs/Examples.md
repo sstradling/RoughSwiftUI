@@ -12,6 +12,7 @@ The pictures below are the full catalog. A shorter tour lives in the [README](..
 - [Strokes](#strokes)
 - [Roughness](#roughness)
 - [Brushes](#brushes)
+- [Stickers](#stickers)
 - [Seeding](#seeding)
 - [SVG](#svg)
 - [Text](#text)
@@ -1031,6 +1032,139 @@ RoughView()
     .seed(27)
     .draw(Line(from: Point(x: 36, y: 40), to: Point(x: 150, y: 148)))
     .draw(Line(from: Point(x: 36, y: 148), to: Point(x: 150, y: 40)))
+```
+
+## Stickers
+
+A sheet behind the ink. Smoothness chooses the rough edge or the input silhouette. .smooth keeps corners, .fullySmooth() rounds the whole cut, and torn chops the margin. The slate rectangle is gallery chrome so the white paper shows. It is not part of the snippet.
+
+### Sticker star
+
+White paper past the stroke. Smoothness 0.85 follows the star and drops the sketch wobble. The slate mat is only in the gallery so the white margin shows.
+
+![Sticker star](images/stickers/sticker-star.png)
+
+```swift
+RoughView()
+    .fill(Color(red: 0.18, green: 0.46, blue: 0.67))
+    .fillStyle(.hachure)
+    .fillAngle(0)
+    .fillSpacing(3)
+    .stroke(Color(red: 0.12, green: 0.14, blue: 0.18))
+    .strokeWidth(2)
+    .roughness(1.4)
+    .seed(42)
+    .stickerBacking(width: 14, smoothness: 0.85)
+    .draw(Polygon(points: [
+            Point(x: 92, y: 36),
+    Point(x: 106, y: 73),
+    Point(x: 145, y: 75),
+    Point(x: 115, y: 99),
+    Point(x: 125, y: 137),
+    Point(x: 92, y: 116),
+    Point(x: 59, y: 137),
+    Point(x: 69, y: 99),
+    Point(x: 39, y: 75),
+    Point(x: 78, y: 73)
+    ]))
+```
+
+### Torn sticker
+
+The same star with a chopped edge. Depth, facet length, and jaggedness are seeded, so the tear repeats.
+
+![Torn sticker](images/stickers/sticker-torn.png)
+
+```swift
+RoughView()
+    .fill(Color(red: 0.76, green: 0.32, blue: 0.28))
+    .fillStyle(.hachure)
+    .fillAngle(0)
+    .fillSpacing(3)
+    .stroke(Color(red: 0.12, green: 0.14, blue: 0.18))
+    .strokeWidth(2)
+    .roughness(1.4)
+    .seed(42)
+    .stickerBacking(
+        width: 16,
+        smoothness: 0.55,
+        edge: .torn(StickerTear(depth: 7, length: 14, jaggedness: 0.45))
+    )
+    .draw(Polygon(points: [
+            Point(x: 92, y: 36),
+    Point(x: 106, y: 73),
+    Point(x: 145, y: 75),
+    Point(x: 115, y: 99),
+    Point(x: 125, y: 137),
+    Point(x: 92, y: 116),
+    Point(x: 59, y: 137),
+    Point(x: 69, y: 99),
+    Point(x: 39, y: 75),
+    Point(x: 78, y: 73)
+    ]))
+```
+
+### Crayon on paper
+
+The wax stroke paints on top of the sheet. A wider margin keeps most of the grit on the paper.
+
+![Crayon on paper](images/stickers/sticker-crayon.png)
+
+```swift
+RoughView()
+    .fill(Color(red: 0.45, green: 0.28, blue: 0.55))
+    .fillStyle(.hachure)
+    .fillAngle(0)
+    .fillSpacing(3.5)
+    .stroke(Color(red: 0.45, green: 0.28, blue: 0.55))
+    .strokeWidth(12)
+    .brushProfile(.crayon(seed: 4))
+    .seed(4)
+    .stickerBacking(width: 18, smoothness: 0.7)
+    .circle()
+```
+
+### Tinted paper
+
+The sheet color and the grain are separate. Fibers stay inside the cutout and repeat with the texture seed.
+
+![Tinted paper](images/stickers/sticker-paper.png)
+
+```swift
+RoughView()
+    .fill(Color(red: 0.22, green: 0.48, blue: 0.34))
+    .fillStyle(.hachure)
+    .fillAngle(0)
+    .fillSpacing(3)
+    .stroke(Color(red: 0.12, green: 0.14, blue: 0.18))
+    .strokeWidth(2)
+    .seed(18)
+    .stickerBacking(
+        width: 16,
+        smoothness: 0.8,
+        color: Color(red: 0.96, green: 0.91, blue: 0.78),
+        texture: .paper(amount: 0.55, scale: 10, seed: 18)
+    )
+    .egg(tilt: 0.4)
+```
+
+### Fully smooth edge
+
+fullySmooth rounds the whole cutout, including corners of the sampled egg. smoothness still only chooses the silhouette. The slate mat is gallery chrome.
+
+![Fully smooth edge](images/stickers/sticker-fully-smooth.png)
+
+```swift
+RoughView()
+    .fill(Color(red: 0.22, green: 0.48, blue: 0.34))
+    .fillStyle(.hachure)
+    .fillAngle(0)
+    .fillSpacing(3)
+    .stroke(Color(red: 0.12, green: 0.14, blue: 0.18))
+    .strokeWidth(2)
+    .seed(17)
+    .stickerBacking(width: 22, smoothness: 1, edge: .fullySmooth())
+    .draw(EggShape(x: 92, y: 98, width: 72, height: 104, tilt: 0.42))
 ```
 
 ## Seeding

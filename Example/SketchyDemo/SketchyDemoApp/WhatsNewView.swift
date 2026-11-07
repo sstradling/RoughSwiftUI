@@ -8,7 +8,7 @@
 import SwiftUI
 import Sketchy
 
-/// Fill inset, variable marker, width stops, opacity along a stroke, watercolor, and SVG arcs.
+/// Fill inset, sticker backing, variable marker, width stops, opacity, watercolor, and SVG arcs.
 struct WhatsNewView: View {
     private let ink = Color(red: 0.12, green: 0.14, blue: 0.18)
     private let blue = Color(red: 0.18, green: 0.46, blue: 0.67)
@@ -22,12 +22,57 @@ struct WhatsNewView: View {
                         .font(.title2)
                         .bold()
 
-                    SwiftUI.Text("Fill placement, markers, watercolor, and SVG arcs")
+                    SwiftUI.Text("Stickers, fill placement, markers, and watercolor")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
                 }
                 .padding(.top)
+
+                section("Sticker backing", detail: "White, tinted, or grained paper behind the ink. Smoothness 1 follows the star. Torn chops the edge.") {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(alignment: .top, spacing: 16) {
+                            stickerSample("none", backing: nil)
+                            stickerSample("close", backing: StickerBacking(width: 10, smoothness: 0.05))
+                            stickerSample("silhouette", backing: StickerBacking(width: 10, smoothness: 1))
+                            stickerSample("fully smooth", backing: StickerBacking(width: 10, smoothness: 1, edge: .fullySmooth()))
+                            stickerSample(
+                                "torn",
+                                backing: StickerBacking(
+                                    width: 12,
+                                    smoothness: 0.45,
+                                    edge: .torn(StickerTear(depth: 6, length: 12, jaggedness: 0.4))
+                                )
+                            )
+                        }
+                    }
+
+                    HStack(spacing: 16) {
+                        stickerSample(
+                            "tint",
+                            backing: StickerBacking(
+                                width: 10,
+                                smoothness: 1,
+                                color: UIColor(red: 0.96, green: 0.91, blue: 0.78, alpha: 1)
+                            )
+                        )
+                        stickerSample(
+                            "grain",
+                            backing: StickerBacking(width: 10, smoothness: 1, texture: .paper(seed: 6))
+                        )
+                        stickerSample(
+                            "tint + grain",
+                            backing: StickerBacking(
+                                width: 10,
+                                smoothness: 1,
+                                color: UIColor(red: 0.96, green: 0.91, blue: 0.78, alpha: 1),
+                                texture: .paper(amount: 0.55, seed: 6)
+                            )
+                        )
+                    }
+                }
+
+                Divider()
 
                 section("Fill Padding & Offset", detail: "The outline stays put. Padding insets the fill. Offset shifts it.") {
                     HStack(spacing: 16) {
@@ -195,6 +240,39 @@ struct WhatsNewView: View {
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
             content()
+        }
+    }
+
+    private func stickerSample(_ caption: String, backing: StickerBacking?) -> some View {
+        VStack(spacing: 8) {
+            RoughView()
+                .stroke(ink)
+                .strokeWidth(1.6)
+                .fill(blue)
+                .fillStyle(.hachure)
+                .fillAngle(0)
+                .fillSpacing(2.6)
+                .roughness(1.35)
+                .seed(42)
+                .stickerBacking(backing)
+                .draw(Polygon(points: demoStar))
+                .frame(width: 120, height: 120)
+                .padding(6)
+                .background(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(Color(red: 0.27, green: 0.36, blue: 0.43))
+                )
+            SwiftUI.Text(caption)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private var demoStar: [Point] {
+        (0..<10).map { index in
+            let angle = -Float.pi / 2 + Float(index) * .pi / 5
+            let radius: Float = index.isMultiple(of: 2) ? 36 : 15
+            return Point(x: 60 + cos(angle) * radius, y: 60 + sin(angle) * radius)
         }
     }
 

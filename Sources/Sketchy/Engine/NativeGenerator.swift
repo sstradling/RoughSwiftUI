@@ -68,40 +68,52 @@ public final class NativeGenerator {
         }
         
         let method = drawable.method
-        
+
+        let drawing: Drawing?
         switch method {
         case "line":
-            return generateLine(arguments: arguments, options: options)
+            drawing = generateLine(arguments: arguments, options: options)
         case "rectangle":
-            return generateRectangle(arguments: arguments, options: options)
+            drawing = generateRectangle(arguments: arguments, options: options)
         case "ellipse":
-            return generateEllipse(arguments: arguments, options: options)
+            drawing = generateEllipse(arguments: arguments, options: options)
         case "circle":
-            return generateCircle(arguments: arguments, options: options)
+            drawing = generateCircle(arguments: arguments, options: options)
         case "linearPath":
-            return generateLinearPath(arguments: arguments, options: options)
+            drawing = generateLinearPath(arguments: arguments, options: options)
         case "polygon":
-            return generatePolygon(arguments: arguments, options: options)
+            drawing = generatePolygon(arguments: arguments, options: options)
         case "arc":
-            return generateArc(arguments: arguments, options: options)
+            drawing = generateArc(arguments: arguments, options: options)
         case "curve":
-            return generateCurve(arguments: arguments, options: options)
+            drawing = generateCurve(arguments: arguments, options: options)
         case "path":
-            guard let drawing = generatePath(arguments: arguments, options: options) else {
-                return nil
-            }
             // FullText already places the glyphs in the view. Marking the
             // drawing as "text" keeps the renderer from fitting it like an
             // SVG path, which would scale and center the word.
-            guard drawable is FullText else { return drawing }
-            return Drawing(shape: "text", sets: drawing.sets, options: drawing.options)
+            if let generated = generatePath(arguments: arguments, options: options) {
+                let shape = drawable is FullText ? "text" : generated.shape
+                drawing = Drawing(shape: shape, sets: generated.sets, options: generated.options)
+            } else {
+                drawing = nil
+            }
         case "roundedRectangle":
-            return generateRoundedRectangle(arguments: arguments, options: options)
+            drawing = generateRoundedRectangle(arguments: arguments, options: options)
         case "egg":
-            return generateEgg(arguments: arguments, options: options)
+            drawing = generateEgg(arguments: arguments, options: options)
         default:
-            return nil
+            drawing = nil
         }
+
+        guard let drawing else { return nil }
+        let guide = StickerGuide.rings(method: method, arguments: arguments)
+        guard !guide.isEmpty else { return drawing }
+        return Drawing(
+            shape: drawing.shape,
+            sets: drawing.sets,
+            options: drawing.options,
+            stickerGuide: guide
+        )
     }
     
     // MARK: - Shape Generators
