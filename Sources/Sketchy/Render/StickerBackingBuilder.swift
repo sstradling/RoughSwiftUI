@@ -201,16 +201,29 @@ enum StickerBackingBuilder {
             let signed = nestingDepth(index, in: rings).isMultiple(of: 2) ? outward : -outward
             let coverageBase = line.source.count >= 3 ? line.source : line.points
             let coverage = offsetClosed(coverageBase, by: signed)
-            var source = line.points
             if case .continuous(let radius) = finish {
-                source = continuousOutline(source, closed: true, radius: radius)
+                // Mitered edge intersections fold a concave sample into an
+                // inward spike. The egg's right-hand cubic join is that
+                // sample. Offset along the normal instead, then blur so the
+                // tangent stays continuous, including across the seam.
+                let smoothed = continuousOutline(line.points, closed: true, radius: radius)
+                var ring = normalOffset(smoothed, distance: signed)
+                let polish = radius > 0 ? min(18, max(12, radius * 0.5)) : 14
+                ring = continuousOutline(ring, closed: true, radius: polish)
+                // Blur before the coverage scale. A blur after the scale
+                // pulls the widest points back in and can uncover the art.
+                ring = continuousOutline(ring, closed: true, radius: 10)
+                if let coverage {
+                    ring = expandToCover(coverage, ring)
+                }
+                offsets.append(ring)
+                continue
             }
-            guard var ring = offsetClosed(source, by: signed) else {
+            guard var ring = offsetClosed(line.points, by: signed) else {
                 failed = true
                 break
             }
-            switch finish {
-            case .torn(let tear):
+            if case .torn(let tear) = finish {
                 ring = choppedOffset(
                     ring,
                     depth: tear.depth,
@@ -218,16 +231,6 @@ enum StickerBackingBuilder {
                     jaggedness: tear.jaggedness,
                     seed: tear.seed &+ UInt64(index)
                 )
-            case .continuous(let radius):
-                // A short pass removes the offset's miter nubs without
-                // pulling the margin back onto the ink.
-                let polish = radius > 0 ? min(10, max(5, radius * 0.3)) : 7
-                ring = continuousOutline(ring, closed: true, radius: polish)
-                if let coverage {
-                    ring = expandToCover(coverage, ring)
-                }
-            case .corners:
-                break
             }
             offsets.append(ring)
         }
@@ -741,6 +744,20 @@ enum StickerBackingBuilder {
         return scaled(high * 1.02)
     }
 
+    /// Moves each sample along its outward normal. Unlike a miter join, a
+    /// concave sample stays on the outside of the curve instead of folding in.
+    private static func normalOffset(_ points: [CGPoint], distance: CGFloat) -> [CGPoint] {
+        let ring = clean(points, dropClosingDuplicate: true)
+        guard ring.count >= 3 else { return points }
+        let normals = outwardNormals(ring, closed: true)
+        return zip(ring, normals).map { point, normal in
+            CGPoint(
+                x: point.x + normal.x * distance,
+                y: point.y + normal.y * distance
+            )
+        }
+    }
+
     /// Puts the blurred ring back at the source ring's average size.
     private static func restoreMeanRadius(_ points: [CGPoint], matching target: [CGPoint]) -> [CGPoint] {
         let origin = centroid(points)
@@ -807,7 +824,12 @@ enum StickerBackingBuilder {
                 wrapped = next
             }
             let hop = distance(points[cursor], points[wrapped])
-            if hop < 1e-4 { break }
+            if hop < 1e-4 {
+                // A repeated seam sample must not end the circular walk.
+                // Stopping here smooths only one side of the join and leaves a cusp.
+                cursor = wrapped
+                continue
+            }
             traveled += hop
             if traveled > radius { break }
             add(wrapped, traveled)
@@ -966,6 +988,12 @@ enum StickerBackingBuilder {
         }
         if !closed, let last = source.last, distance(result[result.count - 1], last) > spacing * 0.35 {
             result.append(last)
+        }
+        if closed, result.count >= 3 {
+            let gap = distance(result[result.count - 1], result[0])
+            if gap < spacing * 0.45 {
+                result.removeLast()
+            }
         }
         return result.count >= 2 ? result : points
     }
@@ -1327,9 +1355,23 @@ private final class PathWalker {
     }
 
     func finishOpen() {
-        if current.count >= 2 {
-            pieces.append(.init(points: current, closed: false))
+        guard current.count >= 2 else {
+            current = []
+            return
         }
+        // Continuous eggs and ellipses return to the start point without a
+        // Close operation. Stroking that as an open ribbon leaves two caps
+        // at the join, which reads as a notch. A contour that meets itself
+        // is a sheet.
+        if current.count >= 3, let first = current.first, let last = current.last {
+            let gap = hypot(last.x - first.x, last.y - first.y)
+            if gap <= 1.25 {
+                pieces.append(.init(points: current, closed: true))
+                current = []
+                return
+            }
+        }
+        pieces.append(.init(points: current, closed: false))
         current = []
     }
 

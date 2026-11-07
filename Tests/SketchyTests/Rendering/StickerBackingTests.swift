@@ -319,6 +319,64 @@ final class StickerBackingTests: XCTestCase {
         XCTAssertEqual(isolatedFacets(turningSamples(try backedStar(.fullySmooth()), spacing: 6)), 0)
     }
 
+    /// The fully smooth preview egg grew an inward bite on the right edge,
+    /// at the cubic seam. A narrow radial dip there must stay gone.
+    func testFullySmoothEggHasNoRightSideNotch() throws {
+        var options = Options()
+        options.roughness = 1.45
+        options.maxRandomnessOffset = 2.4
+        options.bowing = 1
+        options.seed = 17
+        options.strokeWidth = 2
+        options.fillStyle = .hachure
+        options.fillAngle = 0
+        options.fillSpacing = 3
+        options.stickerBacking = StickerBacking(width: 22, smoothness: 1, edge: .fullySmooth())
+        let size = CGSize(width: 240, height: 300)
+        let shape = EggShape(x: 100, y: 112, width: 86, height: 124, tilt: 0.42)
+        let drawing = try drawing(shape, options: options, size: size)
+        let commands = SwiftUIRenderer().commands(for: drawing, options: options, in: size)
+        let paper = try XCTUnwrap(commands.first)
+        guard case .fill = paper.style else {
+            return XCTFail("fully smooth egg should be a filled sheet, not an open ribbon with a cap seam")
+        }
+        let path = paper.path
+        let dip = narrowRadialDip(path, shoulder: 0.18)
+        let reversal = rightSilhouetteReversal(path)
+        XCTAssertLessThan(dip, 1.25, "right-side notch is \(dip) points deep")
+        XCTAssertLessThan(reversal, 1.25, "right-edge shelf is \(reversal) points")
+        XCTAssertEqual(isolatedFacets(turningSamples(path, spacing: 4)), 0)
+    }
+
+    /// Fully smooth compound shapes keep an open hole and a continuous outer edge.
+    func testFullySmoothCompoundKeepsHoleAndContinuousEdge() throws {
+        var options = Options()
+        options.roughness = 1.2
+        options.seed = 9
+        options.strokeWidth = 2
+        options.fill = .clear
+        options.stickerBacking = StickerBacking(width: 12, smoothness: 0.9, edge: .fullySmooth())
+        let size = CGSize(width: 180, height: 180)
+        let shape = Sketchy.Path(d: "M16 16 H144 V144 H16 Z M50 50 H110 V110 H50 Z")
+        let drawing = try drawing(shape, options: options, size: size)
+        let commands = SwiftUIRenderer().commands(for: drawing, options: options, in: size)
+        let paper = try XCTUnwrap(commands.first)
+        guard case .fill = paper.style else {
+            return XCTFail("fully smooth compound backing should be one filled sheet")
+        }
+        XCTAssertNil(commands.first?.clipPath)
+        XCTAssertGreaterThan(elementKinds(paper.path).curves, 8)
+        let bounds = paper.path.boundingRect
+        let hole = CGPoint(x: bounds.midX, y: bounds.midY)
+        XCTAssertFalse(paper.path.cgPath.contains(hole, using: .evenOdd), "the compound hole should stay open")
+        XCTAssertTrue(
+            paper.path.cgPath.contains(CGPoint(x: bounds.minX + 18, y: bounds.midY), using: .evenOdd)
+        )
+        let outer = firstSubpath(paper.path)
+        XCTAssertEqual(isolatedFacets(turningSamples(outer, spacing: 6)), 0)
+        XCTAssertLessThan(rightSilhouetteReversal(outer), 2.5)
+    }
+
     func testTextureIsSeededClippedAndOptional() throws {
         let size = CGSize(width: 180, height: 160)
         var options = cleanOptions()
@@ -525,6 +583,121 @@ final class StickerBackingTests: XCTestCase {
             }
         }
         return (lines, curves)
+    }
+
+    private func firstSubpath(_ path: SwiftUI.Path) -> SwiftUI.Path {
+        var subpath = SwiftUI.Path()
+        var started = false
+        var done = false
+        path.cgPath.applyWithBlock { element in
+            if done { return }
+            let values = element.pointee.points
+            switch element.pointee.type {
+            case .moveToPoint:
+                if started {
+                    done = true
+                    return
+                }
+                subpath.move(to: values[0])
+                started = true
+            case .addLineToPoint:
+                subpath.addLine(to: values[0])
+            case .addQuadCurveToPoint:
+                subpath.addQuadCurve(to: values[1], control: values[0])
+            case .addCurveToPoint:
+                subpath.addCurve(to: values[2], control1: values[0], control2: values[1])
+            case .closeSubpath:
+                subpath.closeSubpath()
+                done = true
+            default:
+                break
+            }
+        }
+        return subpath
+    }
+
+    /// How far a sample sits inside both nearby shoulders. A broad valley
+    /// stays near 0. A narrow inward notch, such as the egg's right-edge cusp, does not.
+    private func narrowRadialDip(_ path: SwiftUI.Path, shoulder: CGFloat) -> CGFloat {
+        let points = resampled(path.cgPath, spacing: 3)
+        guard points.count >= 12 else { return 0 }
+        let center = points.reduce(CGPoint.zero) { partial, point in
+            CGPoint(x: partial.x + point.x, y: partial.y + point.y)
+        }
+        let count = CGFloat(points.count)
+        let origin = CGPoint(x: center.x / count, y: center.y / count)
+        let polar = points.map { point -> (angle: CGFloat, radius: CGFloat) in
+            (
+                atan2(point.y - origin.y, point.x - origin.x),
+                hypot(point.x - origin.x, point.y - origin.y)
+            )
+        }
+        func radius(near angle: CGFloat) -> CGFloat {
+            var best = polar[0]
+            var bestGap = CGFloat.greatestFiniteMagnitude
+            for sample in polar {
+                var gap = abs(sample.angle - angle)
+                if gap > .pi { gap = 2 * .pi - gap }
+                if gap < bestGap {
+                    bestGap = gap
+                    best = sample
+                }
+            }
+            return best.radius
+        }
+        var worst: CGFloat = 0
+        for sample in polar where abs(sample.angle) < 0.55 {
+            let left = radius(near: sample.angle - shoulder)
+            let right = radius(near: sample.angle + shoulder)
+            let dip = min(left, right) - sample.radius
+            worst = max(worst, dip)
+        }
+        return worst
+    }
+
+    /// Outward step of the right silhouette away from its single widest point.
+    /// A convex cutout is unimodal in x. The egg's seam shelf rises again after the peak.
+    private func rightSilhouetteReversal(_ path: SwiftUI.Path) -> CGFloat {
+        let points = resampled(path.cgPath, spacing: 2)
+        guard points.count >= 12 else { return 0 }
+        let origin = points.reduce(CGPoint.zero) { partial, point in
+            CGPoint(x: partial.x + point.x, y: partial.y + point.y)
+        }
+        let count = CGFloat(points.count)
+        let center = CGPoint(x: origin.x / count, y: origin.y / count)
+        let right = points.filter { $0.x > center.x + 6 }
+        guard right.count >= 8 else { return 0 }
+        let minY = right.map(\.y).min() ?? 0
+        let maxY = right.map(\.y).max() ?? 0
+        let bin: CGFloat = 3
+        var silhouette: [CGFloat] = []
+        var y = minY
+        while y <= maxY {
+            let band = right.filter { abs($0.y - y) <= bin * 0.5 }
+            if let edge = band.map(\.x).max() {
+                silhouette.append(edge)
+            }
+            y += bin
+        }
+        guard silhouette.count >= 5, let peak = silhouette.indices.max(by: { silhouette[$0] < silhouette[$1] }) else {
+            return 0
+        }
+        var worst: CGFloat = 0
+        var low = silhouette[peak]
+        if peak + 1 < silhouette.count {
+            for index in (peak + 1)..<silhouette.count {
+                low = min(low, silhouette[index])
+                worst = max(worst, silhouette[index] - low)
+            }
+        }
+        low = silhouette[peak]
+        if peak > 0 {
+            for index in stride(from: peak - 1, through: 0, by: -1) {
+                low = min(low, silhouette[index])
+                worst = max(worst, silhouette[index] - low)
+            }
+        }
+        return worst
     }
 
     /// A kink with straight neighbors is a polygon vertex. A smooth curve is not.

@@ -195,7 +195,7 @@ extension DocExampleCatalog {
                 .strokeWidth(2)
                 .seed(17)
                 .stickerBacking(width: 22, smoothness: 1, edge: .fullySmooth())
-                .egg(tilt: 0.42)
+                .draw(EggShape(x: 92, y: 98, width: 72, height: 104, tilt: 0.42))
             """,
             picture: .stickerMat
         ) {
@@ -208,7 +208,7 @@ extension DocExampleCatalog {
                 .strokeWidth(2)
                 .seed(17)
                 .stickerBacking(width: 22, smoothness: 1, edge: .fullySmooth())
-                .egg(tilt: 0.42)
+                .draw(EggShape(x: 92, y: 98, width: 72, height: 104, tilt: 0.42))
         }
     ]
 }

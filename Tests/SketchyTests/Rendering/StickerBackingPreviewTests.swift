@@ -33,6 +33,7 @@ final class StickerBackingPreviewTests: XCTestCase {
         try write(edgeModes, name: "sticker-egg-fully-smooth.png", width: 1040, height: 520, to: directory)
         try write(fullEgg, name: "sticker-fully-smooth-egg-closeup.png", width: 760, height: 900, to: directory)
         try write(starModes, name: "sticker-fully-smooth-star.png", width: 860, height: 520, to: directory)
+        try write(smoothCompound, name: "sticker-fully-smooth-compound.png", width: 860, height: 520, to: directory)
     }
 
     private var starCard: some View {
@@ -304,6 +305,30 @@ final class StickerBackingPreviewTests: XCTestCase {
                     .frame(width: 240, height: 300)
                     .scaleEffect(2.15)
                     .frame(width: 640, height: 700)
+            }
+            .frame(maxWidth: .infinity)
+        }
+    }
+
+    private var smoothCompound: some View {
+        sizedCard("Fully smooth compound. Hole stays open. Corner-preserving shown beside it.", width: 860, height: 520) {
+            HStack(alignment: .top, spacing: 36) {
+                VStack(spacing: 8) {
+                    donut(backing: StickerBacking(width: 14, smoothness: 0.9, edge: .smooth))
+                        .frame(width: 220, height: 220)
+                        .frame(width: 300, height: 320)
+                    Text("Corner-preserving")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundStyle(Color(white: 0.93))
+                }
+                VStack(spacing: 8) {
+                    donut(backing: StickerBacking(width: 14, smoothness: 0.9, edge: .fullySmooth()))
+                        .frame(width: 220, height: 220)
+                        .frame(width: 300, height: 320)
+                    Text("Fully smooth")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundStyle(Color(white: 0.93))
+                }
             }
             .frame(maxWidth: .infinity)
         }
