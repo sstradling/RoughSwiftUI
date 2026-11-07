@@ -1529,7 +1529,7 @@ Engine.shared.clearCaches()
 ## Version Information
 
 - **Package:** Sketchy
-- **Version:** 1.4.0
+- **Version:** 1.4.1
 - **Minimum iOS:** 17.0
 - **Swift:** 5.9+
 - **Rendering:** Native Swift (no JavaScript bridge)

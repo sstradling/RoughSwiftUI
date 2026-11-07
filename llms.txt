@@ -1,6 +1,6 @@
 # Sketchy
 
-> Native SwiftUI port of rough.js. `RoughView` draws seeded hand-drawn shapes, SVG paths, and text. One view has one `Options` value. iOS 17+. Install with Swift Package Manager from `1.4.0`.
+> Native SwiftUI port of rough.js. `RoughView` draws seeded hand-drawn shapes, SVG paths, and text. One view has one `Options` value. iOS 17+. Install with Swift Package Manager from `1.4.1`.
 
 ## Docs
 
@@ -13,7 +13,7 @@
 ## Install
 
 ```swift
-.package(url: "https://github.com/sstradling/Sketchy", from: "1.4.0"),
+.package(url: "https://github.com/sstradling/Sketchy", from: "1.4.1"),
 ```
 
 ```swift

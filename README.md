@@ -11,7 +11,7 @@ For AI coding agents: [AGENTS.md](AGENTS.md) is how to work in this repo, and [l
 Add the package to your `Package.swift` dependencies and to the target that uses it. The package requires iOS 17 or later.
 
 ```swift
-.package(url: "https://github.com/sstradling/Sketchy", from: "1.4.0"),
+.package(url: "https://github.com/sstradling/Sketchy", from: "1.4.1"),
 ```
 
 ```swift

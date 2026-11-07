@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## [1.4.1] - 2026-11-06
+
+- `.stickerBacking(width:smoothness:edge:color:texture:)` on `RoughView` and `RoughText` draws an opt-in paper sheet behind the sketch. Leave it off, or set `width` to `0`, and the drawing is unchanged. `width` is the margin past the nominal stroke. The sheet extends `width + strokeWidth / 2` from the outline centerline. `smoothness` runs from `0` (follow the rough edge) to `1` (follow the input silhouette). It does not choose how corners are cut.
+- `edge` defaults to `.smooth`, which curves between real corners and keeps star points and rectangle corners sharp. A sampled egg can still show those vertices. `.fullySmooth()` or `.fullySmooth(radius:)` rounds the whole cut, including those corners, with a continuous tangent through the closed seam. `radius` `0` picks the length from the outline. `.torn(StickerTear)` chops the edge. `StickerTear` defaults are depth `0` (rendered as `max(3, width * 0.55)`), length `16`, and jaggedness `0.35`.
+- `color` defaults to white. The modifier takes a SwiftUI `Color`. `StickerBacking` and a second modifier take `UIColor`. `.paper(amount:scale:seed:)` draws grain on that color, clipped to the sheet, including holes. Grain does not change the sketch. Color, grain, and edge are independent.
+- Closed continuous contours, SVG subpaths, and glyph outlines become one filled sheet. A continuous outline that returns to its start, such as an egg or ellipse with no explicit close, is a sheet too, so the join is not two stroke caps. Holes stay open. Lines, curves, open arcs, and `.strokeContinuity(.legacy)` edges stay ribbons. `.fullySmooth` offsets along the outward normal and then blurs, so a concave sample cannot fold into a notch. `.smooth` and `.torn` still use a clamped miter.
+
 ## [1.4.0] - 2026-11-06
 
 - **Migration:** Native outlines use continuous cubic Beziers by default (`Options.strokeContinuity` is `.continuous`). A circle or ellipse is four cubics per pass. An arc uses the analytical handle length and splits on quadrant boundaries. A rectangle, polygon, linear path, rounded rectangle, or egg is one subpath per pass, with each corner jittered once and shared by the adjacent segments. `curve`, SVG paths, and text are unchanged. Drawings that relied on the sampled rough.js outlines from 1.3.0 will look different. `.strokeContinuity(.legacy)` restores that look. The mode is part of `Options.cacheHash` and the drawing cache key. `RoughText` has the same modifier.

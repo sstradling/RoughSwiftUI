@@ -2,7 +2,7 @@
 
 This file is for coding agents changing this repository. Agents generating app code that only consumes the library should read [llms.txt](llms.txt) instead.
 
-The package is iOS 17+ (`Package.swift`). Tests run on an iPhone simulator. Do not create a git tag unless a release task says so. The install line in the README is `from: "1.4.0"`. The module is `Sketchy`. Public types such as `RoughView` keep their names.
+The package is iOS 17+ (`Package.swift`). Tests run on an iPhone simulator. Do not create a git tag unless a release task says so. The install line in the README is `from: "1.4.1"`. The module is `Sketchy`. Public types such as `RoughView` keep their names.
 
 ## Layout
 
